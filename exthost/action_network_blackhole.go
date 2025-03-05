@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2024 Steadybit GmbH
-//go:build !windows
-// +build !windows
+
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package exthost
 
@@ -12,17 +13,14 @@ import (
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
-	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
 
-func NewNetworkBlackholeContainerAction(r runc.Runc) action_kit_sdk.Action[NetworkActionState] {
+func NewNetworkBlackholeContainerAction() action_kit_sdk.Action[NetworkActionState] {
 	return &networkAction{
-		runc:         r,
-		optsProvider: blackhole(r),
+		optsProvider: blackhole(),
 		optsDecoder:  blackholeDecode,
 		description:  getNetworkBlackholeDescription(),
 	}
@@ -39,7 +37,7 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		},
-		Technology:  extutil.Ptr("Host"),
+		Technology:  extutil.Ptr(WindowsHostTechnology),
 		Category:    extutil.Ptr("Network"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
@@ -47,27 +45,15 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 	}
 }
 
-func blackhole(r runc.Runc) networkOptsProvider {
-	return func(ctx context.Context, sidecar network.SidecarOpts, request action_kit_api.PrepareActionRequestBody) (network.Opts, action_kit_api.Messages, error) {
+func blackhole() networkOptsProvider {
+	return func(ctx context.Context, request action_kit_api.PrepareActionRequestBody) (network.WinOpts, action_kit_api.Messages, error) {
 		_, err := CheckTargetHostname(request.Target.Attributes)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		var messages action_kit_api.Messages
-		if usesCilium, err := network.HasCiliumIpRoutes(ctx, r, sidecar); err != nil {
-			messages = append(messages, action_kit_api.Message{
-				Level:   extutil.Ptr(action_kit_api.Warn),
-				Message: fmt.Sprintf("Failed to check for Cilium routes: %v", err),
-			})
-		} else if usesCilium {
-			return nil, nil, &extension_kit.ExtensionError{
-				Title:  "'Block Traffic' on hosts with cilium installed is not supported.",
-				Detail: extutil.Ptr("Try replacing this attack with 'Drop Outgoing Traffic' with a loss of 100%. That affects only outgoing traffic, but should yield similar results."),
-			}
-		}
-
-		filter, netMessages, err := mapToNetworkFilter(ctx, r, sidecar, request.Config, getRestrictedEndpoints(request))
+		filter, netMessages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -77,7 +63,7 @@ func blackhole(r runc.Runc) networkOptsProvider {
 	}
 }
 
-func blackholeDecode(data json.RawMessage) (network.Opts, error) {
+func blackholeDecode(data json.RawMessage) (network.WinOpts, error) {
 	var opts network.BlackholeOpts
 	err := json.Unmarshal(data, &opts)
 	return &opts, err

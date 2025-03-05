@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2024 Steadybit GmbH
-//go:build !windows
-// +build !windows
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package exthost
 
@@ -9,19 +7,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
 
-func NewNetworkLimitBandwidthContainerAction(r runc.Runc) action_kit_sdk.Action[NetworkActionState] {
+func NewNetworkLimitBandwidthContainerAction() action_kit_sdk.Action[NetworkActionState] {
 	return &networkAction{
-		runc:         r,
-		optsProvider: limitBandwidth(r),
+		optsProvider: limitBandwidth(),
 		optsDecoder:  limitBandwidthDecode,
 		description:  getNetworkLimitBandwidthDescription(),
 	}
@@ -38,7 +36,7 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		},
-		Technology:  extutil.Ptr("Host"),
+		Technology:  extutil.Ptr(WindowsHostTechnology),
 		Category:    extutil.Ptr("Network"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
@@ -65,40 +63,60 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 	}
 }
 
-func limitBandwidth(r runc.Runc) networkOptsProvider {
-	return func(ctx context.Context, sidecar network.SidecarOpts, request action_kit_api.PrepareActionRequestBody) (network.Opts, action_kit_api.Messages, error) {
+func limitBandwidth() networkOptsProvider {
+	return func(ctx context.Context, request action_kit_api.PrepareActionRequestBody) (network.WinOpts, action_kit_api.Messages, error) {
 		_, err := CheckTargetHostname(request.Target.Attributes)
 		if err != nil {
 			return nil, nil, err
 		}
 		bandwidth := extutil.ToString(request.Config["bandwidth"])
+		bandwidth, err = sanitizeBandwidthAttribute(bandwidth)
 
-		filter, messages, err := mapToNetworkFilter(ctx, r, sidecar, request.Config, getRestrictedEndpoints(request))
 		if err != nil {
 			return nil, nil, err
 		}
 
-		interfaces := extutil.ToStringArray(request.Config["networkInterface"])
-		if len(interfaces) == 0 {
-			interfaces, err = network.ListNonLoopbackInterfaceNames(ctx, r, sidecar)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-
-		if len(interfaces) == 0 {
-			return nil, nil, fmt.Errorf("no network interfaces specified")
+		filter, messages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
+		if err != nil {
+			return nil, nil, err
 		}
 
 		return &network.LimitBandwidthOpts{
-			Filter:     filter,
-			Bandwidth:  bandwidth,
-			Interfaces: interfaces,
+			Filter:    filter,
+			Bandwidth: bandwidth,
 		}, messages, nil
 	}
 }
 
-func limitBandwidthDecode(data json.RawMessage) (network.Opts, error) {
+func sanitizeBandwidthAttribute(bandwidth string) (string, error) {
+	suffixArray := map[string]string{"tbps": "TB", "gbps": "GB", "mbps": "MB", "kbps": "KB", "bps": "", "tbit": "TB", "gbit": "GB", "mbit": "MB", "kbit": "KB", "bit": ""}
+	orderedKeys := []string{"tbps", "gbps", "mbps", "kbps", "bps", "tbit", "gbit", "mbit", "kbit", "bit"}
+
+	for _, key := range orderedKeys {
+		if strings.Contains(bandwidth, key) {
+			numericStr := strings.Replace(bandwidth, key, "", 1)
+			numeric, err := strconv.ParseUint(numericStr, 10, 64)
+
+			if err != nil {
+				return "", err
+			}
+
+			if strings.Contains(key, "bit") {
+				return fmt.Sprintf("%d%s", numeric, suffixArray[key]), nil
+
+			} else if strings.Contains(key, "bps") {
+				numeric = 8 * numeric
+				return fmt.Sprintf("%d%s", numeric, suffixArray[key]), nil
+			} else {
+				return "", fmt.Errorf("invalid network bandwidth")
+			}
+		}
+	}
+
+	return "", fmt.Errorf("invalid network bandwidth")
+}
+
+func limitBandwidthDecode(data json.RawMessage) (network.WinOpts, error) {
 	var opts network.LimitBandwidthOpts
 	err := json.Unmarshal(data, &opts)
 	return &opts, err

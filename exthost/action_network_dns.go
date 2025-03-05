@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2024 Steadybit GmbH
-//go:build !windows
-// +build !windows
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package exthost
 
@@ -11,15 +9,13 @@ import (
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
 
-func NewNetworkBlockDnsContainerAction(r runc.Runc) action_kit_sdk.Action[NetworkActionState] {
+func NewNetworkBlockDnsContainerAction() action_kit_sdk.Action[NetworkActionState] {
 	return &networkAction{
-		runc:         r,
 		optsProvider: blockDns(),
 		optsDecoder:  blackholeDecode,
 		description:  getNetworkBlockDnsDescription(),
@@ -37,7 +33,7 @@ func getNetworkBlockDnsDescription() action_kit_api.ActionDescription {
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		},
-		Technology:  extutil.Ptr("Host"),
+		Technology:  extutil.Ptr(WindowsHostTechnology),
 		Category:    extutil.Ptr("Network"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
@@ -67,7 +63,7 @@ func getNetworkBlockDnsDescription() action_kit_api.ActionDescription {
 }
 
 func blockDns() networkOptsProvider {
-	return func(ctx context.Context, sidecar network.SidecarOpts, request action_kit_api.PrepareActionRequestBody) (network.Opts, action_kit_api.Messages, error) {
+	return func(ctx context.Context, request action_kit_api.PrepareActionRequestBody) (network.WinOpts, action_kit_api.Messages, error) {
 		_, err := CheckTargetHostname(request.Target.Attributes)
 		if err != nil {
 			return nil, nil, err
