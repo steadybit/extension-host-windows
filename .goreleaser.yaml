@@ -1,115 +1,35 @@
-project_name: steadybit-extension-host
+project_name: steadybit-extension-host-windows
 version: 2
-before:
-  hooks:
-    - go mod download
-    - make licenses-report
-
-release:
-  prerelease: "false"
 
 git:
   ignore_tags:
-    - steadybit-extension-host-*
+    - steadybit-extension-host-windows-*
 
 builds:
-  - binary: extension-host
+  - binary: extension-host-windows
     env:
       - CGO_ENABLED=0
-      - MEMFILL_VERSION=v1.1.1
-      - NSMOUNT_VERSION=v1.0.0
     goos:
-      - linux
+      - windows
     goarch:
       - amd64
-      - arm64
     flags:
       - -cover={{ if index .Env "BUILD_WITH_COVERAGE"  }}{{ .Env.BUILD_WITH_COVERAGE }}{{ else }}false{{ end }}
       - -covermode=atomic
-    ldflags:
-      - -s -w
-      - -X github.com/steadybit/extension-kit/extbuild.ExtensionName={{.ProjectName}}
-      - -X github.com/steadybit/extension-kit/extbuild.Version={{.Version}}
-      - -X github.com/steadybit/extension-kit/extbuild.Revision={{.Commit}}
-    hooks:
-      post: sh -c "curl -sfL \"https://github.com/steadybit/nsmount/releases/download/${NSMOUNT_VERSION}/nsmount.{{ .Arch }}\" -o \"./dist/nsmount.{{ .Arch }}\" && chmod a+x \"./dist/nsmount.{{ .Arch }}\" && curl -sfL \"https://github.com/steadybit/memfill/releases/download/${MEMFILL_VERSION}/memfill.{{ .Arch }}\" -o \"./dist/memfill.{{ .Arch }}\" && chmod a+x \"./dist/memfill.{{ .Arch }}\""
 
 archives:
-  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+  - name_template: "{{ .ProjectName }}_{{ .Arch }}"
+    formats: ["zip"]
 
 checksum:
   name_template: 'checksums.txt'
+
 snapshot:
   version_template: "{{ incpatch .Version }}-{{ .Timestamp }}-next"
+
 changelog:
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
-
-nfpms:
-  - package_name: "steadybit-extension-host"
-    file_name_template: "{{ .ConventionalFileName }}"
-    formats:
-      - deb
-      - rpm
-    maintainer: "Johannes Edmeier <johannes.edmeier@steadybit.com>"
-    description: |
-      Steadybit Extension Host
-    vendor: "steadybit GmbH"
-    homepage: "https://steadybit.com"
-    license: "Steadybit license"
-    builds:
-      - steadybit-extension-host
-    dependencies:
-      - procps
-      - stress-ng
-      - iptables
-      - iproute2
-      - bind9-dnsutils
-      - runc
-      - libcap2-bin
-      - cgroup-tools
-    bindir: /opt/steadybit/extension-host
-    contents:
-      - src: ./linuxpkg/systemd
-        dst: /usr/lib/systemd/system
-      - src: ./linuxpkg/init.d
-        dst: /etc/init.d
-      - src: ./linuxpkg/config
-        dst: /etc
-        type: config
-      - src: ./dist/nsmount.{{ .Arch }}
-        dst: /opt/steadybit/extension-host/nsmount
-      - src: ./dist/memfill.{{ .Arch }}
-        dst: /opt/steadybit/extension-host/memfill
-      - src: ./licenses
-        dst: /opt/steadybit/extension-host/licenses
-
-    scripts:
-      preinstall: ./linuxpkg/scripts/preinstall.sh
-      postinstall: ./linuxpkg/scripts/postinstall.sh
-      preremove: ./linuxpkg/scripts/preremove.sh
-      postremove: ./linuxpkg/scripts/postremove.sh
-
-    rpm:
-      signature:
-        key_file: ./gpg.key
-    deb:
-      signature:
-        key_file: ./gpg.key
-
-    overrides:
-      rpm:
-        dependencies:
-          - /usr/bin/ps
-          - /usr/bin/stress-ng
-          - /usr/sbin/tc
-          - /usr/sbin/ip
-          - /usr/bin/dig
-          - runc
-          - /usr/sbin/capsh
-          - /usr/bin/cgexec
-        recommends:
-          - kernel-modules-extra
