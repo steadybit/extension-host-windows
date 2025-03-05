@@ -47,10 +47,25 @@ audit:
 #
 # ====================================================================================
 
+## clean: clean up the output directory
+.PHONY: clean
+clean:
+	powershell -Command "if (Test-Path 'dist') { Remove-Item -Path 'dist' -Force -Recurse }"
+
 ## build: build the extension
 .PHONY: build
 build:
 	goreleaser build --clean --snapshot --single-target -o extension.exe
+
+## release: package a release
+.PHONY: release
+release: licenses-report
+	goreleaser release --clean --snapshot
+
+## artifact: package a ZIP with all required files
+.PHONY: artifact
+artifact: clean release
+	powershell.exe -ExecutionPolicy "Bypass" -File "scripts/package-extension.ps1"
 
 ## run: run the extension
 .PHONY: run
