@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+
 package exthost
 
 import (
@@ -38,8 +41,7 @@ func TestActionShutdown_Prepare(t *testing.T) {
 			},
 
 			wantedState: &ActionState{
-				Reboot:         true,
-				ShutdownMethod: SyscallOrSysrq,
+				Reboot: true,
 			},
 		},
 	}
@@ -82,8 +84,7 @@ func Test_shutdownAction_Start(t *testing.T) {
 			args: args{
 				in0: context.Background(),
 				state: &ActionState{
-					Reboot:         true,
-					ShutdownMethod: Command,
+					Reboot: true,
 				},
 			},
 		}, {
@@ -91,8 +92,7 @@ func Test_shutdownAction_Start(t *testing.T) {
 			args: args{
 				in0: context.Background(),
 				state: &ActionState{
-					Reboot:         true,
-					ShutdownMethod: Command,
+					Reboot: true,
 				},
 			},
 			wantedError: "Reboot failed",
@@ -101,8 +101,7 @@ func Test_shutdownAction_Start(t *testing.T) {
 			args: args{
 				in0: context.Background(),
 				state: &ActionState{
-					Reboot:         false,
-					ShutdownMethod: Command,
+					Reboot: false,
 				},
 			},
 		}, {
@@ -110,8 +109,7 @@ func Test_shutdownAction_Start(t *testing.T) {
 			args: args{
 				in0: context.Background(),
 				state: &ActionState{
-					Reboot:         false,
-					ShutdownMethod: Command,
+					Reboot: false,
 				},
 			},
 			wantedError: "Shutdown failed",
@@ -120,8 +118,7 @@ func Test_shutdownAction_Start(t *testing.T) {
 			args: args{
 				in0: context.Background(),
 				state: &ActionState{
-					Reboot:         true,
-					ShutdownMethod: SyscallOrSysrq,
+					Reboot: true,
 				},
 			},
 		},
@@ -130,8 +127,6 @@ func Test_shutdownAction_Start(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := &shutdownAction{
 				command: newMockApi(tt.wantedError != "", false),
-				syscall: newMockApi(tt.wantedError != "", false),
-				sysrq:   newMockApi(tt.wantedError != "", false),
 			}
 			result, err := l.Start(tt.args.in0, tt.args.state)
 			if tt.wantedError != "" {

@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2024 Steadybit GmbH
-//go:build !windows
-// +build !windows
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package exthost
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
 
-func NewNetworkCorruptPackagesContainerAction(r runc.Runc) action_kit_sdk.Action[NetworkActionState] {
+func NewNetworkCorruptPackagesContainerAction() action_kit_sdk.Action[NetworkActionState] {
 	return &networkAction{
-		runc:         r,
-		optsProvider: corruptPackages(r),
+		optsProvider: corruptPackages(),
 		optsDecoder:  corruptPackagesDecode,
 		description:  getNetworkCorruptPackagesDescription(),
 	}
@@ -38,7 +36,7 @@ func getNetworkCorruptPackagesDescription() action_kit_api.ActionDescription {
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		},
-		Technology:  extutil.Ptr("Host"),
+		Technology:  extutil.Ptr(WindowsHostTechnology),
 		Category:    extutil.Ptr("Network"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
@@ -65,40 +63,33 @@ func getNetworkCorruptPackagesDescription() action_kit_api.ActionDescription {
 	}
 }
 
-func corruptPackages(r runc.Runc) networkOptsProvider {
-	return func(ctx context.Context, sidecar network.SidecarOpts, request action_kit_api.PrepareActionRequestBody) (network.Opts, action_kit_api.Messages, error) {
+func corruptPackages() networkOptsProvider {
+	return func(ctx context.Context, request action_kit_api.PrepareActionRequestBody) (network.WinOpts, action_kit_api.Messages, error) {
 		_, err := CheckTargetHostname(request.Target.Attributes)
 		if err != nil {
 			return nil, nil, err
 		}
 		corruption := extutil.ToUInt(request.Config["networkCorruption"])
+		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
 
-		filter, messages, err := mapToNetworkFilter(ctx, r, sidecar, request.Config, getRestrictedEndpoints(request))
+		if duration < time.Second {
+			return nil, nil, errors.New("duration must be greater / equal than 1s")
+		}
+
+		filter, messages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
 		if err != nil {
 			return nil, nil, err
-		}
-
-		interfaces := extutil.ToStringArray(request.Config["networkInterface"])
-		if len(interfaces) == 0 {
-			interfaces, err = network.ListNonLoopbackInterfaceNames(ctx, r, sidecar)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-
-		if len(interfaces) == 0 {
-			return nil, nil, fmt.Errorf("no network interfaces specified")
 		}
 
 		return &network.CorruptPackagesOpts{
 			Filter:     filter,
 			Corruption: corruption,
-			Interfaces: interfaces,
+			Duration:   duration,
 		}, messages, nil
 	}
 }
 
-func corruptPackagesDecode(data json.RawMessage) (network.Opts, error) {
+func corruptPackagesDecode(data json.RawMessage) (network.WinOpts, error) {
 	var opts network.CorruptPackagesOpts
 	err := json.Unmarshal(data, &opts)
 	return &opts, err
