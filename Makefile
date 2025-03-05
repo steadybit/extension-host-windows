@@ -6,20 +6,21 @@
 .PHONY: help
 help:
 	@echo 'Usage:'
-	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
+	@powershell -Command "Get-Content $(MAKEFILE_LIST) | Select-String -Pattern '^##' | ForEach-Object {$$_ -replace '^##', ''} | Format-Table -AutoSize"
 
 ## licenses-report: generate a report of all licenses
 .PHONY: licenses-report
 licenses-report:
 ifeq ($(SKIP_LICENSES_REPORT), true)
 	@echo "Skipping licenses report"
-	rm -rf ./licenses && mkdir -p ./licenses
+	@if exist .\licenses rmdir /s /q .\licenses
+	@mkdir .\licenses
 else
 	@echo "Generating licenses report"
-	rm -rf ./licenses
+	@if exist .\licenses rmdir /s /q .\licenses
 	go run github.com/google/go-licenses@v1.6.0 save . --save_path ./licenses
 	go run github.com/google/go-licenses@v1.6.0 report . > ./licenses/THIRD-PARTY.csv
-	cp LICENSE ./licenses/LICENSE.txt
+	copy LICENSE .\licenses\LICENSE.txt
 endif
 
 # ==================================================================================== #
@@ -32,67 +33,26 @@ tidy:
 	go fmt ./...
 	go mod tidy -v
 
-## prepare_audit: prepare minikube for audit
-.PHONY: prepare_audit
-prepare_audit:
-	minikube config set WantUpdateNotification false
-	minikube config set cpus max
-	minikube config set memory 8g
-
 ## audit: run quality control checks
 .PHONY: audit
 audit:
 	go vet ./...
-	go run honnef.co/go/tools/cmd/staticcheck@latest -checks=all,-SA1019,-ST1000,-ST1003,-U1000 ./...
-	go test -race -vet=off -coverprofile=coverage.out -timeout 45m ./...
-
+	go run honnef.co/go/tools/cmd/staticcheck@latest "-checks=all,-SA1019,-ST1000,-ST1003,-U1000" ./...
+	go test -vet=off -coverprofile=coverage.out -timeout 45m ./...
 	go mod verify
 
-## charttesting: Run Helm chart unit tests
-.PHONY: charttesting
-charttesting:
-	@set -e; \
-	for dir in charts/steadybit-extension-*; do \
-		echo "Unit Testing $$dir"; \
-		helm unittest $$dir; \
-	done
-## chartlint: Lint charts
-.PHONY: chartlint
-chartlint:
-	ct lint --config chartTesting.yaml
-
-## chart-bump-version: Bump the patch version and optionally set the appVersion
-.PHONY: chart-bump-version
-chart-bump-version:
-	@set -e; \
-	for dir in charts/steadybit-extension-*; do \
-		if [ ! -z "$(APP_VERSION)" ]; then \
-					yq -i ".appVersion = strenv(APP_VERSION)" $$dir/Chart.yaml; \
-		fi; \
-		CHART_VERSION=$$(semver -i patch $$(yq '.version' $$dir/Chart.yaml)) \
-		yq -i ".version = strenv(CHART_VERSION)" $$dir/Chart.yaml; \
-		grep -e "^version:" -e "^appVersion:" $$dir/Chart.yaml; \
-	done
-# ==================================================================================== #
+# ====================================================================================
+#
 # BUILD
-# ==================================================================================== #
+#
+# ====================================================================================
 
 ## build: build the extension
 .PHONY: build
 build:
-	goreleaser build --clean --snapshot --single-target -o extension
+	goreleaser build --clean --snapshot --single-target -o extension.exe
 
 ## run: run the extension
 .PHONY: run
 run: tidy build
-	./extension
-
-## container: build the container image
-.PHONY: container
-container:
-	docker buildx build --build-arg BUILD_WITH_COVERAGE="true" --build-arg SKIP_LICENSES_REPORT="true" -t extension-host:latest --output=type=docker .
-
-## linuxpkg: build the linux packages
-.PHONY: linuxpkg
-linuxpkg:
-	goreleaser release --clean --snapshot --skip=sign
+	.\extension.exe

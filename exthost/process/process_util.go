@@ -1,36 +1,32 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+
 package stopprocess
 
 import (
 	"fmt"
-	"os/exec"
-	"strings"
-
 	"github.com/mitchellh/go-ps"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-kit/extutil"
+	"os/exec"
+	"strings"
 )
 
-func StopProcesses(pid []int, force bool) error {
-	if len(pid) == 0 {
+func StopProcesses(pids []int, force bool) error {
+	if len(pids) == 0 {
 		return nil
 	}
 
 	errors := make([]string, 0)
-	for _, p := range pid {
-		if process, err := ps.FindProcess(p); err == nil {
-			log.Info().Int("pid", p).Str("name", process.Executable()).Msg("Stopping process")
+	for _, pid := range pids {
+		if process, err := ps.FindProcess(pid); err == nil && process != nil {
+			log.Info().Int("pid", pid).Msg("Stopping process")
+			err := stopProcessWindows(pid, force)
+			if err != nil {
+				errors = append(errors, err.Error())
+			}
 		} else {
-			continue
-		}
-
-		var err error
-		// if runtime.GOOS == "windows" {
-		err = stopProcessWindows(p, force)
-		// } else {
-		// 	err = stopProcessUnix(p, force)
-		// }
-		if err != nil {
-			errors = append(errors, err.Error())
+			log.Info().Int("pid", pid).Msg("Process not found")
 		}
 	}
 	if len(errors) > 0 {
@@ -41,42 +37,19 @@ func StopProcesses(pid []int, force bool) error {
 
 func stopProcessWindows(pid int, force bool) error {
 	if force {
-		err := exec.Command("taskkill", "/f", "/pid", fmt.Sprintf("%d", pid)).Run()
+		err := exec.Command("taskkill", "/F", "/pid", fmt.Sprintf("%d", pid)).Run()
 		if err != nil {
-			return fmt.Errorf("failed to force kill process via exec: %w", err)
+			return fmt.Errorf("failed to force kill process via taskkill: %w", err)
 		}
+		return nil
 	}
 
 	err := exec.Command("taskkill", "/pid", fmt.Sprintf("%d", pid)).Run()
 	if err != nil {
-		return fmt.Errorf("failed to kill process via exec: %w", err)
+		return fmt.Errorf("failed to kill process via taskkill: %w", err)
 	}
 	return err
 }
-
-// func stopProcessUnix(pid int, force bool) error {
-// 	if force {
-// 		err := Kill(pid, syscall.SIGKILL)
-// 		if err != nil {
-// 			log.Debug().Err(err).Int("pid", pid).Msg("Failed to send SIGKILL via syscall")
-// 			err = common.RunAsRoot("kill", "-9", fmt.Sprintf("%d", pid))
-// 		}
-// 		if err != nil {
-// 			return fmt.Errorf("failed to send SIGKILL process via exec: %w", err)
-// 		}
-// 		return err
-// 	}
-
-// 	err := syscall.Kill(pid, syscall.SIGTERM)
-// 	if err != nil {
-// 		log.Error().Err(err).Int("pid", pid).Msg("failed to send SIGTERM via syscall")
-// 		err = common.RunAsRoot("kill", fmt.Sprintf("%d", pid))
-// 	}
-// 	if err != nil {
-// 		return fmt.Errorf("failed to send SIGTERM via exec: %w", err)
-// 	}
-// 	return err
-// }
 
 func FindProcessIds(processOrPid string) []int {
 	pid := extutil.ToInt(processOrPid)

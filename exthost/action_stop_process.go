@@ -1,6 +1,5 @@
-/*
- * Copyright 2023 steadybit GmbH. All rights reserved.
- */
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
 package exthost
 
@@ -31,7 +30,6 @@ type StopProcessActionState struct {
 	Duration      time.Duration
 }
 
-// Make sure action implements all required interfaces
 var (
 	_ action_kit_sdk.Action[StopProcessActionState]         = (*stopProcessAction)(nil)
 	_ action_kit_sdk.ActionWithStop[StopProcessActionState] = (*stopProcessAction)(nil) // Optional, needed when the action needs a stop method
@@ -45,39 +43,21 @@ func (a *stopProcessAction) NewEmptyState() StopProcessActionState {
 	return StopProcessActionState{}
 }
 
-// Describe returns the action description for the platform with all required information.
 func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
-		Id:          stopProcessActionID,
+		Id:          fmt.Sprintf("%s.stop-process", BaseActionID),
 		Label:       "Stop Processes",
 		Description: "Stops targeted processes in the given duration.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(stopProcessIcon),
 		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
-			// The target type this action is for
-			TargetType: targetID,
-			// You can provide a list of target templates to help the user select targets.
-			// A template can be used to pre-fill a selection
-			SelectionTemplates: extutil.Ptr(targetSelectionTemplates),
+			TargetType:         targetID,
+			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr("Host"),
-		// Category for the targets to appear in
-		Category: extutil.Ptr("State"),
-
-		// To clarify the purpose of the action, you can set a kind.
-		//   Attack: Will cause harm to targets
-		//   Check: Will perform checks on the targets
-		//   LoadTest: Will perform load tests on the targets
-		//   Other
-		Kind: action_kit_api.Attack,
-
-		// How the action is controlled over time.
-		//   External: The agent takes care and calls stop then the time has passed. Requires a duration parameter. Use this when the duration is known in advance.
-		//   Internal: The action has to implement the status endpoint to signal when the action is done. Use this when the duration is not known in advance.
-		//   Instantaneous: The action is done immediately. Use this for actions that happen immediately, e.g. a reboot.
+		Technology:  extutil.Ptr(WindowsHostTechnology),
+		Category:    extutil.Ptr("State"),
+		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
-
-		// The parameters for the action
 		Parameters: []action_kit_api.ActionParameter{
 			{
 				Name:        "process",
@@ -119,11 +99,6 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 	}
 }
 
-// Prepare is called before the action is started.
-// It can be used to validate the parameters and prepare the action.
-// It must not cause any harmful effects.
-// The passed in state is included in the subsequent calls to start/status/stop.
-// So the state should contain all information needed to execute the action and even more important: to be able to stop it.
 func (a *stopProcessAction) Prepare(_ context.Context, state *StopProcessActionState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	_, err := CheckTargetHostname(request.Target.Attributes)
 	if err != nil {
@@ -166,9 +141,6 @@ func (a *stopProcessAction) Prepare(_ context.Context, state *StopProcessActionS
 	return nil, nil
 }
 
-// Start is called to start the action
-// You can mutate the state here.
-// You can use the result to return messages/errors/metrics or artifacts
 func (a *stopProcessAction) Start(_ context.Context, state *StopProcessActionState) (*action_kit_api.StartResult, error) {
 	stopper := newProcessStopper(state.ProcessFilter, state.Graceful, state.Delay, state.Duration)
 
@@ -185,10 +157,6 @@ func (a *stopProcessAction) Start(_ context.Context, state *StopProcessActionSta
 	}, nil
 }
 
-// Stop is called to stop the action
-// It will be called even if the start method did not complete successfully.
-// It should be implemented in a immutable way, as the agent might to retries if the stop method timeouts.
-// You can use the result to return messages/errors/metrics or artifacts
 func (a *stopProcessAction) Stop(_ context.Context, state *StopProcessActionState) (*action_kit_api.StopResult, error) {
 	stopper, ok := a.processStoppers.Load(state.ExecutionID)
 	if ok {

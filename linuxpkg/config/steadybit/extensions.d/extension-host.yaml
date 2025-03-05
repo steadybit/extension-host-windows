@@ -1,4 +1,0 @@
-unixSocket: /run/steadybit/extension-host.sock
-types:
-  - ACTION
-  - DISCOVERY

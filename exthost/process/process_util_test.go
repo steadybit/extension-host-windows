@@ -1,19 +1,28 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+
 package stopprocess
 
 import (
+	"github.com/mitchellh/go-ps"
+	"github.com/stretchr/testify/require"
 	"os/exec"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestStopProcesses(t *testing.T) {
-	command := exec.Command("tail", "-f", "/dev/null", "&")
-	err := command.Start()
-	assert.NoError(t, err)
-	ids := FindProcessIds("tail")
-	assert.Equal(t, 1, len(ids))
-	assert.Equal(t, command.Process.Pid, ids[0])
+	cmd := exec.Command("ping", "-n", "30", "127.0.0.1")
+	err := cmd.Start()
+	require.NoError(t, err)
+
+	ids := FindProcessIds("PING")
+	require.Len(t, ids, 1)
+	require.Equal(t, cmd.Process.Pid, ids[0])
+
 	err = StopProcesses(ids, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
+	p, err := ps.FindProcess(cmd.Process.Pid)
+	require.NoError(t, err)
+	require.Nil(t, p)
 }

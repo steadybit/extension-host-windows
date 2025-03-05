@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+
 package exthost
 
 import (
@@ -10,7 +13,6 @@ import (
 )
 
 func Test_DiscoverTargets(t *testing.T) {
-	//given
 	_ = os.Setenv("steadybit_label_Foo", "Bar")
 	_ = os.Setenv("STEADYBIT_DISCOVERY_ENV_LIST", "MyEnvVar,MyEnvVar2;MyEnvVar3")
 	_ = os.Setenv("MyEnvVar", "MyEnvVarValue")
