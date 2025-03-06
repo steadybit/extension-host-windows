@@ -50,7 +50,7 @@ func (d *hostDiscovery) DescribeTarget() discovery_kit_api.TargetDescription {
 		Icon:    extutil.Ptr(targetIcon),
 
 		// Labels used in the UI
-		Label: discovery_kit_api.PluralLabel{One: "Host", Other: "Hosts"},
+		Label: discovery_kit_api.PluralLabel{One: "Windows Host", Other: "Windows Hosts"},
 
 		// Category for the targets to appear in
 		Category: extutil.Ptr("basic"),
