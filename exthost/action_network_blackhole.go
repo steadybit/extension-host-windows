@@ -30,7 +30,7 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_blackhole", BaseActionID),
 		Label:       "Block Traffic",
-		Description: "Blocks network traffic (incoming and outgoing).",
+		Description: "Blocks network traffic (incoming and outgoing) using Windows Firewall rules.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(blackHoleIcon),
 		TargetSelection: &action_kit_api.TargetSelection{

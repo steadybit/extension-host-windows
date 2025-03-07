@@ -29,7 +29,7 @@ func getNetworkCorruptPackagesDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_package_corruption", BaseActionID),
 		Label:       "Corrupt Outgoing Packages",
-		Description: "Inject corrupt packets by introducing single bit error at a random offset into egress network traffic.",
+		Description: "Inject corrupt packets by introducing single bit error at a random offset into egress network traffic using WinDivert.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(corruptIcon),
 		TargetSelection: &action_kit_api.TargetSelection{

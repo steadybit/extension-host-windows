@@ -29,7 +29,7 @@ func getNetworkPackageLossDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_package_loss", BaseActionID),
 		Label:       "Drop Outgoing Traffic",
-		Description: "Cause packet loss for outgoing network traffic (egress).",
+		Description: "Cause packet loss for outgoing network traffic (egress) using WinDivert.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(lossIcon),
 		TargetSelection: &action_kit_api.TargetSelection{
