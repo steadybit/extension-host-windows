@@ -71,10 +71,7 @@ func NewExtensionService(stopHandler func()) error {
 	elw := &eventLogWriter{
 		log: elog,
 	}
-	currentLogger := log.Logger
-	multi := zerolog.MultiLevelWriter(elw, logFile, currentLogger)
-	log.Logger = zerolog.New(multi)
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	log.Logger = log.Output(elw)
 
 	extensionService := &ExtensionService{
 		stopHandler: stopHandler,
