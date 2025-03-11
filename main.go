@@ -63,7 +63,7 @@ func main() {
 				exthttp.StopListen()
 			})
 			if err != nil {
-				log.Fatal().Err(err).Msg("Error starting Windows service")
+				log.Fatal().Err(err).Msg("Error starting as Windows service")
 			} else {
 				log.Info().Msg("Windows service stopped")
 			}
