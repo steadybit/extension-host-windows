@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
-package exthost
+package exthostwindows
 
 import (
 	"github.com/rs/zerolog/log"

@@ -2,7 +2,7 @@ package e2e
 
 import (
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	stopprocess "github.com/steadybit/extension-host/exthost/process"
+	stopprocess "github.com/steadybit/extension-host-windows/exthostwindows/process"
 	"os"
 	"os/exec"
 	"path"

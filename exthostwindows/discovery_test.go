@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2025 Steadybit GmbH
 
-package exthost
+package exthostwindows
 
 import (
 	"context"
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/extension-host/config"
+	"github.com/steadybit/extension-host-windows/config"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"

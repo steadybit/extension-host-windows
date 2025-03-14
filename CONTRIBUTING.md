@@ -18,7 +18,7 @@ The `Makefile` in the project root contains commands to easily run common admin 
 | `$ make build` | Build a binary for the extension. Creates a file called `extension` in the repository root directory. |
 | `$ make run`   | Build and then run the created binary.                                                                |
 
-## Releasing the Code/Docker Image
+## Releasing the Code
 
 To make a new release, do the following:
 
@@ -26,18 +26,6 @@ To make a new release, do the following:
  2. Commit and push the changelog changes.
  3. Set the tag `git tag -a vX.X.X -m vX.X.X`
  4. Push the tag.
-
-## Releasing Helm Chart Changes
-
- 1. Update the version number in the [Chart.yaml](./charts/steadybit-extension-host/Chart.yaml)
- 2. Commit and push the changes.
-
-Changing the Helm chart without bumping the version will result in the following error:
-
-```
-> Releasing charts...
-    Error: error creating GitHub release steadybit-extension-host-1.0.0: POST https://api.github.com/repos/steadybit/extension-host/releases: 422 Validation Failed [{Resource:Release Field:tag_name Code:already_exists Message:}]
-```
 
 ## Contributor License Agreement (CLA)
 

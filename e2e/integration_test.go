@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_test/validate"
-	"github.com/steadybit/extension-host/exthost"
+	"github.com/steadybit/extension-host-windows/exthostwindows"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -18,7 +18,7 @@ import (
 func TestWithLocalhost(t *testing.T) {
 	environment := newLocalEnvironment()
 	extFactory := LocalExtensionFactory{
-		Name: "extension-host",
+		Name: "extension-host-windows",
 		Port: 8085,
 		ExtraEnv: func() map[string]string {
 			return map[string]string{
@@ -51,13 +51,13 @@ func testDiscovery(t *testing.T, _ Environment, e Extension) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	target, err := PollForTarget(ctx, e, exthost.BaseActionID+".host", func(target discovery_kit_api.Target) bool {
+	target, err := PollForTarget(ctx, e, exthostwindows.BaseActionID+".host", func(target discovery_kit_api.Target) bool {
 		log.Debug().Msgf("targetHost: %v", target.Attributes["host.hostname"])
 		return HasAttribute(target, "host.hostname")
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, target.TargetType, exthost.BaseActionID+".host")
+	assert.Equal(t, target.TargetType, exthostwindows.BaseActionID+".host")
 	assert.NotContains(t, target.Attributes, "host.nic")
 }
 
@@ -78,7 +78,7 @@ func testStopProcess(t *testing.T, l Environment, e Extension) {
 	assertProcessRunning(t, l, "PING.EXE")
 	t.Cleanup(cancel)
 
-	action, err := e.RunAction(exthost.BaseActionID+".stop-process", l.BuildTarget(), config, nil)
+	action, err := e.RunAction(exthostwindows.BaseActionID+".stop-process", l.BuildTarget(), config, nil)
 	require.NoError(t, err)
 
 	timeout := time.Now().Add(1 * time.Second)

@@ -7,5 +7,5 @@
 /licenses
 /snyk.sarif
 /e2e/e2e-coverage.out
-extension-host
+extension-host-windows
 *.exe
