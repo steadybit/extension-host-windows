@@ -11,16 +11,10 @@ help:
 ## licenses-report: generate a report of all licenses
 .PHONY: licenses-report
 licenses-report:
-ifeq ($(SKIP_LICENSES_REPORT), true)
-	@echo "Skipping licenses report"
-	@if exist .\licenses rmdir /s /q .\licenses
-	@mkdir .\licenses
-else
-	@echo "Generating licenses report"
-	@if exist .\licenses rmdir /s /q .\licenses
-	go run github.com/google/go-licenses@v1.6.0 save . --save_path ./licenses
-	go run github.com/google/go-licenses@v1.6.0 report . > ./licenses/THIRD-PARTY.csv
-	copy LICENSE .\licenses\LICENSE.txt
+ifeq ($(SKIP_LICENSES_REPORT), false)
+	go run github.com/google/go-licenses@v1.6.0 save . --save_path licenses
+	go run github.com/google/go-licenses@v1.6.0 report . > licenses/THIRD-PARTY.csv
+	powershell -Command "copy LICENSE licenses\LICENSE.txt"
 endif
 
 # ==================================================================================== #
@@ -51,21 +45,22 @@ audit:
 .PHONY: clean
 clean:
 	powershell -Command "if (Test-Path 'dist') { Remove-Item -Path 'dist' -Force -Recurse }"
+	powershell -Command "if (Test-Path 'licenses') { Remove-Item 'licenses' -Recurse -Force }"
 
 ## build: build the extension
 .PHONY: build
 build:
-	goreleaser build --clean --snapshot --single-target -o extension.exe
+	go run github.com/goreleaser/goreleaser/v2@latest build --clean --snapshot --single-target -o extension.exe
 
 ## release: package a release
 .PHONY: release
-release: licenses-report
-	goreleaser release --clean --snapshot
+release: clean licenses-report
+	go run github.com/goreleaser/goreleaser/v2@latest release --clean --snapshot
 
 ## artifact: package a ZIP with all required files
 .PHONY: artifact
-artifact: clean release
-	powershell.exe -ExecutionPolicy "Bypass" -File "scripts/package-extension.ps1"
+artifact: release
+	powershell -ExecutionPolicy "Bypass" -File "scripts/package-extension.ps1"
 
 ## run: run the extension
 .PHONY: run
