@@ -26,6 +26,7 @@ jobs:
           ref: main
           repo: steadybit/infrastructure-live
           token: ${{ secrets.PAT_TOKEN }}
+          inputs: "{\"artifact_url\": \"\"}"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
