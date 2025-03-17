@@ -5,10 +5,7 @@ package e2e
 
 import (
 	"bufio"
-	"context"
-	"fmt"
 	"github.com/mholt/archiver/v3"
-	"github.com/rs/zerolog/log"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"io"
 	"os"
@@ -17,7 +14,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 )
 
 func findExtensionArtifact(dir string) (string, error) {
@@ -55,7 +51,13 @@ func extractArtifact(artifact string) (string, error) {
 	return tmpDir, nil
 }
 
-func awaitLogFn(awaitOutput string) func(string) bool {
+func awaitStop() func(string) bool {
+	return func(name string) bool {
+		return false
+	}
+}
+
+func awaitLog(awaitOutput string) func(string) bool {
 	return func(line string) bool {
 		return strings.Contains(line, awaitOutput)
 	}
@@ -89,13 +91,13 @@ func awaitStartup(cmd *exec.Cmd, awaitFn func(string) bool) error {
 		return err
 	}
 
-	timeout := time.After(30 * time.Second)
-	select {
-	case <-startupFinished:
-		break
-	case <-timeout:
-		log.Fatal().Msgf("Cmd %s did not start up in time", cmd.String())
-	}
+	go func() {
+		_ = cmd.Wait()
+		startupFinished <- true
+	}()
+
+	<-startupFinished
+
 	return nil
 }
 
@@ -121,7 +123,7 @@ func (p *PrefixWriter) Write(buf []byte) (n int, err error) {
 
 	if !p.notStartWithPrefix {
 		p.notStartWithPrefix = true
-		_, err := p.w.Write([]byte(p.prefix))
+		_, err := p.w.Write(p.prefix)
 		if err != nil {
 			return 0, err
 		}
@@ -145,48 +147,6 @@ func (p *PrefixWriter) Write(buf []byte) (n int, err error) {
 		n += c
 		if len(remainder) == 0 || err != nil {
 			return
-		}
-	}
-}
-
-func PollForTarget(ctx context.Context, e Extension, targetId string, predicate func(target discovery_kit_api.Target) bool) (discovery_kit_api.Target, error) {
-	var lastErr error
-	for {
-		select {
-		case <-ctx.Done():
-			return discovery_kit_api.Target{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
-		case <-time.After(200 * time.Millisecond):
-			result, err := e.DiscoverTargets(targetId)
-			if err != nil {
-				lastErr = err
-				continue
-			}
-			for _, target := range result {
-				if predicate(target) {
-					return target, nil
-				}
-			}
-		}
-	}
-}
-
-func PollForEnrichmentData(ctx context.Context, e Extension, targetId string, predicate func(target discovery_kit_api.EnrichmentData) bool) (discovery_kit_api.EnrichmentData, error) {
-	var lastErr error
-	for {
-		select {
-		case <-ctx.Done():
-			return discovery_kit_api.EnrichmentData{}, fmt.Errorf("timed out waiting for target. last error: %w", lastErr)
-		case <-time.After(200 * time.Millisecond):
-			result, err := e.DiscoverEnrichmentData(targetId)
-			if err != nil {
-				lastErr = err
-				continue
-			}
-			for _, enrichmentData := range result {
-				if predicate(enrichmentData) {
-					return enrichmentData, nil
-				}
-			}
 		}
 	}
 }
