@@ -3,11 +3,13 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	stopprocess "github.com/steadybit/extension-host-windows/exthostwindows/process"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 )
 
 var rootPath = ".."
@@ -45,11 +47,17 @@ func (l *LocalEnvironment) StartProcess(ctx context.Context, command string, par
 }
 
 func (l *LocalEnvironment) StartAndAwaitProcess(ctx context.Context, command string, awaitFn func(string) bool, parameters ...string) (func(), error) {
+	pwd, err := filepath.Abs(rootPath)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Str("cmd", command).Strs("parameters", parameters).Str("pwd", pwd).Msgf("Executing command: %s", command)
+
 	cmd := exec.CommandContext(ctx, command, parameters...)
-	cmd.Dir = rootPath
+	cmd.Dir = pwd
 	cmd.Stdout = &PrefixWriter{prefix: []byte("🏠 "), w: os.Stdout}
 	cmd.Stderr = &PrefixWriter{prefix: []byte("🏠 "), w: os.Stderr}
-	err := awaitStartup(cmd, awaitFn)
+	err = awaitStartup(cmd, awaitFn)
 	if err != nil {
 		return nil, err
 	}
