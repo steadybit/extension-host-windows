@@ -48,10 +48,10 @@ func validateDiscovery(t *testing.T, _ Environment, e Extension) {
 
 func testDiscovery(t *testing.T, _ Environment, e Extension) {
 	log.Info().Msg("Starting testDiscovery")
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
-	target, err := PollForTarget(ctx, e, exthostwindows.BaseActionID+".host", func(target discovery_kit_api.Target) bool {
+	target, err := e.PollForTarget(ctx, exthostwindows.BaseActionID+".host", func(target discovery_kit_api.Target) bool {
 		log.Debug().Msgf("targetHost: %v", target.Attributes["host.hostname"])
 		return HasAttribute(target, "host.hostname")
 	})
@@ -62,6 +62,7 @@ func testDiscovery(t *testing.T, _ Environment, e Extension) {
 }
 
 func testStopProcess(t *testing.T, l Environment, e Extension) {
+	ctx := t.Context()
 	config := struct {
 		Duration int    `json:"duration"`
 		Graceful bool   `json:"graceful"`
@@ -74,35 +75,22 @@ func testStopProcess(t *testing.T, l Environment, e Extension) {
 		Delay:    1,
 	}
 
-	cancel := startProcess(t, l, "PING.EXE", " 127.0.0.1: ", "-n", "30", "127.0.0.1")
-	assertProcessRunning(t, l, "PING.EXE")
+	cancel, err := l.StartAndAwaitProcess(ctx, "PING.EXE", awaitLog(" 127.0.0.1: "), "-n", "30", "127.0.0.1")
+	require.NoError(t, err)
+
+	processes := l.FindProcessIds(t.Context(), "PING.EXE")
+	require.NotEmpty(t, processes)
 	t.Cleanup(cancel)
 
-	action, err := e.RunAction(exthostwindows.BaseActionID+".stop-process", l.BuildTarget(), config, nil)
+	action, err := e.RunAction(exthostwindows.BaseActionID+".stop-process", l.BuildTarget(ctx), config, nil)
 	require.NoError(t, err)
 
 	timeout := time.Now().Add(1 * time.Second)
 	for time.Now().Before(timeout) {
-		pids := l.FindProcessIds("PING.EXE")
+		pids := l.FindProcessIds(ctx, "PING.EXE")
 		if len(pids) == 0 {
 			break
 		}
 	}
 	require.NoError(t, action.Cancel())
-}
-
-func startProcess(t *testing.T, l Environment, cmd string, awaitOutput string, parameters ...string) func() {
-	cancel, err := l.StartProcess(cmd, awaitLogFn(awaitOutput), parameters...)
-	require.NoError(t, err)
-	return cancel
-}
-
-func assertProcessRunning(t *testing.T, l Environment, name string) {
-	processes := l.FindProcessIds(name)
-	require.NotEmpty(t, processes)
-}
-
-func assertProcessNotRunning(t *testing.T, l Environment, name string) {
-	processes := l.FindProcessIds(name)
-	require.Empty(t, processes)
 }

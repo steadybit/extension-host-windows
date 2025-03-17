@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"os"
@@ -20,14 +21,10 @@ type LocalExtensionFactory struct {
 	ExtraEnv   func() map[string]string
 }
 
-func (f *LocalExtensionFactory) Create() error {
-	cmd := exec.Command("make", "artifact")
-	cmd.Dir = rootPath
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
+func (f *LocalExtensionFactory) Create(ctx context.Context, e Environment) error {
 	start := time.Now()
-	if err := cmd.Run(); err != nil {
+	err := e.StartProcess(ctx, "make", "artifact")
+	if err != nil {
 		return err
 	}
 
@@ -62,8 +59,8 @@ func (f *LocalExtensionFactory) Create() error {
 	return nil
 }
 
-func (f *LocalExtensionFactory) Start(environment Environment) (Extension, error) {
-	err := f.startAndAwait()
+func (f *LocalExtensionFactory) Start(ctx context.Context, _ Environment) (Extension, error) {
+	err := f.startAndAwait(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +69,7 @@ func (f *LocalExtensionFactory) Start(environment Environment) (Extension, error
 	return ext, err
 }
 
-func (f *LocalExtensionFactory) Stop(environment Environment, extension Extension) error {
+func (f *LocalExtensionFactory) Stop(_ context.Context, _ Environment, _ Extension) error {
 	if f.Command != nil {
 		err := f.Command.Process.Kill()
 		if err != nil {
@@ -82,13 +79,13 @@ func (f *LocalExtensionFactory) Stop(environment Environment, extension Extensio
 	return nil
 }
 
-func (f *LocalExtensionFactory) startAndAwait() error {
+func (f *LocalExtensionFactory) startAndAwait(ctx context.Context) error {
 	log.Info().Msg("starting extension")
 	var args []string
 	if f.ExtraArgs != nil {
 		args = f.ExtraArgs()
 	}
-	cmd := exec.Command(f.Executable, args...)
+	cmd := exec.CommandContext(ctx, f.Executable, args...)
 	cmd.Stdout = &PrefixWriter{prefix: []byte("🧊 "), w: os.Stdout}
 	cmd.Stderr = &PrefixWriter{prefix: []byte("🧊 "), w: os.Stderr}
 
@@ -99,13 +96,11 @@ func (f *LocalExtensionFactory) startAndAwait() error {
 	}
 	cmd.Env = customEnv
 
-	err := awaitStartup(cmd, awaitLogFn("Starting extension http server on port"))
+	err := awaitStartup(cmd, awaitLog("Starting extension http server on port"))
 	if err != nil {
 		return err
 	}
-	log.Info().
-		Strs("cmd", cmd.Args).
-		Msg("started extension")
+	log.Info().Strs("cmd", cmd.Args).Msg("started extension")
 	f.Command = cmd
 	return nil
 }

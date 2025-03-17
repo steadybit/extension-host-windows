@@ -20,11 +20,12 @@ type WithTestCase struct {
 
 func WithEnvironment(t *testing.T, environment Environment, extFactory *LocalExtensionFactory, testCases []WithTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"})
+	ctx := t.Context()
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		err := extFactory.Create()
+		err := extFactory.Create(ctx, environment)
 		if err != nil {
 			log.Fatal().Msgf("failed to create extension executable: %v", err)
 		}
@@ -32,8 +33,8 @@ func WithEnvironment(t *testing.T, environment Environment, extFactory *LocalExt
 	}()
 
 	wg.Wait()
-	extension, err := extFactory.Start(environment)
-	defer func() { _ = extFactory.Stop(environment, extension) }()
+	extension, err := extFactory.Start(ctx, environment)
+	defer func() { _ = extFactory.Stop(ctx, environment, extension) }()
 	require.NoError(t, err)
 
 	for _, tc := range testCases {
