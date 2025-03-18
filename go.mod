@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.6
-	github.com/steadybit/action-kit/go/action_kit_commons v1.2.18-0.20250305142710-17aaf89712cc
+	github.com/steadybit/action-kit/go/action_kit_commons v1.2.24-0.20250318105716-0bd4586d46b3
 	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250124103207-e087cb4ad500
 	github.com/steadybit/action-kit/go/action_kit_test v1.3.2
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
@@ -60,7 +60,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	github.com/oasdiff/yaml v0.0.0-20241214135536-5f7845c759c8 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20241214160948-977117996672 // indirect
-	github.com/opencontainers/runtime-spec v1.2.0 // indirect
+	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
