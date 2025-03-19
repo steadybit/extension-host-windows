@@ -1,4 +1,7 @@
 <Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputName>SteadybitWindowsHostExtension</OutputName>
+  </PropertyGroup>
   <ItemGroup>
     <Content Include="icon.ico" />
   </ItemGroup>
