@@ -1,6 +1,7 @@
 name: ci
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'main'
@@ -14,24 +15,97 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: pwsh
+
 jobs:
-  extension-ci:
-    uses: steadybit/extension-kit/.github/workflows/reusable-extension-ci.yml@main
-    with:
-      go_version: '1.23'
-      runs_on: steadybit_runner_ubuntu_latest_4cores_16GB
-      use_kvm: true
-      run_make_prepare_audit: true
-      build_linux_packages: true
-      VERSION_BUMPER_APPID: ${{ vars.GH_APP_STEADYBIT_APP_ID }}
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      PAT_TOKEN_EXTENSION_DEPLOYER: ${{ secrets.PAT_TOKEN_EXTENSION_DEPLOYER }}
-      MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-      MAVEN_GPG_PRIVATE_KEY_PASSWORD: ${{ secrets.MAVEN_GPG_PRIVATE_KEY_PASSWORD }}
-      PAT_TOKEN_GORELEASER: ${{ secrets.PAT_TOKEN }}
-      STEADYBIT_ARTIFACT_SERVER_USERNAME: ${{ secrets.STEADYBIT_ARTIFACT_SERVER_USERNAME }}
-      STEADYBIT_ARTIFACT_SERVER_PASSWORD: ${{ secrets.STEADYBIT_ARTIFACT_SERVER_PASSWORD }}
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      VERSION_BUMPER_SECRET: ${{ secrets.GH_APP_STEADYBIT_PRIVATE_KEY }}
-      GCP_ARTIFACT_REGISTRY_IDENTITY_PROVIDER: ${{ secrets.GCP_ARTIFACT_REGISTRY_IDENTITY_PROVIDER }}
+  audit:
+    name: Audit
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      sonar_available: ${{ secrets.SONAR_TOKEN  != '' && 'true' || 'false' }}
+      snyk_available: ${{ secrets.SNYK_TOKEN  != '' && 'true' || 'false' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Audit
+        run: |
+          go mod download
+          make audit
+        shell: powershell
+
+      - name: "[release] Snyk test"
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
+        uses: snyk/actions/golang@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=${{ github.ref_name }}
+          command: test
+
+      - name: Download e2e coverage files
+        uses: actions/download-artifact@v4
+        with:
+          path: e2e
+          pattern: "e2e-coverage-*"
+          merge-multiple: true
+
+      - name: SonarCloud Scan
+        if: ${{ env.sonar_available == 'true' }}
+        uses: sonarsource/sonarqube-scan-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: "[release] SonarCloud Quality Gate check"
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.sonar_available == 'true' }}
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build:
+    name: Build & Release
+    needs: audit
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build extension artifact
+        run: |
+          make artifact
+        shell: powershell
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: |
+            dist/*.zip
+          retention-days: 7
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          draft: true
+          prerelease: ${{ !contains(github.ref, '-') }}
+          fail_on_unmatched_files: true
+          files: "dist/*.zip"

@@ -1,16 +1,10 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2025 Steadybit GmbH
 //go:build windows
-// +build windows
-
-/*
- * Copyright 2023 steadybit GmbH. All rights reserved.
- */
 
 package main
 
 import (
-	_ "net/http/pprof" //allow pprof
-
-	_ "github.com/KimMachineGun/automemlimit" // By default, it sets `GOMEMLIMIT` to 90% of cgroup's memory limit.
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -18,9 +12,8 @@ import (
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_sdk"
-	"github.com/steadybit/extension-host/config"
-	"github.com/steadybit/extension-host/exthost"
-	"github.com/steadybit/extension-host/exthost/resources"
+	"github.com/steadybit/extension-host-windows/config"
+	"github.com/steadybit/extension-host-windows/exthostwindows"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/exthealth"
 	"github.com/steadybit/extension-kit/exthttp"
@@ -28,71 +21,64 @@ import (
 	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extsignals"
 	_ "go.uber.org/automaxprocs" // Importing automaxprocs automatically adjusts GOMAXPROCS.
+	"golang.org/x/sys/windows/svc"
 )
 
 func main() {
-	// Most Steadybit extensions leverage zerolog. To encourage persistent logging setups across extensions,
-	// you may leverage the extlogging package to initialize zerolog. Among others, this package supports
-	// configuration of active log levels and the log format (JSON or plain text).
-	//
-	// Example
-	//  - to activate JSON logging, set the environment variable STEADYBIT_LOG_FORMAT="json"
-	//  - to set the log level to debug, set the environment variable STEADYBIT_LOG_LEVEL="debug"
 	extlogging.InitZeroLog()
 
-	resources.AdjustOOMScoreAdj()
-
-	// Build information is set at compile-time. This line writes the build information to the log.
-	// The information is mostly handy for debugging purposes.
 	extbuild.PrintBuildInformation()
 	extruntime.LogRuntimeInformation(zerolog.InfoLevel)
 
-	// Most extensions require some form of configuration. These calls exist to parse and validate the
-	// configuration obtained from environment variables.
 	config.ParseConfiguration()
 	config.ValidateConfiguration()
 
-	//This will start /health/liveness and /health/readiness endpoints on port 8081 for use with kubernetes
-	//The port can be configured using the STEADYBIT_EXTENSION_HEALTH_PORT environment variable
 	exthealth.SetReady(false)
 	exthealth.StartProbes(int(config.Config.HealthPort))
 
-	// This call registers a handler for the extension's root path. This is the path initially accessed
-	// by the Steadybit agent to obtain the extension's capabilities.
 	exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(getExtensionList))
-	action_kit_sdk.RegisterAction(exthost.NewShutdownAction())
-	action_kit_sdk.RegisterAction(exthost.NewNetworkBlockDnsContainerAction())
-	action_kit_sdk.RegisterAction(exthost.NewNetworkBlackholeContainerAction())
-	action_kit_sdk.RegisterAction(exthost.NewNetworkLimitBandwidthContainerAction())
-	action_kit_sdk.RegisterAction(exthost.NewNetworkDelayContainerAction())
-	action_kit_sdk.RegisterAction(exthost.NewNetworkCorruptPackagesContainerAction())
-	action_kit_sdk.RegisterAction(exthost.NewNetworkPackageLossContainerAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewShutdownAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewStopProcessAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkBlockDnsContainerAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkBlackholeContainerAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkLimitBandwidthContainerAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkDelayContainerAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkCorruptPackagesContainerAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkPackageLossContainerAction())
 
 	log.Info().Interface("cfg", runc.ConfigFromEnvironment())
 
-	// This is a section you will most likely want to change: The registration of HTTP handlers
-	// for your extension. You might want to change these because the names do not fit, or because
-	// you do not have a need for all of them.
-	discovery_kit_sdk.Register(exthost.NewHostDiscovery())
+	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
 
-	//This will install a signal handler, that will stop active actions when receiving a SIGURS1, SIGTERM or SIGINT
 	extsignals.ActivateSignalHandlers()
+
+	//Register Windows service and stop handler
+	inService, err := svc.IsWindowsService()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to detect if executed in a Windows service")
+	}
+	if inService {
+		go func() {
+			err := exthostwindows.NewExtensionService(func() {
+				exthttp.StopListen()
+			})
+			if err != nil {
+				log.Fatal().Err(err).Msg("Error starting as Windows service")
+			} else {
+				log.Info().Msg("Windows service stopped")
+			}
+		}()
+	}
 
 	action_kit_sdk.RegisterCoverageEndpoints()
 
-	//This will switch the readiness state of the application to true.
 	exthealth.SetReady(true)
 
 	exthttp.Listen(exthttp.ListenOpts{
-		// This is the default port under which your extension is accessible.
-		// The port can be configured externally through the
-		// STEADYBIT_EXTENSION_PORT environment variable.
 		Port: int(config.Config.Port),
 	})
 }
 
-// ExtensionListResponse exists to merge the possible root path responses supported by the
-// various extension kits. In this case, the response for ActionKit, DiscoveryKit and EventKit.
 type ExtensionListResponse struct {
 	action_kit_api.ActionList       `json:",inline"`
 	discovery_kit_api.DiscoveryList `json:",inline"`
@@ -100,12 +86,7 @@ type ExtensionListResponse struct {
 
 func getExtensionList() ExtensionListResponse {
 	return ExtensionListResponse{
-		// See this document to learn more about the action list:
-		// https://github.com/steadybit/action-kit/blob/main/docs/action-api.md#action-list
-		ActionList: action_kit_sdk.GetActionList(),
-
-		// See this document to learn more about the discovery list:
-		// https://github.com/steadybit/discovery-kit/blob/main/docs/discovery-api.md#index-response
+		ActionList:    action_kit_sdk.GetActionList(),
 		DiscoveryList: discovery_kit_sdk.GetDiscoveryList(),
 	}
 }

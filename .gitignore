@@ -6,7 +6,8 @@
 /dist
 /licenses
 /snyk.sarif
-extension-host
+/e2e/e2e-coverage.out
+extension-host-windows
 *.exe
 
 ## Ignore Visual Studio temporary files, build results, and

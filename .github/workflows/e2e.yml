@@ -1,0 +1,95 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - 'windows-e2e'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  windows-e2e:
+    runs-on: ubuntu-latest
+    env:
+      AWS_DEFAULT_REGION: eu-central-1
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Trigger Deploy Windows EC2
+        id: deploy-windows-ec2
+        uses: the-actions-org/workflow-dispatch@v4
+        with:
+          workflow: Windows-e2e-deploy
+          ref: main
+          repo: steadybit/infrastructure-live
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "arn:aws:iam::244471902119:role/allow-auto-deploy-from-other-accounts"
+          role-duration-seconds: 1000
+          aws-region: eu-central-1
+
+      - name: Retrieve instance ID for windows-e2e
+        if: steps.deploy-windows-ec2.outcome == 'success'
+        id: get-instance-id
+        run: |
+          sleep 15
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=windows-e2e" "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId" \
+            --output text --region eu-central-1)
+          if [ -z "$INSTANCE_ID" ]; then
+            echo "No running instance with tag Name=windows-e2e was found."
+            exit 1
+          fi
+          echo "Found instance ID: $INSTANCE_ID"
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for EC2 instance to be available in Fleet Manager
+        id: instance-ready
+        if: steps.get-instance-id.outcome == 'success'
+        env:
+          AWS_DEFAULT_REGION: eu-central-1
+          INSTANCE_ID: ${{ steps.get-instance-id.outputs.instance_id }}
+        run: |
+          MAX_ATTEMPTS=30
+          COUNT=0
+          echo "Waiting for instance $INSTANCE_ID to appear in Fleet Manager (SSM)..."
+          while [ $COUNT -lt $MAX_ATTEMPTS ]; do
+            RESULT=$(aws ssm describe-instance-information --filters "Key=InstanceIds,Values=$INSTANCE_ID" --query "InstanceInformationList[*].InstanceId" --output text)
+            if [ "$RESULT" = "$INSTANCE_ID" ]; then
+              echo "Instance $INSTANCE_ID is available in Fleet Manager."
+              exit 0
+            fi
+            echo "Instance not available yet. Sleeping 10 seconds..."
+            sleep 10
+            COUNT=$((COUNT + 1))
+          done
+          echo "ERROR: Instance $INSTANCE_ID did not become available within the expected time."
+          exit 1
+
+      - name: Port forward && curl test
+        env:
+          AWS_DEFAULT_REGION: eu-central-1
+          INSTANCE_ID: ${{ steps.get-instance-id.outputs.instance_id }}
+        run: |
+          nohup aws ssm start-session \
+          --target "$INSTANCE_ID" \
+          --document-name "AWS-StartPortForwardingSession" \
+          --parameters '{"portNumber":["8080"],"localPortNumber":["8080"]}' > port-forward.log 2>&1 &
+          sleep 30
+          curl -s http://localhost:8080
+          cat port-forward.log
+
+      - name: Trigger Delete Windows EC2
+        uses: the-actions-org/workflow-dispatch@v4
+        with:
+          workflow: Windows-e2e-delete
+          ref: main
+          repo: steadybit/infrastructure-live
+          token: ${{ secrets.PAT_TOKEN }}
