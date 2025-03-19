@@ -1,0 +1,20 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+		 xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Windows Host Extension" Manufacturer="Steadybit GmbH" Version="1.0.0.0" UpgradeCode="3e616adc-d783-486a-83ff-333d45c856f6">
+    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+
+    <Feature Id="Main">
+      <ComponentGroupRef Id="WDNA" />
+      <ComponentGroupRef Id="WHE" />
+    </Feature>
+
+		<UI Id="UI">
+			<ui:WixUI Id="WixUI_Minimal" />
+		</UI>
+
+		<WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
+		<Icon Id="icon" SourceFile="icon.ico"/>
+		<Property Id="ARPPRODUCTICON" Value="icon"/>
+  </Package>
+</Wix>
