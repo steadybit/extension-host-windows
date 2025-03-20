@@ -55,7 +55,7 @@ jobs:
       - uses: ./.github/actions/windows-ec2
         with:
           pat-token: ${{ secrets.PAT_TOKEN }}
-          artifact-url: "https://api.github.com/repos/steadybit/extension-host-windows/actions/artifacts/${{ steps.upload-extension-artifact.outputs.artifact-id }}/zip"
+          artifact_id: ${{ steps.upload-extension-artifact.outputs.artifact-id }}
 
       - name: Audit
         run: |
@@ -64,6 +64,7 @@ jobs:
 
       - name: Trigger Delete Windows EC2
         uses: the-actions-org/workflow-dispatch@v4
+        if: always()
         with:
           workflow: Windows-e2e-delete
           ref: main

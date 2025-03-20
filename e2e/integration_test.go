@@ -5,12 +5,15 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_test/validate"
 	"github.com/steadybit/extension-host-windows/exthostwindows"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"net"
 	"testing"
 	"time"
 )
@@ -93,4 +96,119 @@ func testStopProcess(t *testing.T, l Environment, e Extension) {
 		}
 	}
 	require.NoError(t, action.Cancel())
+}
+
+func testNetworkDelay(t *testing.T, l Environment, e Extension) {
+	//tests := []struct {
+	//	name                string
+	//	ip                  []string
+	//	hostname            []string
+	//	port                []string
+	//	interfaces          []string
+	//	restrictedEndpoints []action_kit_api.RestrictedEndpoint
+	//	wantedDelay         bool
+	//}{
+	//	{
+	//		name:                "should delay all traffic",
+	//		restrictedEndpoints: generateRestrictedEndpoints(1500),
+	//		wantedDelay:         true,
+	//	},
+	//	/*		{
+	//				name:                "should delay only port 5000 traffic",
+	//				port:                []string{"5000"},
+	//				restrictedEndpoints: generateRestrictedEndpoints(1500),
+	//				wantedDelay:         true,
+	//			},
+	//			{
+	//				name:                "should delay only port 80 traffic",
+	//				port:                []string{"80"},
+	//				restrictedEndpoints: generateRestrictedEndpoints(1500),
+	//				wantedDelay:         false,
+	//			},
+	//			{
+	//				name:                "should delay only traffic for netperf",
+	//				ip:                  []string{netperf.ServerIp},
+	//				restrictedEndpoints: generateRestrictedEndpoints(1500),
+	//				wantedDelay:         true,
+	//			},
+	//			{
+	//				name:                "should delay only traffic for netperf using cidr",
+	//				ip:                  []string{fmt.Sprintf("%s/32", netperf.ServerIp)},
+	//				restrictedEndpoints: generateRestrictedEndpoints(1500),
+	//				wantedDelay:         true,
+	//			},
+	//	*/
+	//}
+	//
+	//for _, tt := range tests {
+	//	config := struct {
+	//		Duration     int      `json:"duration"`
+	//		Delay        int      `json:"networkDelay"`
+	//		Jitter       bool     `json:"networkDelayJitter"`
+	//		Ip           []string `json:"ip"`
+	//		Hostname     []string `json:"hostname"`
+	//		Port         []string `json:"port"`
+	//		NetInterface []string `json:"networkInterface"`
+	//	}{
+	//		Duration:     10000,
+	//		Delay:        200,
+	//		Jitter:       false,
+	//		Ip:           tt.ip,
+	//		Hostname:     tt.hostname,
+	//		Port:         tt.port,
+	//		NetInterface: tt.interfaces,
+	//	}
+	//
+	//	restrictedEndpoints := tt.restrictedEndpoints
+	//	executionContext := &action_kit_api.ExecutionContext{RestrictedEndpoints: &restrictedEndpoints}
+	//
+	//	t.Run(tt.name, func(t *testing.T) {
+	//		action, err := e.RunAction(exthostwindows.BaseActionID+".network_delay", l.BuildTarget(t.Context()), config, executionContext)
+	//		defer func() { _ = action.Cancel() }()
+	//		require.NoError(t, err)
+	//
+	//		if tt.wantedDelay {
+	//			netperf.AssertLatency(t, unaffectedLatency+time.Duration(config.Delay)*time.Millisecond*90/100, unaffectedLatency+time.Duration(config.Delay)*time.Millisecond*350/100)
+	//		} else {
+	//			netperf.AssertLatency(t, 0, unaffectedLatency*120/100)
+	//		}
+	//		require.NoError(t, action.Cancel())
+	//
+	//		netperf.AssertLatency(t, 0, unaffectedLatency*120/100)
+	//
+	//	})
+	//}
+	//requireAllSidecarsCleanedUp(t, m, e)
+}
+
+func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint {
+	address := net.IPv4(192, 168, 0, 1)
+	result := make([]action_kit_api.RestrictedEndpoint, 0, count)
+
+	for i := 0; i < count; i++ {
+		result = append(result, action_kit_api.RestrictedEndpoint{
+			Cidr:    fmt.Sprintf("%s/32", address.String()),
+			PortMin: 8085,
+			PortMax: 8086,
+		})
+		incrementIP(address, len(address)-1)
+	}
+
+	return result
+}
+
+func incrementIP(a net.IP, idx int) {
+	if idx < 0 || idx >= len(a) {
+		return
+	}
+
+	if idx == len(a)-1 && a[idx] >= 254 {
+		a[idx] = 1
+		incrementIP(a, idx-1)
+	} else if a[idx] == 255 {
+		a[idx] = 0
+		incrementIP(a, idx-1)
+	} else {
+		a[idx]++
+	}
 }

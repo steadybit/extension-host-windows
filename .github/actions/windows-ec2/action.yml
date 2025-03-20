@@ -5,8 +5,8 @@ inputs:
   pat-token:
     description: "Personal access token for workflow dispatch"#
     required: true
-  artifact-url:
-    description: "URL to the artifact to be deployed"
+  artifact_id:
+    description: "ID of the artifact to be deployed"
     required: true
 
 runs:
@@ -28,7 +28,7 @@ runs:
         ref: main
         repo: steadybit/infrastructure-live
         token: ${{ inputs.pat-token }}
-        inputs: "{\"artifact_url\": \"\"}"
+        inputs: "{\"artifact_id\": ${{ inputs.artifact_id }}}"
 
     - name: Retrieve instance ID for windows-e2e
       if: steps.deploy-windows-ec2.outcome == 'success'
@@ -81,7 +81,7 @@ runs:
         nohup aws ssm start-session \
         --target "$INSTANCE_ID" \
         --document-name "AWS-StartPortForwardingSession" \
-        --parameters "{\"portNumber\":[\"${{ inputs.port-number }}\"],\"localPortNumber\":[\"${{ inputs.port-number }}\"]}" > port-forward.log 2>&1 &
-        sleep ${{ inputs.sleep-after-port-forward }}
-        curl -s http://localhost:${{ inputs.port-number }}
+        --parameters "{\"portNumber\":[\"8085\"],\"localPortNumber\":[\"8085\"]}" > port-forward.log 2>&1 &
+        sleep 30
         cat port-forward.log
+        curl -s http://localhost:8085/
