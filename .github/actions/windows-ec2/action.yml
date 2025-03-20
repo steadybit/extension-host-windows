@@ -28,7 +28,7 @@ runs:
         ref: main
         repo: steadybit/infrastructure-live
         token: ${{ inputs.pat-token }}
-        inputs: "{\"artifact_id\": ${{ inputs.artifact_id }}}"
+        inputs: "{\"artifact_id\": \"${{ inputs.artifact_id }}\"}"
 
     - name: Retrieve instance ID for windows-e2e
       if: steps.deploy-windows-ec2.outcome == 'success'
