@@ -1,13 +1,15 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-		 xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+		 xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+		 xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+		 >
 
-  <Package Name="Steadybit Windows Host Extension" Manufacturer="Steadybit GmbH" Version="1.0.0.0" UpgradeCode="3e616adc-d783-486a-83ff-333d45c856f6">
-    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+  <Package Name="Windows Host Extension" Manufacturer="Steadybit GmbH" Version="1.0.0.0" UpgradeCode="3e616adc-d783-486a-83ff-333d45c856f6">
+    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" AllowSameVersionUpgrades="no"/>
 		<Media Id="1" EmbedCab="yes" Cabinet="cab1"/>
 
     <Feature Id="Main">
       <ComponentGroupRef Id="WDNA" />
-      <ComponentGroupRef Id="WHE" />
+      <ComponentGroupRef Id="CORE" />
     </Feature>
 
 		<UI Id="UI">
@@ -17,5 +19,9 @@
 		<WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
 		<Icon Id="icon" SourceFile="icon.ico"/>
 		<Property Id="ARPPRODUCTICON" Value="icon"/>
+
+
+		<util:QueryNativeMachine/>
+		<Launch Condition="WIX_NATIVE_MACHINE = 34404" Message="x64 is the only supported architecture. Current achitecture is [WIX_NATIVE_MACHINE]."/>	
   </Package>
 </Wix>

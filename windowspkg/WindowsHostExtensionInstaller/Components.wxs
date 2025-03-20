@@ -9,7 +9,7 @@
 				<Environment Id="WdnaPath" Name="PATH" Value="[WDNAFOLDER]" Part="last" Permanent="yes" Action="set" System="yes"/>
       </Component>
     </ComponentGroup>
-    <ComponentGroup Id="WHE" Directory="WHEFOLDER">
+    <ComponentGroup Id="CORE" Directory="COREFOLDER">
       <Component Guid="12621f61-666b-40f4-ac24-d02e4d5436ed">
 				<Environment Id="ExtensionPort" Name="STEADYBIT_EXTENSION_PORT" Value="8000" Part="last" Permanent="yes" Action="set" System="yes"/>
         <File Source="./Artifacts/windows_host_extension.exe" KeyPath="yes"/>
