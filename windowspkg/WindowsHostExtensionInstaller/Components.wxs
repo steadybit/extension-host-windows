@@ -1,0 +1,21 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <ComponentGroup Id="WDNA" Directory="WDNAFOLDER">
+      <Component Guid="ffed4d39-be0d-443a-9e18-b5c541fe7cf1">
+        <File Source="./Artifacts/wdna.exe" />
+        <File Source="./Artifacts/wdna_shutdown.exe" />
+        <File Source="./Artifacts/WinDivert.dll" />
+        <File Source="./Artifacts/WinDivert64.sys" />
+				<Environment Id="WdnaPath" Name="PATH" Value="[WDNAFOLDER]" Part="last" Permanent="yes" Action="set" System="yes"/>
+      </Component>
+    </ComponentGroup>
+    <ComponentGroup Id="CORE" Directory="COREFOLDER">
+      <Component Guid="12621f61-666b-40f4-ac24-d02e4d5436ed">
+				<Environment Id="ExtensionPort" Name="STEADYBIT_EXTENSION_PORT" Value="8000" Part="last" Permanent="yes" Action="set" System="yes"/>
+        <File Source="./Artifacts/extension-host-windows.exe" KeyPath="yes"/>
+				<ServiceInstall Id="ServiceInstall" Type="ownProcess" Name="SteadybitWindowsHostExtension" DisplayName="!(bind.Property.ProductName)" Start="auto" Vital="yes" ErrorControl="normal"/>
+				<ServiceControl Id="StartService" Name="SteadybitWindowsHostExtension" Start="install" Stop="both" Remove="uninstall" Wait="yes"/>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
