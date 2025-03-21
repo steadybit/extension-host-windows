@@ -28,7 +28,7 @@ Write-Output "Extraction completed."
 
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath
-msbuild WindowsHostExtensionInstaller.sln /p:Configuration=Release /m /p:OutDir=..\..\dist
+msbuild -Restore WindowsHostExtensionInstaller.sln /p:Configuration=Release /m /p:OutDir=..\..\dist
 Pop-Location
 
 Write-Output "MSBuild completed."
