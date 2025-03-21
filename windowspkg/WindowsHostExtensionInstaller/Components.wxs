@@ -12,7 +12,7 @@
     <ComponentGroup Id="CORE" Directory="COREFOLDER">
       <Component Guid="12621f61-666b-40f4-ac24-d02e4d5436ed">
 				<Environment Id="ExtensionPort" Name="STEADYBIT_EXTENSION_PORT" Value="8000" Part="last" Permanent="yes" Action="set" System="yes"/>
-        <File Source="./Artifacts/windows_host_extension.exe" KeyPath="yes"/>
+        <File Source="./Artifacts/extension-host-windows.exe" KeyPath="yes"/>
 				<ServiceInstall Id="ServiceInstall" Type="ownProcess" Name="SteadybitWindowsHostExtension" DisplayName="!(bind.Property.ProductName)" Start="auto" Vital="yes" ErrorControl="normal"/>
 				<ServiceControl Id="StartService" Name="SteadybitWindowsHostExtension" Start="install" Stop="both" Remove="uninstall" Wait="yes"/>
       </Component>

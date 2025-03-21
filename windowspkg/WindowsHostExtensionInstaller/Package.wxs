@@ -4,7 +4,7 @@
 		 >
 
   <Package Name="Windows Host Extension" Manufacturer="Steadybit GmbH" Version="1.0.0.0" UpgradeCode="3e616adc-d783-486a-83ff-333d45c856f6">
-    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" AllowSameVersionUpgrades="no"/>
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." AllowSameVersionUpgrades="no"/>
 		<Media Id="1" EmbedCab="yes" Cabinet="cab1"/>
 
     <Feature Id="Main">

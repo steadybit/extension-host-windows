@@ -99,6 +99,7 @@ jobs:
         with:
           path: |
             dist/*.zip
+            dist/*.msi
           retention-days: 7
 
       - name: Release
