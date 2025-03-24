@@ -24,7 +24,7 @@ func NewHttpNetperf(port int) *HttpNetperf {
 }
 
 func (n *HttpNetperf) Deploy(ctx context.Context, env Environment) error {
-	log.Info().Msgf("Starting HTTP server to measure network delay")
+	log.Info().Msgf("Starting HTTP test server on port %d", n.Port)
 	httpServerCommandTemplate, err := os.ReadFile("startHttpServer.ps1")
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (n *HttpNetperf) Deploy(ctx context.Context, env Environment) error {
 
 func (n *HttpNetperf) Delete() error {
 	if n.cancel != nil {
-		log.Info().Msgf("Stopping HTTP server")
+		log.Info().Msgf("Stopping HTTP test server")
 		n.cancel()
 	}
 	return nil
@@ -97,6 +97,33 @@ func (n *HttpNetperf) AssertLatency(t *testing.T, min time.Duration, max time.Du
 
 func (n *HttpNetperf) url() string {
 	return fmt.Sprintf("http://%s:%d", n.Ip, n.Port)
+}
+
+func (n *HttpNetperf) IsReachable() bool {
+	resp, err := http.Get(n.url())
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func (n *HttpNetperf) CanReach(targetUrl string) bool {
+	resp, err := http.Get(fmt.Sprintf("%s?url=%s", n.url(), targetUrl))
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	if err != nil {
+		return false
+	}
+	_ = resp.Body.Close()
+	return true
 }
 
 type R struct {
