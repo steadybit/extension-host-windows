@@ -164,6 +164,31 @@ func ContainsAttribute(attributes map[string][]string, key string) bool {
 	return ok
 }
 
+func getCIDRsFor(s string, maskLen int) (cidrs []string) {
+	ips, _ := net.LookupIP(s)
+	for _, p := range ips {
+		cidr := net.IPNet{IP: p.To4(), Mask: net.CIDRMask(maskLen, 32)}
+		cidrs = append(cidrs, cidr.String())
+	}
+	return
+}
+
+func incrementIP(a net.IP, idx int) {
+	if idx < 0 || idx >= len(a) {
+		return
+	}
+
+	if idx == len(a)-1 && a[idx] >= 254 {
+		a[idx] = 1
+		incrementIP(a, idx-1)
+	} else if a[idx] == 255 {
+		a[idx] = 0
+		incrementIP(a, idx-1)
+	} else {
+		a[idx]++
+	}
+}
+
 func IsPortAvailable(port int) bool {
 	address := ":" + strconv.Itoa(port)
 	listener, err := net.Listen("tcp", address)
