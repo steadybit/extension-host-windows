@@ -52,7 +52,7 @@ func blackhole() networkOptsProvider {
 			return nil, nil, err
 		}
 
-		var messages action_kit_api.Messages
+		messages := []action_kit_api.Message{} // make sure messages is not nil
 		filter, netMessages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
 		if err != nil {
 			return nil, nil, err
