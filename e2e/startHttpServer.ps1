@@ -1,8 +1,8 @@
 $listener = New-Object System.Net.HttpListener;
-$listener.Prefixes.Add("http://localhost:8080/");
-$listener.Prefixes.Add("http://localhost:8081/");
+$listener.Prefixes.Add("http://{{.Ip}}:{{.Port}}/");
+$listener.Prefixes.Add("http://{{.Ip}}:{{nextPort .Port}}/");
 $listener.Start();
-Write-Host "Listening on http://localhost:8080/";
+Write-Host "Listening on http://{{.Ip}}:{{.Port}}/";
 while ($listener.IsListening)
 {
   $context = $listener.GetContext();
