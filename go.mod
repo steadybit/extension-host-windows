@@ -9,7 +9,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-ps v1.0.0
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250324091147-26f3b90b55cf
 	github.com/steadybit/action-kit/go/action_kit_commons v1.2.24-0.20250324091147-26f3b90b55cf
 	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250324091147-26f3b90b55cf
