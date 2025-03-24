@@ -72,8 +72,8 @@ func awaitStartup(cmd *exec.Cmd, awaitFn func(string) bool) error {
 		for scanner.Scan() {
 			line := scanner.Text()
 			if !awaitFinished && awaitFn(line) {
-				startupFinished <- true
 				awaitFinished = true
+				startupFinished <- true
 			}
 		}
 	}
@@ -91,14 +91,15 @@ func awaitStartup(cmd *exec.Cmd, awaitFn func(string) bool) error {
 		return err
 	}
 
+	var cmdErr error
 	go func() {
-		_ = cmd.Wait()
+		cmdErr = cmd.Wait()
 		startupFinished <- true
 	}()
 
 	<-startupFinished
 
-	return nil
+	return cmdErr
 }
 
 func pipeWriter(w io.Writer) (io.Reader, io.Writer) {
