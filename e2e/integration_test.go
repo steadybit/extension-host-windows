@@ -19,6 +19,11 @@ import (
 	"time"
 )
 
+var (
+	defaultExecutionContext = &action_kit_api.ExecutionContext{}
+	steadybitCIDRs          = getCIDRsFor("steadybit.com", 16)
+)
+
 func TestWithLocalhost(t *testing.T) {
 	environment := newLocalEnvironment()
 	extFactory := LocalExtensionFactory{
@@ -46,6 +51,13 @@ func TestWithLocalhost(t *testing.T) {
 			Name: "network delay",
 			Test: testNetworkDelay,
 		},
+		//{
+		//	Name: "network blackhole",
+		//	Test: testNetworkBlackhole,
+		//}, {
+		//	Name: "network block dns",
+		//	Test: testNetworkBlockDns,
+		//},
 	})
 }
 
@@ -197,6 +209,148 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 	}
 }
 
+func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
+	port, err := FindAvailablePorts(8080, 8800, 2)
+	require.NoError(t, err)
+	netperf := NewHttpNetperf(port)
+	err = netperf.Deploy(t.Context(), l)
+	require.NoError(t, err)
+	defer func() { _ = netperf.Delete() }()
+
+	tests := []struct {
+		name             string
+		ip               []string
+		hostname         []string
+		port             []string
+		wantedReachable  bool
+		wantedReachesUrl bool
+	}{
+		{
+			name:             "should blackhole all traffic",
+			wantedReachable:  false,
+			wantedReachesUrl: false,
+		},
+		{
+			name:             "should blackhole only port 8080 traffic",
+			port:             []string{"8080"},
+			wantedReachable:  true,
+			wantedReachesUrl: true,
+		},
+		{
+			name:             "should blackhole only port 80, 443 traffic",
+			port:             []string{"80", "443"},
+			wantedReachable:  false,
+			wantedReachesUrl: false,
+		},
+		{
+			name:             "should blackhole only traffic for steadybit.com",
+			hostname:         []string{"steadybit.com"},
+			wantedReachable:  true,
+			wantedReachesUrl: false,
+		},
+		{
+			name:             "should blackhole only traffic for steadybit.com",
+			ip:               steadybitCIDRs,
+			wantedReachable:  true,
+			wantedReachesUrl: false,
+		},
+	}
+
+	for _, tt := range tests {
+		config := struct {
+			Duration int      `json:"duration"`
+			Ip       []string `json:"ip"`
+			Hostname []string `json:"hostname"`
+			Port     []string `json:"port"`
+		}{
+			Duration: 30000,
+			Ip:       tt.ip,
+			Hostname: tt.hostname,
+			Port:     tt.port,
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			require.True(t, netperf.IsReachable())
+			require.True(t, netperf.CanReach("https://steadybit.com"))
+
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, defaultExecutionContext)
+			defer func() { _ = action.Cancel() }()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantedReachable, netperf.IsReachable())
+			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("https://steadybit.com"))
+
+			require.NoError(t, action.Cancel())
+			require.True(t, netperf.IsReachable())
+			require.True(t, netperf.CanReach("https://steadybit.com"))
+		})
+	}
+}
+
+func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
+	port, err := FindAvailablePorts(8080, 8800, 2)
+	require.NoError(t, err)
+	netperf := NewHttpNetperf(port)
+	err = netperf.Deploy(t.Context(), l)
+	require.NoError(t, err)
+	defer func() { _ = netperf.Delete() }()
+
+	tests := []struct {
+		name             string
+		ip               []string
+		hostname         []string
+		dnsPort          uint
+		wantedReachable  bool
+		wantedReachesUrl bool
+	}{
+		{
+			name:             "should block dns traffic",
+			dnsPort:          53,
+			wantedReachable:  true,
+			wantedReachesUrl: false,
+		},
+		{
+			name:             "should block dns traffic on port 5353",
+			dnsPort:          5353,
+			wantedReachable:  true,
+			wantedReachesUrl: true,
+		},
+		{
+			name:             "should block dns only traffic for steadybit.com",
+			dnsPort:          53,
+			hostname:         []string{"steadybit.com"},
+			wantedReachable:  true,
+			wantedReachesUrl: false,
+		},
+	}
+
+	for _, tt := range tests {
+		config := struct {
+			Duration int  `json:"duration"`
+			DnsPort  uint `json:"dnsPort"`
+		}{
+			Duration: 10000,
+			DnsPort:  tt.dnsPort,
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			require.True(t, netperf.IsReachable())
+			require.True(t, netperf.CanReach("https://steadybit.com"))
+
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_block_dns", l.BuildTarget(t.Context()), config, defaultExecutionContext)
+			defer func() { _ = action.Cancel() }()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantedReachable, netperf.IsReachable())
+			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("https://steadybit.com"))
+
+			require.NoError(t, action.Cancel())
+			require.True(t, netperf.IsReachable())
+			require.True(t, netperf.CanReach("https://steadybit.com"))
+		})
+	}
+}
+
 func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint {
 	address := net.IPv4(192, 168, 0, 1)
 	result := make([]action_kit_api.RestrictedEndpoint, 0, count)
@@ -211,20 +365,4 @@ func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint 
 	}
 
 	return result
-}
-
-func incrementIP(a net.IP, idx int) {
-	if idx < 0 || idx >= len(a) {
-		return
-	}
-
-	if idx == len(a)-1 && a[idx] >= 254 {
-		a[idx] = 1
-		incrementIP(a, idx-1)
-	} else if a[idx] == 255 {
-		a[idx] = 0
-		incrementIP(a, idx-1)
-	} else {
-		a[idx]++
-	}
 }
