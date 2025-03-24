@@ -207,7 +207,7 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}
 
 	excludes = append(excludes, network.ComputeExcludesForOwnIpAndPorts(config.Config.Port, config.Config.HealthPort)...)
 
-	var messages []action_kit_api.Message
+	messages := []action_kit_api.Message{} // make sure messages is not nil
 	excludes, condensed := condenseExcludes(excludes)
 	if condensed {
 		messages = append(messages, action_kit_api.Message{
