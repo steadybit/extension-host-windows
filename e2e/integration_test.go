@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -102,8 +103,10 @@ func testStopProcess(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkDelay(t *testing.T, l Environment, e Extension) {
-	netperf := NewHttpNetperf()
-	err := netperf.Deploy(t.Context(), l)
+	port, err := FindAvailablePorts(8080, 8800, 2)
+	require.NoError(t, err)
+	netperf := NewHttpNetperf(port)
+	err = netperf.Deploy(t.Context(), l)
 	require.NoError(t, err)
 	defer func() { _ = netperf.Delete() }()
 
@@ -123,26 +126,26 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			wantedDelay:         true,
 		},
 		{
-			name:                "should delay only port 8080 traffic",
-			port:                []string{"8080"},
+			name:                "should delay only port traffic",
+			port:                []string{strconv.Itoa(port)},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         true,
 		},
 		{
-			name:                "should not delay only port 8081 traffic",
-			port:                []string{"8081"},
+			name:                "should not delay other port traffic",
+			port:                []string{strconv.Itoa(port + 1)},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         false,
 		},
 		{
 			name:                "should delay only traffic for netperf",
-			ip:                  []string{netperf.ip},
+			ip:                  []string{netperf.Ip},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         true,
 		},
 		{
 			name:                "should delay only traffic for netperf using cidr",
-			ip:                  []string{fmt.Sprintf("%s/32", netperf.ip)},
+			ip:                  []string{fmt.Sprintf("%s/32", netperf.Ip)},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         true,
 		},

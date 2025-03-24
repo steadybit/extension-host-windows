@@ -8,26 +8,46 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"text/template"
 	"time"
 )
 
 type HttpNetperf struct {
-	ip          string
+	Ip          string
+	Port        int
 	numRequests int
 	cancel      func()
 }
 
-func NewHttpNetperf() *HttpNetperf {
-	return &HttpNetperf{"127.0.0.1", 1, nil}
+func NewHttpNetperf(port int) *HttpNetperf {
+	return &HttpNetperf{"127.0.0.1", port, 1, nil}
 }
 
 func (n *HttpNetperf) Deploy(ctx context.Context, env Environment) error {
 	log.Info().Msgf("Starting HTTP server to measure network delay")
-	httpServerCommand, err := os.ReadFile("startHttpServer.ps1")
+	httpServerCommandTemplate, err := os.ReadFile("startHttpServer.ps1")
 	if err != nil {
 		return err
 	}
-	n.cancel, err = env.StartAndAwaitProcess(ctx, "powershell", awaitLog("Listening"), "-Command", string(httpServerCommand))
+
+	tmpl, err := template.New("startHttpServer").
+		Funcs(template.FuncMap{
+			"nextPort": func(port int) int {
+				return port + 1
+			},
+		}).
+		Parse(string(httpServerCommandTemplate))
+	if err != nil {
+		return err
+	}
+
+	var scriptBuffer bytes.Buffer
+	err = tmpl.Execute(&scriptBuffer, n)
+	if err != nil {
+		return err
+	}
+
+	n.cancel, err = env.StartAndAwaitProcess(ctx, "powershell", awaitLog("Listening"), "-Command", scriptBuffer.String())
 	return err
 }
 
@@ -76,7 +96,7 @@ func (n *HttpNetperf) AssertLatency(t *testing.T, min time.Duration, max time.Du
 }
 
 func (n *HttpNetperf) url() string {
-	return fmt.Sprintf("http://%s:%d", n.ip, 8080)
+	return fmt.Sprintf("http://%s:%d", n.Ip, n.Port)
 }
 
 type R struct {
