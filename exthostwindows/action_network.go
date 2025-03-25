@@ -95,6 +95,10 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 		return nil, extension_kit.WrapError(err)
 	}
 
+	if messages == nil {
+		messages = []action_kit_api.Message{} // prevent empty messages response
+	}
+
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
 		return nil, extension_kit.ToError("Failed to serialize network settings.", err)

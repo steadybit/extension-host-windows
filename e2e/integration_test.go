@@ -11,6 +11,7 @@ import (
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_test/validate"
 	"github.com/steadybit/extension-host-windows/exthostwindows"
+	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net"
@@ -20,8 +21,18 @@ import (
 )
 
 var (
-	defaultExecutionContext = &action_kit_api.ExecutionContext{}
-	steadybitCIDRs          = getCIDRsFor("steadybit.com", 16)
+	defaultExecutionContext = &action_kit_api.ExecutionContext{
+		RestrictedEndpoints: extutil.Ptr([]action_kit_api.RestrictedEndpoint{
+			{
+				Name:    "extension",
+				Url:     "localhost",
+				Cidr:    "0.0.0.0/0",
+				PortMin: 8085,
+				PortMax: 8085,
+			},
+		}),
+	}
+	steadybitCIDRs = getCIDRsFor("steadybit.com", 16)
 )
 
 func TestWithLocalhost(t *testing.T) {
@@ -50,14 +61,25 @@ func TestWithLocalhost(t *testing.T) {
 		}, {
 			Name: "network delay",
 			Test: testNetworkDelay,
+		}, {
+			Name: "network blackhole",
+			Test: testNetworkBlackhole,
+		}, {
+			Name: "network block dns",
+			Test: testNetworkBlockDns,
+		}, {
+			Name: "network limit bandwidth",
+			Test: testNetworkLimitBandwidth,
+		}, {
+			Name: "network package loss",
+			Test: testNetworkPackageLoss,
+		}, {
+			Name: "network package corruption",
+			Test: testNetworkPackageCorruption,
+		}, {
+			Name: "two simultaneous network attacks should error",
+			Test: testTwoNetworkAttacks,
 		},
-		//{
-		//	Name: "network blackhole",
-		//	Test: testNetworkBlackhole,
-		//}, {
-		//	Name: "network block dns",
-		//	Test: testNetworkBlockDns,
-		//},
 	})
 }
 
@@ -187,6 +209,7 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 
 		unaffectedLatency, err := netperf.MeasureLatency()
 		require.NoError(t, err)
+		unaffectedLatency = max(unaffectedLatency, 1*time.Millisecond)
 		log.Info().Msgf("Unaffected latency: %v", unaffectedLatency)
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -210,6 +233,8 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
+	t.Skip("Only works with activated firewall")
+
 	port, err := FindAvailablePorts(8080, 8800, 2)
 	require.NoError(t, err)
 	netperf := NewHttpNetperf(port)
@@ -288,6 +313,8 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
+	t.Skip("Only works with activated firewall")
+
 	port, err := FindAvailablePorts(8080, 8800, 2)
 	require.NoError(t, err)
 	netperf := NewHttpNetperf(port)
@@ -349,6 +376,266 @@ func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
 			require.True(t, netperf.CanReach("https://steadybit.com"))
 		})
 	}
+}
+
+func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
+	t.Skip("Limit bandwidth tests use Windows QoS, which does not apply to local loopback interfaces. Test manually.")
+
+	// start the iperf server on a remote system or use an online one from https://iperf.fr/iperf-servers.php
+	iperf := NewIperf("iperf3.moji.fr", 5200)
+	err := iperf.Install()
+	require.NoError(t, err)
+
+	unlimited := 0.0
+	// the iperf servers seem to be pretty unstable
+	measured := Retry(t, 3, 1*time.Second, func(r *R) {
+		unlimited, err = iperf.MeasureBandwidth(t.Context(), l)
+		if err != nil {
+			log.Error().Err(err).Msg("measure bandwidth failed")
+			r.Failed = true
+		}
+	})
+	require.True(t, measured)
+	limited := unlimited / 3
+	log.Info().Msgf("limited bandwidth: %v", limited)
+
+	tests := []struct {
+		name        string
+		ip          []string
+		hostname    []string
+		port        []string
+		interfaces  []string
+		wantedLimit bool
+	}{
+		{
+			name:        "should limit bandwidth on all traffic",
+			wantedLimit: true,
+		},
+		// Not yet supported
+		//{
+		//	name:        "should limit bandwidth only on port 5001 traffic",
+		//	port:        []string{"5001"},
+		//	wantedLimit: true,
+		//},
+		//{
+		//	name:        "should limit bandwidth only on port 80 traffic",
+		//	port:        []string{"80"},
+		//	wantedLimit: false,
+		//},
+		//{
+		//	name:        "should limit bandwidth only traffic for iperf server",
+		//	ip:          []string{iperf.Ip},
+		//	wantedLimit: true,
+		//},
+	}
+
+	for _, tt := range tests {
+		config := struct {
+			Duration     int      `json:"duration"`
+			Bandwidth    string   `json:"bandwidth"`
+			Ip           []string `json:"ip"`
+			Hostname     []string `json:"hostname"`
+			Port         []string `json:"port"`
+			NetInterface []string `json:"networkInterface"`
+		}{
+			Duration:     30000,
+			Bandwidth:    fmt.Sprintf("%dbit", int(limited*1_000_000)),
+			Ip:           tt.ip,
+			Hostname:     tt.hostname,
+			Port:         tt.port,
+			NetInterface: tt.interfaces,
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), config, defaultExecutionContext)
+			defer func() { _ = action.Cancel() }()
+			require.NoError(t, err)
+
+			if tt.wantedLimit {
+				iperf.AssertBandwidth(t, t.Context(), l, limited*0.95, limited*1.05)
+			} else {
+				iperf.AssertBandwidth(t, t.Context(), l, unlimited*0.95, unlimited*1.05)
+			}
+			require.NoError(t, action.Cancel())
+			iperf.AssertBandwidth(t, t.Context(), l, unlimited*0.95, unlimited*1.05)
+		})
+	}
+}
+
+func testNetworkPackageLoss(t *testing.T, l Environment, e Extension) {
+	port, err := FindAvailablePort(5002, 5100)
+	require.NoError(t, err)
+	iperf := NewIperf("127.0.0.1", port)
+	err = iperf.Deploy(t.Context(), l)
+	require.NoError(t, err)
+	defer func() { _ = iperf.Delete() }()
+
+	tests := []struct {
+		name       string
+		ip         []string
+		port       []string
+		wantedLoss bool
+	}{
+		{
+			name:       "should loose packages on all traffic",
+			wantedLoss: true,
+		},
+		{
+			name:       "should loose packages only on port 5001 traffic",
+			port:       []string{"5001"},
+			wantedLoss: true,
+		},
+		{
+			name:       "should loose packages only on port 80 traffic",
+			port:       []string{"80"},
+			wantedLoss: false,
+		},
+		{
+			name:       "should loose packages only traffic for iperf server",
+			ip:         []string{iperf.Ip},
+			wantedLoss: true,
+		},
+	}
+
+	for _, tt := range tests {
+		config := struct {
+			Duration   int      `json:"duration"`
+			Percentage int      `json:"percentage"`
+			Ip         []string `json:"ip"`
+			Port       []string `json:"port"`
+		}{
+			Duration:   50000,
+			Percentage: 10,
+			Ip:         tt.ip,
+			Port:       tt.port,
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_package_loss", l.BuildTarget(t.Context()), config, defaultExecutionContext)
+			defer func() { _ = action.Cancel() }()
+			require.NoError(t, err)
+
+			if tt.wantedLoss {
+				iperf.AssertPackageLoss(t, t.Context(), l, float64(config.Percentage)*0.7, float64(config.Percentage)*1.4)
+			} else {
+				iperf.AssertPackageLoss(t, t.Context(), l, 0, 5)
+			}
+			require.NoError(t, action.Cancel())
+
+			iperf.AssertPackageLoss(t, t.Context(), l, 0, 5)
+		})
+	}
+}
+
+func testNetworkPackageCorruption(t *testing.T, l Environment, e Extension) {
+	t.Skip("Iperf does not seem to track lost/corrupted packages on Windows. Deactivated for now.")
+
+	ctx := t.Context()
+	port, err := FindAvailablePort(5002, 5100)
+	require.NoError(t, err)
+	iperf := NewIperf("127.0.0.1", port)
+	err = iperf.Deploy(ctx, l)
+	require.NoError(t, err)
+	defer func() { _ = iperf.Delete() }()
+
+	tests := []struct {
+		name             string
+		ip               []string
+		hostname         []string
+		port             []string
+		interfaces       []string
+		wantedCorruption bool
+	}{
+		{
+			name:             "should corrupt packages on all traffic",
+			wantedCorruption: true,
+		},
+		{
+			name:             "should corrupt packages only on port 5001 traffic",
+			port:             []string{"5001"},
+			wantedCorruption: true,
+		},
+		{
+			name:             "should corrupt packages only on port 80 traffic",
+			port:             []string{"80"},
+			wantedCorruption: false,
+		},
+		{
+			name:             "should corrupt packages only traffic for iperf server",
+			ip:               []string{iperf.Ip},
+			wantedCorruption: true,
+		},
+	}
+
+	for _, tt := range tests {
+		config := struct {
+			Duration     int      `json:"duration"`
+			Corruption   int      `json:"networkCorruption"`
+			Ip           []string `json:"ip"`
+			Hostname     []string `json:"hostname"`
+			Port         []string `json:"port"`
+			NetInterface []string `json:"networkInterface"`
+		}{
+			Duration:     60000,
+			Corruption:   10,
+			Ip:           tt.ip,
+			Hostname:     tt.hostname,
+			Port:         tt.port,
+			NetInterface: tt.interfaces,
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			Retry(t, 3, 1*time.Second, func(r *R) {
+				action, err := e.RunAction(exthostwindows.BaseActionID+".network_package_corruption", l.BuildTarget(t.Context()), config, defaultExecutionContext)
+				defer func() { _ = action.Cancel() }()
+				if err != nil {
+					r.Failed = true
+				}
+
+				if tt.wantedCorruption {
+					packageLossResult := iperf.AssertPackageLossWithRetry(t.Context(), l, float64(config.Corruption)*0.7, float64(config.Corruption)*1.3, 8)
+					if !packageLossResult {
+						r.Failed = true
+					}
+				} else {
+					packageLossResult := iperf.AssertPackageLossWithRetry(t.Context(), l, 0, 5, 8)
+					if !packageLossResult {
+						r.Failed = true
+					}
+				}
+				require.NoError(t, action.Cancel())
+
+				packageLossResult := iperf.AssertPackageLossWithRetry(t.Context(), l, 0, 5, 8)
+				if !packageLossResult {
+					r.Failed = true
+				}
+			})
+		})
+	}
+}
+
+func testTwoNetworkAttacks(t *testing.T, l Environment, e Extension) {
+	configDelay := struct {
+		Duration int `json:"duration"`
+		Delay    int `json:"networkDelay"`
+	}{
+		Duration: 10000,
+		Delay:    200,
+	}
+	actionDelay, err := e.RunAction(exthostwindows.BaseActionID+".network_delay", l.BuildTarget(t.Context()), configDelay, defaultExecutionContext)
+	defer func() { _ = actionDelay.Cancel() }()
+	require.NoError(t, err)
+
+	configLimit := struct {
+		Duration  int    `json:"duration"`
+		Bandwidth string `json:"bandwidth"`
+	}{
+		Duration:  10000,
+		Bandwidth: "200mbit",
+	}
+	actionLimit, err2 := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), configLimit, defaultExecutionContext)
+	defer func() { _ = actionLimit.Cancel() }()
+	require.ErrorContains(t, err2, "running multiple network attacks at the same time is not supported")
 }
 
 func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint {
