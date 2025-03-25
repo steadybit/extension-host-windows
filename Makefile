@@ -61,6 +61,7 @@ release: clean licenses-report
 .PHONY: artifact
 artifact: release
 	powershell -ExecutionPolicy "Bypass" -File "scripts/package-extension.ps1"
+	powershell -ExecutionPolicy "Bypass" -File "scripts/run-installer.ps1"
 
 ## run: run the extension
 .PHONY: run
