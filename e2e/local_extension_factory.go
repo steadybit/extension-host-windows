@@ -25,7 +25,7 @@ type LocalExtensionFactory struct {
 
 func (f *LocalExtensionFactory) Create(ctx context.Context, e Environment) error {
 	start := time.Now()
-	err := e.StartProcess(ctx, "make", "artifact")
+	_, err := e.ExecuteProcess(ctx, "make", "artifact")
 	if err != nil {
 		return err
 	}
@@ -130,9 +130,7 @@ func (f *LocalExtensionFactory) startAndAwait(ctx context.Context) error {
 	}
 
 	log.Info().Str("path", pathEnv).Msg("Setting custom path environment")
-
-	customEnv = append(customEnv, pathEnv)
-	cmd.Env = customEnv
+	cmd.Env = append(customEnv, pathEnv)
 
 	err := awaitStartup(cmd, awaitLog("Starting extension http server on port"))
 	if err != nil {

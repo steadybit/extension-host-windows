@@ -54,12 +54,6 @@ func extractArtifact(artifact string) (string, error) {
 	return tmpDir, nil
 }
 
-func awaitStop() func(string) bool {
-	return func(name string) bool {
-		return false
-	}
-}
-
 func awaitLog(awaitOutput string) func(string) bool {
 	return func(line string) bool {
 		return strings.Contains(line, awaitOutput)
@@ -81,13 +75,15 @@ func awaitStartup(cmd *exec.Cmd, awaitFn func(string) bool) error {
 		}
 	}
 
-	stdoutPr, stdoutPw := pipeWriter(cmd.Stdout)
-	cmd.Stdout = stdoutPw
-	go awaitOutput(stdoutPr)
+	if awaitFn != nil {
+		stdoutPr, stdoutPw := pipeWriter(cmd.Stdout)
+		cmd.Stdout = stdoutPw
+		go awaitOutput(stdoutPr)
 
-	stderrPr, stderrPw := pipeWriter(cmd.Stderr)
-	cmd.Stderr = stderrPw
-	go awaitOutput(stderrPr)
+		stderrPr, stderrPw := pipeWriter(cmd.Stderr)
+		cmd.Stderr = stderrPw
+		go awaitOutput(stderrPr)
+	}
 
 	err := cmd.Start()
 	if err != nil {
@@ -100,7 +96,9 @@ func awaitStartup(cmd *exec.Cmd, awaitFn func(string) bool) error {
 		startupFinished <- true
 	}()
 
-	<-startupFinished
+	if awaitFn != nil {
+		<-startupFinished
+	}
 
 	return cmdErr
 }
