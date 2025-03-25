@@ -5,13 +5,16 @@ package e2e
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/mholt/archiver/v3"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -72,8 +75,8 @@ func awaitStartup(cmd *exec.Cmd, awaitFn func(string) bool) error {
 		for scanner.Scan() {
 			line := scanner.Text()
 			if !awaitFinished && awaitFn(line) {
-				startupFinished <- true
 				awaitFinished = true
+				startupFinished <- true
 			}
 		}
 	}
@@ -91,14 +94,15 @@ func awaitStartup(cmd *exec.Cmd, awaitFn func(string) bool) error {
 		return err
 	}
 
+	var cmdErr error
 	go func() {
-		_ = cmd.Wait()
+		cmdErr = cmd.Wait()
 		startupFinished <- true
 	}()
 
 	<-startupFinished
 
-	return nil
+	return cmdErr
 }
 
 func pipeWriter(w io.Writer) (io.Reader, io.Writer) {
@@ -158,4 +162,40 @@ func HasAttribute(target discovery_kit_api.Target, key string) bool {
 func ContainsAttribute(attributes map[string][]string, key string) bool {
 	_, ok := attributes[key]
 	return ok
+}
+
+func IsPortAvailable(port int) bool {
+	address := ":" + strconv.Itoa(port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	defer func(listener net.Listener) {
+		_ = listener.Close()
+	}(listener)
+	return true
+}
+
+func FindAvailablePort(startPort, endPort int) (int, error) {
+	for port := startPort; port <= endPort; port++ {
+		if IsPortAvailable(port) {
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("no available port found in range %d-%d", startPort, endPort)
+}
+
+func FindAvailablePorts(startPort, endPort int, count int) (int, error) {
+	missing := count
+	for port := startPort; port <= endPort; port++ {
+		if IsPortAvailable(port) {
+			missing--
+			if missing == 0 {
+				return port - (count - 1), nil
+			}
+		} else {
+			missing = count
+		}
+	}
+	return 0, fmt.Errorf("no %d contiguous available ports found in range %d-%d", count, startPort, endPort)
 }

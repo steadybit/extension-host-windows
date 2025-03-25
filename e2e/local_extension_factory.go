@@ -9,6 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -94,6 +96,21 @@ func (f *LocalExtensionFactory) startAndAwait(ctx context.Context) error {
 	for k, v := range f.ExtraEnv() {
 		customEnv = append(customEnv, fmt.Sprintf("%s=%s", k, v))
 	}
+	var pathEnv string
+	for _, envVar := range customEnv {
+		if strings.HasPrefix(envVar, "PATH=") {
+			pathEnv = envVar
+		}
+	}
+	if pathEnv == "" {
+		pathEnv = "PATH=" + filepath.Dir(f.Executable)
+	} else {
+		pathEnv = pathEnv + ";" + filepath.Dir(f.Executable)
+	}
+
+	log.Info().Str("path", pathEnv).Msg("Setting custom path environment")
+
+	customEnv = append(customEnv, pathEnv)
 	cmd.Env = customEnv
 
 	err := awaitStartup(cmd, awaitLog("Starting extension http server on port"))
