@@ -14,7 +14,7 @@ import (
 type Environment interface {
 	BuildTarget(ctx context.Context) *action_kit_api.Target
 	FindProcessIds(ctx context.Context, command string) []int
-	StartProcess(ctx context.Context, command string, parameters ...string) error
+	ExecuteProcess(ctx context.Context, command string, parameters ...string) (string, error)
 	StartAndAwaitProcess(ctx context.Context, command string, awaitFn func(string) bool, parameters ...string) (func(), error)
 	StopProcess(ctx context.Context, commandOrPid string) error
 }
