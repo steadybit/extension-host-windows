@@ -106,10 +106,7 @@ func (n *HttpNetperf) IsReachable() bool {
 			_ = resp.Body.Close()
 		}
 	}()
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (n *HttpNetperf) CanReach(targetUrl string) bool {
@@ -124,33 +121,4 @@ func (n *HttpNetperf) CanReach(targetUrl string) bool {
 	}
 	_ = resp.Body.Close()
 	return true
-}
-
-type R struct {
-	// The number of current attempt.
-	Attempt int
-
-	Failed bool
-	Log    *bytes.Buffer
-}
-
-func Retry(t *testing.T, maxAttempts int, sleep time.Duration, f func(r *R)) bool {
-	t.Helper()
-
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		r := &R{Attempt: attempt, Log: &bytes.Buffer{}}
-
-		f(r)
-
-		if !r.Failed {
-			return true
-		}
-
-		if attempt == maxAttempts {
-			t.Fatalf("failed after %d attempts: %s", attempt, r.Log.String())
-		}
-
-		time.Sleep(sleep)
-	}
-	return false
 }

@@ -4,12 +4,15 @@
 package e2e
 
 import (
+	"archive/zip"
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/mholt/archiver/v3"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"testing"
+	"time"
 )
 
 func findExtensionArtifact(dir string) (string, error) {
@@ -221,4 +226,114 @@ func FindAvailablePorts(startPort, endPort int, count int) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("no %d contiguous available ports found in range %d-%d", count, startPort, endPort)
+}
+
+func downloadFile(path string, url string) error {
+	client := &http.Client{}
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad server response: %s", resp.Status)
+	}
+
+	out, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func(out *os.File) {
+		_ = out.Close()
+	}(out)
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func extractZip(zipPath, destDir string) error {
+	reader, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer func(reader *zip.ReadCloser) {
+		_ = reader.Close()
+	}(reader)
+
+	for _, file := range reader.File {
+		err := extractFile(file, destDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func extractFile(file *zip.File, destDir string) error {
+	filePath := filepath.Join(destDir, file.Name)
+
+	if !strings.HasPrefix(filePath, filepath.Clean(destDir)+string(os.PathSeparator)) {
+		return fmt.Errorf("illegal file path: %s", filePath)
+	}
+
+	if file.FileInfo().IsDir() {
+		if err := os.MkdirAll(filePath, file.Mode()); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return err
+	}
+
+	srcFile, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer func(srcFile io.ReadCloser) {
+		_ = srcFile.Close()
+	}(srcFile)
+
+	destFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+	if err != nil {
+		return err
+	}
+	defer func(destFile *os.File) {
+		_ = destFile.Close()
+	}(destFile)
+
+	_, err = io.Copy(destFile, srcFile)
+	return err
+}
+
+type R struct {
+	// The number of current attempt.
+	Attempt int
+	Failed  bool
+	Log     *bytes.Buffer
+}
+
+func Retry(t *testing.T, maxAttempts int, sleep time.Duration, f func(r *R)) bool {
+	t.Helper()
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		r := &R{Attempt: attempt, Log: &bytes.Buffer{}}
+
+		f(r)
+
+		if !r.Failed {
+			return true
+		}
+
+		if attempt == maxAttempts {
+			t.Fatalf("failed after %d attempts: %s", attempt, r.Log.String())
+		}
+
+		time.Sleep(sleep)
+	}
+	return false
 }
