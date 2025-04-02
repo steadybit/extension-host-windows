@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,7 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_bandwidth", BaseActionID),
 		Label:       "Limit Outgoing Bandwidth",
-		Description: "Limit available egress network bandwidth using QOS rules.",
+		Description: "Limit available egress network bandwidth using QsS rules.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(bandwidthIcon),
 		TargetSelection: &action_kit_api.TargetSelection{
@@ -40,9 +41,17 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 		Category:    extutil.Ptr("Network"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
-		Parameters: append(
-			commonNetworkParameters,
-			action_kit_api.ActionParameter{
+		Parameters: []action_kit_api.ActionParameter{
+			{
+				Name:         "duration",
+				Label:        "Duration",
+				Description:  extutil.Ptr("How long should the network be affected?"),
+				Type:         action_kit_api.Duration,
+				DefaultValue: extutil.Ptr("30s"),
+				Required:     extutil.Ptr(true),
+				Order:        extutil.Ptr(0),
+			},
+			{
 				Name:         "bandwidth",
 				Label:        "Network Bandwidth",
 				Description:  extutil.Ptr("How much traffic should be allowed per second?"),
@@ -51,15 +60,34 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),
 			},
-			action_kit_api.ActionParameter{
-				Name:        "networkInterface",
-				Label:       "Network Interface",
-				Description: extutil.Ptr("Target Network Interface which should be affected. All if none specified."),
-				Type:        action_kit_api.StringArray,
-				Required:    extutil.Ptr(false),
-				Order:       extutil.Ptr(104),
+			{
+				Name:         "hostname",
+				Label:        "Hostname",
+				Description:  extutil.Ptr("Restrict to which host the traffic is affected (Only host or IP allowed)."),
+				Type:         action_kit_api.String,
+				DefaultValue: extutil.Ptr(""),
+				Advanced:     extutil.Ptr(true),
+				Order:        extutil.Ptr(101),
 			},
-		),
+			{
+				Name:         "ip",
+				Label:        "IP Address/CIDR",
+				Description:  extutil.Ptr("Restrict to which IP address or blocks the traffic is affected (Only host or IP allowed)."),
+				Type:         action_kit_api.String,
+				DefaultValue: extutil.Ptr(""),
+				Advanced:     extutil.Ptr(true),
+				Order:        extutil.Ptr(102),
+			},
+			{
+				Name:         "port",
+				Label:        "Port",
+				Description:  extutil.Ptr("Restrict to which port the traffic is affected."),
+				Type:         action_kit_api.String,
+				DefaultValue: extutil.Ptr(""),
+				Advanced:     extutil.Ptr(true),
+				Order:        extutil.Ptr(103),
+			},
+		},
 	}
 }
 
@@ -69,22 +97,29 @@ func limitBandwidth() networkOptsProvider {
 		if err != nil {
 			return nil, nil, err
 		}
+
 		bandwidth := extutil.ToString(request.Config["bandwidth"])
 		bandwidth, err = sanitizeBandwidthAttribute(bandwidth)
-
 		if err != nil {
 			return nil, nil, err
 		}
 
-		filter, messages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
+		includeCidrs, err := mapToNetworks(ctx, extutil.ToString(request.Config["host"]), extutil.ToString(request.Config["ip"]))
 		if err != nil {
 			return nil, nil, err
 		}
+		var includeCidr *net.IPNet
+		if len(includeCidrs) > 0 {
+			includeCidr = &includeCidrs[0]
+		}
+
+		port := extutil.ToString(request.Config["port"])
 
 		return &network.LimitBandwidthOpts{
-			Filter:    filter,
-			Bandwidth: bandwidth,
-		}, messages, nil
+			Bandwidth:   bandwidth,
+			IncludeCidr: includeCidr,
+			Port:        port,
+		}, nil, nil
 	}
 }
 
@@ -96,7 +131,6 @@ func sanitizeBandwidthAttribute(bandwidth string) (string, error) {
 		if strings.Contains(bandwidth, key) {
 			numericStr := strings.Replace(bandwidth, key, "", 1)
 			numeric, err := strconv.ParseUint(numericStr, 10, 64)
-
 			if err != nil {
 				return "", err
 			}

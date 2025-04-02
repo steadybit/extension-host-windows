@@ -172,18 +172,25 @@ func parsePortRanges(raw []string) ([]network.PortRange, error) {
 	return ranges, nil
 }
 
+func mapToNetworks(ctx context.Context, ipsOrCidrsOrHostnames ...string) ([]net.IPNet, error) {
+	dig := network.HostnameResolver{}
+	includeCidrs, unresolved := network.ParseCIDRs(ipsOrCidrsOrHostnames)
+	resolved, err := dig.Resolve(ctx, unresolved...)
+	if err != nil {
+		return nil, err
+	}
+	return append(includeCidrs, network.IpsToNets(resolved)...), nil
+}
+
 func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}, restrictedEndpoints []action_kit_api.RestrictedEndpoint) (network.Filter, action_kit_api.Messages, error) {
-	includeCidrs, unresolved := network.ParseCIDRs(append(
+	ipsAndHosts := append(
 		extutil.ToStringArray(actionConfig["ip"]),
 		extutil.ToStringArray(actionConfig["hostname"])...,
-	))
-
-	dig := network.HostnameResolver{}
-	resolved, err := dig.Resolve(ctx, unresolved...)
+	)
+	includeCidrs, err := mapToNetworks(ctx, ipsAndHosts...)
 	if err != nil {
 		return network.Filter{}, nil, err
 	}
-	includeCidrs = append(includeCidrs, network.IpsToNets(resolved)...)
 
 	//if no hostname/ip specified we affect all ips
 	if len(includeCidrs) == 0 {

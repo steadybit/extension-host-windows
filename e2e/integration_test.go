@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_test/validate"
 	"github.com/steadybit/extension-host-windows/exthostwindows"
@@ -381,8 +382,10 @@ func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
 func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
 	t.Skip("Limit bandwidth tests use Windows QoS, which does not apply to local loopback interfaces. Test manually.")
 
-	// start the iperf server on a remote system or use an online one from https://iperf.fr/iperf-servers.php
-	iperf := NewIperf("iperf3.moji.fr", 5200)
+	// Start the iperf server on a remote system or use an online one from https://iperf.fr/iperf-servers.php
+	// Due to the network dependency these tests are very flaky.
+	port := 5200
+	iperf := NewIperf("iperf3.moji.fr", port)
 	err := iperf.Install()
 	require.NoError(t, err)
 
@@ -399,51 +402,65 @@ func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
 	limited := unlimited / 3
 	log.Info().Msgf("limited bandwidth: %v", limited)
 
+	dig := network.HostnameResolver{}
+	iperfIps, err := dig.Resolve(t.Context(), iperf.Ip)
+	require.NoError(t, err)
+	iperfIp := iperfIps[0]
+	iperfNet := net.IPNet{IP: iperfIp, Mask: net.CIDRMask(24, 32)}
+
+	log.Info().Str("ip", iperfIp.String()).Str("network", iperfNet.String()).Msg("iperf network addresses")
+
 	tests := []struct {
 		name        string
-		ip          []string
-		hostname    []string
-		port        []string
-		interfaces  []string
+		hostname    string
+		ip          string
+		port        string
 		wantedLimit bool
 	}{
 		{
 			name:        "should limit bandwidth on all traffic",
 			wantedLimit: true,
 		},
-		// Not yet supported
-		//{
-		//	name:        "should limit bandwidth only on port 5001 traffic",
-		//	port:        []string{"5001"},
-		//	wantedLimit: true,
-		//},
-		//{
-		//	name:        "should limit bandwidth only on port 80 traffic",
-		//	port:        []string{"80"},
-		//	wantedLimit: false,
-		//},
-		//{
-		//	name:        "should limit bandwidth only traffic for iperf server",
-		//	ip:          []string{iperf.Ip},
-		//	wantedLimit: true,
-		//},
+		{
+			name:        fmt.Sprintf("should limit bandwidth only on port %d traffic", port),
+			port:        strconv.Itoa(port),
+			wantedLimit: true,
+		},
+		{
+			name:        "should limit bandwidth only on port 80 traffic",
+			port:        "80",
+			wantedLimit: false,
+		},
+		{
+			name:        "should limit bandwidth for iperf server hostname",
+			hostname:    iperf.Ip,
+			wantedLimit: true,
+		},
+		{
+			name:        "should limit bandwidth for iperf server ip",
+			ip:          iperfIp.String(),
+			wantedLimit: true,
+		},
+		{
+			name:        "should limit bandwidth for iperf server cider",
+			ip:          iperfNet.String(),
+			wantedLimit: true,
+		},
 	}
 
 	for _, tt := range tests {
 		config := struct {
-			Duration     int      `json:"duration"`
-			Bandwidth    string   `json:"bandwidth"`
-			Ip           []string `json:"ip"`
-			Hostname     []string `json:"hostname"`
-			Port         []string `json:"port"`
-			NetInterface []string `json:"networkInterface"`
+			Duration  int    `json:"duration"`
+			Bandwidth string `json:"bandwidth"`
+			Hostname  string `json:"hostname"`
+			Ip        string `json:"ip"`
+			Port      string `json:"port"`
 		}{
-			Duration:     30000,
-			Bandwidth:    fmt.Sprintf("%dbit", int(limited*1_000_000)),
-			Ip:           tt.ip,
-			Hostname:     tt.hostname,
-			Port:         tt.port,
-			NetInterface: tt.interfaces,
+			Duration:  30000,
+			Bandwidth: fmt.Sprintf("%dbit", int(limited*1_000_000)),
+			Hostname:  tt.hostname,
+			Ip:        tt.ip,
+			Port:      tt.port,
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
