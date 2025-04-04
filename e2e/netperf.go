@@ -106,7 +106,7 @@ func (n *HttpNetperf) IsReachable() bool {
 			_ = resp.Body.Close()
 		}
 	}()
-	return err == nil
+	return err == nil && resp.StatusCode == 200
 }
 
 func (n *HttpNetperf) CanReach(targetUrl string) bool {
@@ -116,9 +116,5 @@ func (n *HttpNetperf) CanReach(targetUrl string) bool {
 			_ = resp.Body.Close()
 		}
 	}()
-	if err != nil {
-		return false
-	}
-	_ = resp.Body.Close()
-	return true
+	return err == nil && resp.StatusCode == 200
 }
