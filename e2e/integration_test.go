@@ -545,19 +545,34 @@ func testNetworkPackageCorruption(t *testing.T, l Environment, e Extension) {
 			wantedCorruption: true,
 		},
 		{
-			name:             "should corrupt packages only on port 5001 traffic",
-			port:             []string{"5001"},
+			name:             "should corrupt packages on server port traffic",
+			port:             []string{strconv.Itoa(iperf.Port)},
 			wantedCorruption: true,
 		},
 		{
-			name:             "should corrupt packages only on port 80 traffic",
+			name:             "should corrupt packages on port 80 traffic",
 			port:             []string{"80"},
 			wantedCorruption: false,
 		},
 		{
-			name:             "should corrupt packages only traffic for iperf server",
+			name:             "should corrupt packages on server ip",
 			ip:               []string{iperf.Ip},
 			wantedCorruption: true,
+		},
+		{
+			name:             "should corrupt packages on other ip",
+			ip:               []string{"1.1.1.1"},
+			wantedCorruption: false,
+		},
+		{
+			name:             "should corrupt packages on all interfaces",
+			interfaces:       network.GetOwnNetworkInterfaces(),
+			wantedCorruption: true,
+		},
+		{
+			name:             "should corrupt packages on none loopback interfaces",
+			interfaces:       network.GetNonLoopbackNetworkInterfaces(),
+			wantedCorruption: false,
 		},
 	}
 
