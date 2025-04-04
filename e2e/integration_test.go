@@ -478,6 +478,7 @@ func testNetworkPackageLoss(t *testing.T, l Environment, e Extension) {
 		name       string
 		ip         []string
 		port       []string
+		interfaces []string
 		wantedLoss bool
 	}{
 		{
@@ -485,8 +486,8 @@ func testNetworkPackageLoss(t *testing.T, l Environment, e Extension) {
 			wantedLoss: true,
 		},
 		{
-			name:       "should loose packages only on port 5001 traffic",
-			port:       []string{"5001"},
+			name:       "should loose packages only on server port traffic",
+			port:       []string{strconv.Itoa(iperf.Port)},
 			wantedLoss: true,
 		},
 		{
@@ -495,23 +496,40 @@ func testNetworkPackageLoss(t *testing.T, l Environment, e Extension) {
 			wantedLoss: false,
 		},
 		{
-			name:       "should loose packages only traffic for iperf server",
+			name:       "should loose packages only on server ip",
 			ip:         []string{iperf.Ip},
 			wantedLoss: true,
+		},
+		{
+			name:       "should loose packages only on other ip",
+			ip:         []string{"1.1.1.1"},
+			wantedLoss: false,
+		},
+		{
+			name:       "should loose packages on all interfaces",
+			interfaces: network.GetOwnNetworkInterfaces(),
+			wantedLoss: true,
+		},
+		{
+			name:       "should loose packages on none loopback interfaces",
+			interfaces: network.GetNonLoopbackNetworkInterfaces(),
+			wantedLoss: false,
 		},
 	}
 
 	for _, tt := range tests {
 		config := struct {
-			Duration   int      `json:"duration"`
-			Percentage int      `json:"percentage"`
-			Ip         []string `json:"ip"`
-			Port       []string `json:"port"`
+			Duration     int      `json:"duration"`
+			Percentage   int      `json:"percentage"`
+			Ip           []string `json:"ip"`
+			Port         []string `json:"port"`
+			NetInterface []string `json:"networkInterface"`
 		}{
-			Duration:   50000,
-			Percentage: 10,
-			Ip:         tt.ip,
-			Port:       tt.port,
+			Duration:     50000,
+			Percentage:   10,
+			Ip:           tt.ip,
+			Port:         tt.port,
+			NetInterface: tt.interfaces,
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
