@@ -184,6 +184,16 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         true,
 		},
+		{
+			name:        "should delay all interfaces",
+			interfaces:  network.GetOwnNetworkInterfaces(),
+			wantedDelay: true,
+		},
+		{
+			name:        "should delay none loopback interfaces",
+			interfaces:  network.GetNonLoopbackNetworkInterfaces(),
+			wantedDelay: false,
+		},
 	}
 
 	for _, tt := range tests {
