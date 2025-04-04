@@ -1,3 +1,4 @@
+Add-Type -AssemblyName System.Web;
 $l = New-Object System.Net.HttpListener;
 $l.Prefixes.Add("http://{{.Ip}}:{{.Port}}/");
 $l.Prefixes.Add("http://{{.Ip}}:{{nextPort .Port}}/");

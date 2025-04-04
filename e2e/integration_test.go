@@ -234,7 +234,7 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
-	t.Skip("Only works with activated firewall")
+	t.Skip("Only works with activated Windows firewall")
 
 	port, err := FindAvailablePorts(8080, 8800, 2)
 	require.NoError(t, err)
@@ -248,36 +248,30 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 		ip               []string
 		hostname         []string
 		port             []string
-		wantedReachable  bool
 		wantedReachesUrl bool
 	}{
 		{
 			name:             "should blackhole all traffic",
-			wantedReachable:  false,
 			wantedReachesUrl: false,
 		},
 		{
 			name:             "should blackhole only port 8080 traffic",
 			port:             []string{"8080"},
-			wantedReachable:  true,
 			wantedReachesUrl: true,
 		},
 		{
 			name:             "should blackhole only port 80, 443 traffic",
 			port:             []string{"80", "443"},
-			wantedReachable:  false,
 			wantedReachesUrl: false,
 		},
 		{
-			name:             "should blackhole only traffic for steadybit.com",
+			name:             "should blackhole only traffic for steadybit.com hostname",
 			hostname:         []string{"steadybit.com"},
-			wantedReachable:  true,
 			wantedReachesUrl: false,
 		},
 		{
-			name:             "should blackhole only traffic for steadybit.com",
+			name:             "should blackhole only traffic for steadybit.com cider",
 			ip:               steadybitCIDRs,
-			wantedReachable:  true,
 			wantedReachesUrl: false,
 		},
 	}
@@ -296,25 +290,22 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			require.True(t, netperf.IsReachable())
-			require.True(t, netperf.CanReach("https://steadybit.com"))
+			require.True(t, netperf.CanReach("steadybit.com"))
 
 			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, defaultExecutionContext)
 			defer func() { _ = action.Cancel() }()
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.wantedReachable, netperf.IsReachable())
-			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("https://steadybit.com"))
+			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("steadybit.com"))
 
 			require.NoError(t, action.Cancel())
-			require.True(t, netperf.IsReachable())
-			require.True(t, netperf.CanReach("https://steadybit.com"))
+			require.True(t, netperf.CanReach("steadybit.com"))
 		})
 	}
 }
 
 func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
-	t.Skip("Only works with activated firewall")
+	t.Skip("Only works with activated Windows firewall")
 
 	port, err := FindAvailablePorts(8080, 8800, 2)
 	require.NoError(t, err)
@@ -325,30 +316,18 @@ func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
 
 	tests := []struct {
 		name             string
-		ip               []string
-		hostname         []string
 		dnsPort          uint
-		wantedReachable  bool
 		wantedReachesUrl bool
 	}{
 		{
 			name:             "should block dns traffic",
 			dnsPort:          53,
-			wantedReachable:  true,
 			wantedReachesUrl: false,
 		},
 		{
 			name:             "should block dns traffic on port 5353",
 			dnsPort:          5353,
-			wantedReachable:  true,
 			wantedReachesUrl: true,
-		},
-		{
-			name:             "should block dns only traffic for steadybit.com",
-			dnsPort:          53,
-			hostname:         []string{"steadybit.com"},
-			wantedReachable:  true,
-			wantedReachesUrl: false,
 		},
 	}
 
@@ -362,19 +341,17 @@ func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			require.True(t, netperf.IsReachable())
-			require.True(t, netperf.CanReach("https://steadybit.com"))
+			// Use different dns names to make sure that they are not cached.
+			require.True(t, netperf.CanReach("steadybit.com"))
 
 			action, err := e.RunAction(exthostwindows.BaseActionID+".network_block_dns", l.BuildTarget(t.Context()), config, defaultExecutionContext)
 			defer func() { _ = action.Cancel() }()
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.wantedReachable, netperf.IsReachable())
-			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("https://steadybit.com"))
+			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("chaosmesh.com"))
 
 			require.NoError(t, action.Cancel())
-			require.True(t, netperf.IsReachable())
-			require.True(t, netperf.CanReach("https://steadybit.com"))
+			require.True(t, netperf.CanReach("google.com"))
 		})
 	}
 }

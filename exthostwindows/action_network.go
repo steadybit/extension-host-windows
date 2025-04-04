@@ -223,7 +223,7 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}
 	if condensed {
 		messages = append(messages, action_kit_api.Message{
 			Level: extutil.Ptr(action_kit_api.Warn),
-			Message: "Some excludes (to protect agent and extensions) were aggregated to reduce the number of tc commands necessary." +
+			Message: "Some excludes (to protect agent and extensions) were aggregated to reduce the number of commands necessary." +
 				"This may lead to less specific exclude rules, some traffic might not be affected, as expected. " +
 				"You can avoid this by configuring a more specific attack (e.g. by specifying ports or CIDRs).",
 		})
