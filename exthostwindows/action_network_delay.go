@@ -78,17 +78,19 @@ func delay() networkOptsProvider {
 		if err != nil {
 			return nil, nil, err
 		}
+
 		delay := time.Duration(extutil.ToInt64(request.Config["networkDelay"])) * time.Millisecond
 		hasJitter := extutil.ToBool(request.Config["networkDelayJitter"])
-		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
 
+		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
 		if duration < time.Second {
 			return nil, nil, errors.New("duration must be greater / equal than 1s")
 		}
 
-		jitter := false
-		if hasJitter {
-			jitter = true
+		interfaces := extutil.ToStringArray(request.Config["networkInterface"])
+		var interfaceIndexes []int
+		if len(interfaces) != 0 {
+			interfaceIndexes = network.GetNetworkInterfaceIndexesByName(interfaces)
 		}
 
 		filter, messages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
@@ -97,10 +99,11 @@ func delay() networkOptsProvider {
 		}
 
 		return &network.DelayOpts{
-			Filter:   filter,
-			Delay:    delay,
-			Jitter:   jitter,
-			Duration: duration,
+			Filter:           filter,
+			Delay:            delay,
+			Jitter:           hasJitter,
+			Duration:         duration,
+			InterfaceIndexes: interfaceIndexes,
 		}, messages, nil
 	}
 }
