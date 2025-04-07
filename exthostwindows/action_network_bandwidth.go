@@ -42,15 +42,7 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
 		Parameters: []action_kit_api.ActionParameter{
-			{
-				Name:         "duration",
-				Label:        "Duration",
-				Description:  extutil.Ptr("How long should the network be affected?"),
-				Type:         action_kit_api.Duration,
-				DefaultValue: extutil.Ptr("30s"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(0),
-			},
+			durationParamter,
 			{
 				Name:         "bandwidth",
 				Label:        "Network Bandwidth",

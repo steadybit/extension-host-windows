@@ -37,16 +37,27 @@ type NetworkActionState struct {
 var _ action_kit_sdk.Action[NetworkActionState] = (*networkAction)(nil)
 var _ action_kit_sdk.ActionWithStop[NetworkActionState] = (*networkAction)(nil)
 
+var durationParamter = action_kit_api.ActionParameter{
+	Name:         "duration",
+	Label:        "Duration",
+	Description:  extutil.Ptr("How long should the network be affected?"),
+	Type:         action_kit_api.Duration,
+	DefaultValue: extutil.Ptr("30s"),
+	Required:     extutil.Ptr(true),
+	Order:        extutil.Ptr(0),
+}
+
+var networkInterfaceParameter = action_kit_api.ActionParameter{
+	Name:        "networkInterface",
+	Label:       "Network Interface",
+	Description: extutil.Ptr("Target Network Interface which should be affected. All if none specified."),
+	Type:        action_kit_api.StringArray,
+	Required:    extutil.Ptr(false),
+	Order:       extutil.Ptr(104),
+}
+
 var commonNetworkParameters = []action_kit_api.ActionParameter{
-	{
-		Name:         "duration",
-		Label:        "Duration",
-		Description:  extutil.Ptr("How long should the network be affected?"),
-		Type:         action_kit_api.Duration,
-		DefaultValue: extutil.Ptr("30s"),
-		Required:     extutil.Ptr(true),
-		Order:        extutil.Ptr(0),
-	},
+	durationParamter,
 	{
 		Name:         "hostname",
 		Label:        "Hostname",
