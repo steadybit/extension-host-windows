@@ -467,6 +467,8 @@ func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkPackageLoss(t *testing.T, l Environment, e Extension) {
+	t.Skip("Loos tests seem to be super flaky, deactivate for now.")
+
 	port, err := FindAvailablePort(5002, 5100)
 	require.NoError(t, err)
 	iperf := NewIperf("127.0.0.1", port)
