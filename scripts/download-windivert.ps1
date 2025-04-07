@@ -1,6 +1,7 @@
 # Parameters with default value
 param(
   [string]$DownloadDir = "dist",
+  [string]$ReleaseVersion = "latest",
   [switch]$IncludePrereleases = $true
 )
 
@@ -10,36 +11,48 @@ if (-not (Test-Path $DownloadDir)) {
   New-Item -ItemType Directory -Path $DownloadDir | Out-Null
 }
 
-Write-Host "Downloading latest windows-build release from steadybit/WinDivert to $DownloadDir"
-Write-Host "Including prereleases: $IncludePrereleases"
+Write-Host "Downloading WinDivert release \"$ReleaseVersion\" from steadybit/WinDivert to $DownloadDir"
+if ($IncludePrereleases) {
+  Write-Host "Including prereleases!"
+}
 
 try {
-  # Get all releases (including prereleases)
-  $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/steadybit/WinDivert/releases"
+  # Get specific version or all releases (including prereleases)
+  if ($ReleaseVersion -ne "latest") {
+    # Fetch specific release by tag
+    try {
+      $release = Invoke-RestMethod -Uri "https://api.github.com/repos/steadybit/WinDivert/releases/tags/$ReleaseVersion"
+    } catch {
+      Write-Host "Error: Release version '$ReleaseVersion' not found"
+      exit 1
+    }
+  } else {
+    # Get all releases and filter based on parameters
+    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/steadybit/WinDivert/releases"
 
-  # Filter based on prerelease parameter
-  if (-not $IncludePrereleases) {
-    $releases = $releases | Where-Object { -not $_.prerelease }
+    # Filter based on prerelease parameter
+    if (-not $IncludePrereleases) {
+      $releases = $releases | Where-Object { -not $_.prerelease }
+    }
+
+    # Get the most recent release
+    if ($releases.Count -eq 0) {
+      Write-Host "Error: No releases found"
+      exit 1
+    }
+
+    $release = $releases[0]
   }
 
-  # Get the most recent release
-  if ($releases.Count -eq 0) {
-    Write-Host "Error: No releases found"
-    exit 1
-  }
-
-  $latestRelease = $releases[0]
-
-  Write-Host "Found release: $($latestRelease.name) (tag: $($latestRelease.tag_name))"
-  if ($latestRelease.prerelease) {
-    Write-Host "Note: This is a prerelease"
+  Write-Host "Found release: $($release.name) (tag: $($release.tag_name))"
+  if ($release.prerelease) {
+    Write-Host "Note: This is a prerelease!"
   }
 
   # Find the windows-build zip file
-  $windowsBuildAsset = $latestRelease.assets | Where-Object { $_.name -like "windows-build*.zip" } | Select-Object -First 1
-
+  $windowsBuildAsset = $release.assets | Where-Object { $_.name -like "windows-build*.zip" } | Select-Object -First 1
   if ($null -eq $windowsBuildAsset) {
-    Write-Host "Error: No windows-build zip file found in the latest release"
+    Write-Host "Error: No windows-build zip file found in the release metadata"
     exit 1
   }
 

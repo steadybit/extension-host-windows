@@ -10,7 +10,8 @@ Write-Output "Found ZIP file $latestZip"
 
 Write-Output "Downloading WinDivert release"
 $winDivertPath = "$distPath\WinDivert"
-& "$scriptPath\download-windivert.ps1" -DownloadDir "$winDivertPath"
+$releaseVersion = if ($env:STEADYBIT_WINDIVERT_VERSION) { $env:STEADYBIT_WINDIVERT_VERSION } else { "latest" }
+& "$scriptPath\download-windivert.ps1" -DownloadDir "$winDivertPath" -ReleaseVersion "$releaseVersion"
 
 # Create a temp location for the extraction
 $tempDir = "$distPath\temp_extract_$(Get-Random)"
