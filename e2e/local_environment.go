@@ -41,9 +41,17 @@ func (l *LocalEnvironment) FindProcessIds(_ context.Context, name string) []int 
 	return stopprocess.FindProcessIds(name)
 }
 
-func (l *LocalEnvironment) StartProcess(ctx context.Context, command string, parameters ...string) error {
-	_, err := l.StartAndAwaitProcess(ctx, command, awaitStop(), parameters...)
-	return err
+func (l *LocalEnvironment) ExecuteProcess(ctx context.Context, command string, parameters ...string) (string, error) {
+	pwd, err := filepath.Abs(rootPath)
+	if err != nil {
+		return "", err
+	}
+	log.Info().Str("cmd", command).Strs("parameters", parameters).Str("pwd", pwd).Msgf("Executing command: %s", command)
+
+	cmd := exec.CommandContext(ctx, command, parameters...)
+	cmd.Dir = pwd
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
 
 func (l *LocalEnvironment) StartAndAwaitProcess(ctx context.Context, command string, awaitFn func(string) bool, parameters ...string) (func(), error) {

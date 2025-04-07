@@ -9,17 +9,18 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-ps v1.0.0
-	github.com/rs/zerolog v1.34.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250324091147-26f3b90b55cf
-	github.com/steadybit/action-kit/go/action_kit_commons v1.2.24-0.20250324091147-26f3b90b55cf
-	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250324091147-26f3b90b55cf
-	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250324091147-26f3b90b55cf
+	github.com/rs/zerolog v1.33.0
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250404142605-bc6b906ab0bb
+	github.com/steadybit/action-kit/go/action_kit_commons v1.2.24-0.20250404142605-bc6b906ab0bb
+	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250404142605-bc6b906ab0bb
+	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250404142605-bc6b906ab0bb
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.2.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.2.3
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.1.2
 	github.com/steadybit/extension-kit v1.9.1-0.20250314141047-1f2ef94df26e
 	github.com/stretchr/testify v1.10.0
+	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 	golang.org/x/sys v0.31.0

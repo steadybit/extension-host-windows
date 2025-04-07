@@ -70,10 +70,16 @@ func packageLoss() networkOptsProvider {
 			return nil, nil, err
 		}
 		loss := extutil.ToUInt(request.Config["percentage"])
-		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
 
+		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
 		if duration < time.Second {
 			return nil, nil, errors.New("duration must be greater / equal than 1s")
+		}
+
+		interfaces := extutil.ToStringArray(request.Config["networkInterface"])
+		var interfaceIndexes []int
+		if len(interfaces) != 0 {
+			interfaceIndexes = network.GetNetworkInterfaceIndexesByName(interfaces)
 		}
 
 		filter, messages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
@@ -82,9 +88,10 @@ func packageLoss() networkOptsProvider {
 		}
 
 		return &network.PackageLossOpts{
-			Filter:   filter,
-			Loss:     loss,
-			Duration: duration,
+			Filter:           filter,
+			Loss:             loss,
+			Duration:         duration,
+			InterfaceIndexes: interfaceIndexes,
 		}, messages, nil
 	}
 }

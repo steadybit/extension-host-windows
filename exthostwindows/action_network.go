@@ -95,6 +95,10 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 		return nil, extension_kit.WrapError(err)
 	}
 
+	if messages == nil {
+		messages = []action_kit_api.Message{} // prevent empty messages response
+	}
+
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
 		return nil, extension_kit.ToError("Failed to serialize network settings.", err)
@@ -168,18 +172,25 @@ func parsePortRanges(raw []string) ([]network.PortRange, error) {
 	return ranges, nil
 }
 
+func mapToNetworks(ctx context.Context, ipsOrCidrsOrHostnames ...string) ([]net.IPNet, error) {
+	dig := network.HostnameResolver{}
+	includeCidrs, unresolved := network.ParseCIDRs(ipsOrCidrsOrHostnames)
+	resolved, err := dig.Resolve(ctx, unresolved...)
+	if err != nil {
+		return nil, err
+	}
+	return append(includeCidrs, network.IpsToNets(resolved)...), nil
+}
+
 func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}, restrictedEndpoints []action_kit_api.RestrictedEndpoint) (network.Filter, action_kit_api.Messages, error) {
-	includeCidrs, unresolved := network.ParseCIDRs(append(
+	ipsAndHosts := append(
 		extutil.ToStringArray(actionConfig["ip"]),
 		extutil.ToStringArray(actionConfig["hostname"])...,
-	))
-
-	dig := network.HostnameResolver{}
-	resolved, err := dig.Resolve(ctx, unresolved...)
+	)
+	includeCidrs, err := mapToNetworks(ctx, ipsAndHosts...)
 	if err != nil {
 		return network.Filter{}, nil, err
 	}
-	includeCidrs = append(includeCidrs, network.IpsToNets(resolved)...)
 
 	//if no hostname/ip specified we affect all ips
 	if len(includeCidrs) == 0 {
@@ -212,7 +223,7 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}
 	if condensed {
 		messages = append(messages, action_kit_api.Message{
 			Level: extutil.Ptr(action_kit_api.Warn),
-			Message: "Some excludes (to protect agent and extensions) were aggregated to reduce the number of tc commands necessary." +
+			Message: "Some excludes (to protect agent and extensions) were aggregated to reduce the number of commands necessary." +
 				"This may lead to less specific exclude rules, some traffic might not be affected, as expected. " +
 				"You can avoid this by configuring a more specific attack (e.g. by specifying ports or CIDRs).",
 		})

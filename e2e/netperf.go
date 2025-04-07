@@ -24,7 +24,7 @@ func NewHttpNetperf(port int) *HttpNetperf {
 }
 
 func (n *HttpNetperf) Deploy(ctx context.Context, env Environment) error {
-	log.Info().Msgf("Starting HTTP server to measure network delay")
+	log.Info().Msgf("Starting HTTP test server on port %d", n.Port)
 	httpServerCommandTemplate, err := os.ReadFile("startHttpServer.ps1")
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (n *HttpNetperf) Deploy(ctx context.Context, env Environment) error {
 
 func (n *HttpNetperf) Delete() error {
 	if n.cancel != nil {
-		log.Info().Msgf("Stopping HTTP server")
+		log.Info().Msgf("Stopping HTTP test server")
 		n.cancel()
 	}
 	return nil
@@ -99,31 +99,22 @@ func (n *HttpNetperf) url() string {
 	return fmt.Sprintf("http://%s:%d", n.Ip, n.Port)
 }
 
-type R struct {
-	// The number of current attempt.
-	Attempt int
-
-	Failed bool
-	Log    *bytes.Buffer
+func (n *HttpNetperf) IsReachable() bool {
+	resp, err := http.Get(n.url())
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	return err == nil && resp.StatusCode == 200
 }
 
-func Retry(t *testing.T, maxAttempts int, sleep time.Duration, f func(r *R)) bool {
-	t.Helper()
-
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		r := &R{Attempt: attempt, Log: &bytes.Buffer{}}
-
-		f(r)
-
-		if !r.Failed {
-			return true
+func (n *HttpNetperf) CanReach(targetUrl string) bool {
+	resp, err := http.Get(fmt.Sprintf("%s?url=%s", n.url(), targetUrl))
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
 		}
-
-		if attempt == maxAttempts {
-			t.Fatalf("failed after %d attempts: %s", attempt, r.Log.String())
-		}
-
-		time.Sleep(sleep)
-	}
-	return false
+	}()
+	return err == nil && resp.StatusCode == 200
 }
