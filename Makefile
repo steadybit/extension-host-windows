@@ -1,5 +1,7 @@
 # ==================================================================================== #
+#
 # HELPERS
+#
 # ==================================================================================== #
 
 ## help: print this help message
@@ -18,7 +20,9 @@ ifeq ($(SKIP_LICENSES_REPORT), false)
 endif
 
 # ==================================================================================== #
+#
 # QUALITY CONTROL
+#
 # ==================================================================================== #
 
 ## tidy: format code and tidy modfile
@@ -41,7 +45,7 @@ audit:
 #
 # ====================================================================================
 
-## clean: clean up the output directory
+## clean: clean up the output directories
 .PHONY: clean
 clean:
 	powershell -Command "if (Test-Path 'dist') { Remove-Item -Path 'dist' -Force -Recurse }"
@@ -52,18 +56,23 @@ clean:
 build:
 	go run github.com/goreleaser/goreleaser/v2@latest build --clean --snapshot --single-target -o extension.exe
 
-## release: package a release
+# ====================================================================================
+#
+# Package
+#
+# ====================================================================================
+
+## release: package the extension release only
 .PHONY: release
 release: clean licenses-report
 	go run github.com/goreleaser/goreleaser/v2@latest release --clean --snapshot
 
-## artifact: package a ZIP with all required files
+## artifact: package a ZIP with the extension and all required files
 .PHONY: artifact
 artifact: release
 	powershell -ExecutionPolicy "Bypass" -File "scripts/package-extension.ps1"
-	powershell -ExecutionPolicy "Bypass" -File "scripts/run-installer.ps1"
 
-## run: run the extension
-.PHONY: run
-run: tidy build
-	.\extension.exe
+## installer: installs the extension via the build installer
+.PHONY: installer
+installer: artifact
+	powershell -ExecutionPolicy "Bypass" -File "scripts/package-installer.ps1"

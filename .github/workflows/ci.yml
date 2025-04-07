@@ -37,6 +37,10 @@ jobs:
         with:
           go-version: "1.24"
 
+      - name: Set dependency versions
+        id: versions
+        run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
+
       - name: Audit
         run: |
           go mod download
@@ -85,9 +89,13 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
 
-      - name: Build extension artifact
+      - name: Set dependency versions
+        id: versions
+        run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
+
+      - name: Build extension installer
         run: |
-          make artifact
+          make installer
         shell: powershell
 
       - name: Upload Artifacts
