@@ -60,14 +60,7 @@ func getNetworkDelayDescription() action_kit_api.ActionDescription {
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(2),
 			},
-			action_kit_api.ActionParameter{
-				Name:        "networkInterface",
-				Label:       "Network Interface",
-				Description: extutil.Ptr("Target Network Interface which should be affected. All if none specified."),
-				Type:        action_kit_api.StringArray,
-				Required:    extutil.Ptr(false),
-				Order:       extutil.Ptr(104),
-			},
+			networkInterfaceParameter,
 		),
 	}
 }

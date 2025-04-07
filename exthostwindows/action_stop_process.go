@@ -59,6 +59,7 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
 		Parameters: []action_kit_api.ActionParameter{
+			durationParamter,
 			{
 				Name:        "process",
 				Label:       "Process",
@@ -75,15 +76,6 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 				DefaultValue: extutil.Ptr("true"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(2),
-			},
-			{
-				Name:         "duration",
-				Label:        "Duration",
-				Description:  extutil.Ptr("Over this period the matching processes are killed."),
-				Type:         action_kit_api.Duration,
-				DefaultValue: extutil.Ptr("30s"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(3),
 			}, {
 				Name:         "delay",
 				Label:        "Delay",
