@@ -66,24 +66,11 @@ func (f *LocalExtensionFactory) Start(ctx context.Context, _ Environment) (Exten
 	if err != nil {
 		return nil, err
 	}
-	//e2eTest, err := os.Executable()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//err = f.addFirewallRules(ctx, e2eTest)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//err = f.addFirewallRules(ctx, f.Executable)
-	//if err != nil {
-	//	return nil, err
-	//}
-
 	ext := NewLocalExtension(f.Port)
-	return ext, err
+	return ext, nil
 }
 
-func (f *LocalExtensionFactory) Stop(ctx context.Context, _ Environment, _ Extension) error {
+func (f *LocalExtensionFactory) Stop(_ context.Context, _ Environment, _ Extension) error {
 	if f.Command != nil {
 		err := f.Command.Process.Kill()
 		if err != nil {
@@ -91,15 +78,6 @@ func (f *LocalExtensionFactory) Stop(ctx context.Context, _ Environment, _ Exten
 		}
 	}
 	return nil
-	//e2eTest, err := os.Executable()
-	//if err != nil {
-	//	return err
-	//}
-	//err = f.removeFirewallRules(ctx, e2eTest)
-	//if err != nil {
-	//	return err
-	//}
-	//return f.removeFirewallRules(ctx, f.Executable)
 }
 
 func (f *LocalExtensionFactory) startAndAwait(ctx context.Context) error {
@@ -139,38 +117,4 @@ func (f *LocalExtensionFactory) startAndAwait(ctx context.Context) error {
 	log.Info().Strs("cmd", cmd.Args).Msg("started extension")
 	f.Command = cmd
 	return nil
-}
-
-const ruleNameFormat = "Steadybit Extension Host Windows e2e %s"
-
-func (f *LocalExtensionFactory) addFirewallRules(ctx context.Context, executable string) error {
-	ruleName := fmt.Sprintf(ruleNameFormat, filepath.Base(executable))
-	log.Info().Msgf("adding firewall rules - %s", ruleName)
-
-	psCommand := fmt.Sprintf(
-		"New-NetFirewallRule -DisplayName '%s' -Direction Inbound -Program '%s' -Action Allow -Profile Public,Private,Domain -Protocol TCP -LocalPort Any; "+
-			"New-NetFirewallRule -DisplayName '%s - Outbound' -Direction Outbound -Program '%s' -Action Allow -Profile Public,Private,Domain -Protocol TCP -RemotePort Any",
-		executable, ruleName, executable, ruleName)
-	cmd := exec.CommandContext(ctx, "powershell", "-Command", psCommand)
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("error creating firewall rule: %v", err)
-	}
-
-	// Give time for the rule to be applied
-	time.Sleep(1 * time.Second)
-	return nil
-}
-
-func (f *LocalExtensionFactory) removeFirewallRules(ctx context.Context, executable string) error {
-	ruleName := fmt.Sprintf(ruleNameFormat, filepath.Base(executable))
-	log.Info().Msgf("removing firewall rules - %s", ruleName)
-
-	psCommand := fmt.Sprintf(
-		"Remove-NetFirewallRule -DisplayName '%s' -ErrorAction SilentlyContinue; "+
-			"Remove-NetFirewallRule -DisplayName '%s' -ErrorAction SilentlyContinue", ruleName, ruleName)
-	cmd := exec.CommandContext(ctx, "powershell", "-Command", psCommand)
-
-	return cmd.Run()
 }
