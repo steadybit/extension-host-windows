@@ -9,11 +9,11 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-ps v1.0.0
-	github.com/rs/zerolog v1.33.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250404142605-bc6b906ab0bb
-	github.com/steadybit/action-kit/go/action_kit_commons v1.2.24-0.20250404142605-bc6b906ab0bb
-	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250404142605-bc6b906ab0bb
-	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250404142605-bc6b906ab0bb
+	github.com/rs/zerolog v1.34.0
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250407113854-dceaa6aefc14
+	github.com/steadybit/action-kit/go/action_kit_commons v1.2.24-0.20250407113854-dceaa6aefc14
+	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250407113854-dceaa6aefc14
+	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250407113854-dceaa6aefc14
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.2.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.2.3
@@ -32,7 +32,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/elastic/go-windows v1.0.2 // indirect
-	github.com/getkin/kin-openapi v0.130.0 // indirect
+	github.com/getkin/kin-openapi v0.131.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
 	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
