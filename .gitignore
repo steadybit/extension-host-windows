@@ -1,7 +1,5 @@
 /extension
 /coverage.out
-/go.docker.mod
-/e2e/e2e-coverage-docker.out
 /gpg.key
 /dist
 /licenses
