@@ -14,6 +14,8 @@ type Command interface {
 	Reboot() error
 }
 
+const shutdownExecutableName = "shutdown.exe"
+
 type CommandImpl struct{}
 
 func NewCommand() Command {
@@ -21,16 +23,22 @@ func NewCommand() Command {
 }
 
 func (c *CommandImpl) IsShutdownCommandExecutable() bool {
-	_, err := exec.LookPath("shutdown.exe")
+	p, err := exec.LookPath(shutdownExecutableName)
 	if err != nil {
 		log.Debug().Msgf("Failed to find shutdown.exe %s", err)
 		return false
 	}
+	log.Trace().Msgf("Found shutdown.exe %s", p)
 	return true
 }
 
 func (c *CommandImpl) getShutdownCommand() []string {
-	return []string{"shutdown.exe", "/s", "/t", "0"}
+	executable, err := exec.LookPath(shutdownExecutableName)
+	if err != nil {
+		log.Error().Err(err).Msgf("shutdown command not available")
+		return nil
+	}
+	return []string{executable, "/s", "/t", "0"}
 }
 
 func (c *CommandImpl) Shutdown() error {
@@ -44,7 +52,12 @@ func (c *CommandImpl) Shutdown() error {
 }
 
 func (c *CommandImpl) getRebootCommand() []string {
-	return []string{"shutdown.exe", "/r", "/t", "0"}
+	executable, err := exec.LookPath(shutdownExecutableName)
+	if err != nil {
+		log.Error().Err(err).Msgf("shutdown command not available")
+		return nil
+	}
+	return []string{executable, "/r", "/t", "0"}
 }
 
 func (c *CommandImpl) Reboot() error {

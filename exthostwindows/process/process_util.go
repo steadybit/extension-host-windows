@@ -36,15 +36,20 @@ func StopProcesses(pids []int, force bool) error {
 }
 
 func stopProcessWindows(pid int, force bool) error {
+	// use absolute path to resolve untrusted search path issue reported  by Sonar
+	taskkill, err := exec.LookPath("taskkill.exe")
+	if err != nil {
+		return fmt.Errorf("fail to find taskkill.exe: %w", err)
+	}
 	if force {
-		err := exec.Command("taskkill", "/F", "/pid", fmt.Sprintf("%d", pid)).Run()
+		err := exec.Command(taskkill, "/F", "/pid", fmt.Sprintf("%d", pid)).Run()
 		if err != nil {
 			return fmt.Errorf("failed to force kill process via taskkill: %w", err)
 		}
 		return nil
 	}
 
-	err := exec.Command("taskkill", "/pid", fmt.Sprintf("%d", pid)).Run()
+	err = exec.Command(taskkill, "/pid", fmt.Sprintf("%d", pid)).Run()
 	if err != nil {
 		return fmt.Errorf("failed to kill process via taskkill: %w", err)
 	}
