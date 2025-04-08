@@ -5,7 +5,6 @@ package exthostwindows
 
 import (
 	"context"
-	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-host-windows/config"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -18,9 +17,10 @@ func Test_DiscoverTargets(t *testing.T) {
 	_ = os.Setenv("MyEnvVar", "MyEnvVarValue")
 	_ = os.Setenv("MyEnvVar2", "MyEnvVarValue2")
 	_ = os.Setenv("MyEnvVar3", "MyEnvVarValue3")
-	config.Config.DiscoveryAttributesExcludesHost = []string{"host.nic"}
+	config.Config.DiscoveryAttributesExcludesHost = []string{hostNic}
+
 	targets, _ := (&hostDiscovery{}).DiscoverTargets(context.Background())
-	log.Info().Msgf("targets: %+v", targets)
+
 	assert.NotNil(t, targets)
 	assert.Len(t, targets, 1)
 	target := targets[0]
@@ -28,15 +28,15 @@ func Test_DiscoverTargets(t *testing.T) {
 	assert.NotEmpty(t, target.Label)
 	assert.NotEmpty(t, target.Attributes)
 	attributes := target.Attributes
-	assert.NotEmpty(t, attributes["host.hostname"])
-	assert.NotEmpty(t, attributes["host.domainname"])
-	assert.NotEmpty(t, attributes["host.ipv4"])
-	assert.NotContains(t, attributes, "host.nic")
-	assert.NotEmpty(t, attributes["host.os.family"])
-	assert.NotEmpty(t, attributes["host.os.manufacturer"])
-	assert.NotEmpty(t, attributes["host.os.version"])
-	assert.Equal(t, attributes["host.label.foo"], []string{"Bar"})
-	assert.Equal(t, attributes["host.env.myenvvar"], []string{"MyEnvVarValue"})
-	assert.Equal(t, attributes["host.env.myenvvar2"], []string{"MyEnvVarValue2"})
-	assert.Equal(t, attributes["host.env.myenvvar3"], []string{"MyEnvVarValue3"})
+	assert.NotEmpty(t, attributes[hostNameAttribute])
+	assert.NotEmpty(t, attributes[hostDomainnameAttribute])
+	assert.NotEmpty(t, attributes[hostIp4Attribute])
+	assert.NotContains(t, attributes, hostNic)
+	assert.NotEmpty(t, attributes[hostOsFamilyAttribute])
+	assert.NotEmpty(t, attributes[hostOsManufacturer])
+	assert.NotEmpty(t, attributes[hostOsVersion])
+	assert.Equal(t, attributes[hostLabel+"foo"], []string{"Bar"})
+	assert.Equal(t, attributes[hostEnv+"myenvvar"], []string{"MyEnvVarValue"})
+	assert.Equal(t, attributes[hostEnv+"myenvvar2"], []string{"MyEnvVarValue2"})
+	assert.Equal(t, attributes[hostEnv+"myenvvar3"], []string{"MyEnvVarValue3"})
 }

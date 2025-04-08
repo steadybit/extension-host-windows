@@ -38,7 +38,7 @@ func TestActionStopProcess_Prepare(t *testing.T) {
 				ExecutionId: uuid.New(),
 				Target: extutil.Ptr(action_kit_api.Target{
 					Attributes: map[string][]string{
-						"host.hostname": {"myhostname"},
+						hostNameAttribute: {"myhostname"},
 					},
 				}),
 			},
@@ -62,7 +62,7 @@ func TestActionStopProcess_Prepare(t *testing.T) {
 				ExecutionId: uuid.New(),
 				Target: extutil.Ptr(action_kit_api.Target{
 					Attributes: map[string][]string{
-						"host.hostname": {"myhostname"},
+						hostNameAttribute: {"myhostname"},
 					},
 				}),
 			},
