@@ -21,7 +21,6 @@ import (
 	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extsignals"
 	_ "go.uber.org/automaxprocs" // Importing automaxprocs automatically adjusts GOMAXPROCS.
-	"golang.org/x/sys/windows/svc"
 )
 
 func main() {
@@ -52,23 +51,9 @@ func main() {
 
 	extsignals.ActivateSignalHandlers()
 
-	//Register Windows service and stop handler
-	inService, err := svc.IsWindowsService()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to detect if executed in a Windows service")
-	}
-	if inService {
-		go func() {
-			err := exthostwindows.NewExtensionService(func() {
-				exthttp.StopListen()
-			})
-			if err != nil {
-				log.Fatal().Err(err).Msg("Error starting as Windows service")
-			} else {
-				log.Info().Msg("Windows service stopped")
-			}
-		}()
-	}
+	exthostwindows.ActivateWindowsServiceHandler(func() {
+		exthttp.StopListen()
+	})
 
 	action_kit_sdk.RegisterCoverageEndpoints()
 
