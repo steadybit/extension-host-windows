@@ -11,6 +11,7 @@ import (
 	aclient "github.com/steadybit/action-kit/go/action_kit_test/client"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	dclient "github.com/steadybit/discovery-kit/go/discovery_kit_test/client"
+	"net/http"
 	"time"
 )
 
@@ -18,9 +19,12 @@ type LocalExtension struct {
 	client *resty.Client
 }
 
-func NewLocalExtension(port int) *LocalExtension {
+func NewLocalExtension(extensionBaseUrl string) *LocalExtension {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	return &LocalExtension{
-		client: resty.New().SetBaseURL(fmt.Sprintf("http://127.0.0.1:%d", port)),
+		client: resty.NewWithClient(client).SetBaseURL(extensionBaseUrl),
 	}
 }
 

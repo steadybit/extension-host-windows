@@ -25,9 +25,16 @@ type LocalExtensionFactory struct {
 
 func (f *LocalExtensionFactory) Create(ctx context.Context, e Environment) error {
 	start := time.Now()
-	_, err := e.ExecuteProcess(ctx, "make", "artifact")
+	out, err := e.ExecuteProcess(ctx, "make", "artifact")
 	if err != nil {
 		return err
+	}
+
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		if line != "" {
+			fmt.Println("🏠", line)
+		}
 	}
 
 	artifact, err := findExtensionArtifact(distPath)
@@ -66,7 +73,7 @@ func (f *LocalExtensionFactory) Start(ctx context.Context, _ Environment) (Exten
 	if err != nil {
 		return nil, err
 	}
-	ext := NewLocalExtension(f.Port)
+	ext := NewLocalExtension(fmt.Sprintf("http://127.0.0.1:%d", f.Port))
 	return ext, nil
 }
 

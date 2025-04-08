@@ -18,7 +18,7 @@ type WithTestCase struct {
 	Test func(t *testing.T, environment Environment, extension Extension)
 }
 
-func WithEnvironment(t *testing.T, environment Environment, extFactory *LocalExtensionFactory, testCases []WithTestCase) {
+func WithEnvironment(t *testing.T, environment Environment, extFactory ExtensionFactory, testCases []WithTestCase) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"})
 	ctx := t.Context()
 

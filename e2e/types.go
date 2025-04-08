@@ -20,9 +20,9 @@ type Environment interface {
 }
 
 type ExtensionFactory interface {
-	Create(ctx context.Context) error
-	Start(ctx context.Context, environment *Environment) (Extension, error)
-	Stop(ctx context.Context, environment *Environment, extension Extension) error
+	Create(ctx context.Context, environment Environment) error
+	Start(ctx context.Context, environment Environment) (Extension, error)
+	Stop(ctx context.Context, environment Environment, extension Extension) error
 }
 
 type Extension interface {
