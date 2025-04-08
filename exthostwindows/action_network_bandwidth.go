@@ -105,7 +105,7 @@ func limitBandwidth() networkOptsProvider {
 			includeCidr = &includeCidrs[0]
 		}
 
-		port := extutil.ToString(request.Config["port"])
+		port := extutil.ToInt(request.Config["port"])
 
 		return &network.LimitBandwidthOpts{
 			Bandwidth:   bandwidth,
