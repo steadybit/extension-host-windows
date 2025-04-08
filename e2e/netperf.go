@@ -16,11 +16,15 @@ type HttpNetperf struct {
 	Ip          string
 	Port        int
 	numRequests int
+	client      *http.Client
 	cancel      func()
 }
 
 func NewHttpNetperf(port int) *HttpNetperf {
-	return &HttpNetperf{"127.0.0.1", port, 1, nil}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	return &HttpNetperf{"127.0.0.1", port, 1, client, nil}
 }
 
 func (n *HttpNetperf) Deploy(ctx context.Context, env Environment) error {
@@ -65,7 +69,7 @@ func (n *HttpNetperf) MeasureLatency() (time.Duration, error) {
 	// Just a rough measurement but should be good enough for our use-case.
 	for i := 0; i < n.numRequests; i++ {
 		start := time.Now()
-		resp, err := http.Get(n.url())
+		resp, err := n.client.Get(n.url())
 		if err != nil {
 			return 0, fmt.Errorf("request failed: %w", err)
 		}
@@ -100,21 +104,31 @@ func (n *HttpNetperf) url() string {
 }
 
 func (n *HttpNetperf) IsReachable() bool {
-	resp, err := http.Get(n.url())
+	resp, err := n.client.Get(n.url())
 	defer func() {
 		if resp != nil && resp.Body != nil {
 			_ = resp.Body.Close()
 		}
 	}()
+	if err != nil {
+		log.Debug().Err(err).Msgf("Can't reach %s", n.url())
+	} else {
+		log.Info().Str("status", resp.Status).Msgf("Reached %s", n.url())
+	}
 	return err == nil && resp.StatusCode == 200
 }
 
 func (n *HttpNetperf) CanReach(targetUrl string) bool {
-	resp, err := http.Get(fmt.Sprintf("%s?url=%s", n.url(), targetUrl))
+	resp, err := n.client.Get(fmt.Sprintf("%s?url=%s", n.url(), targetUrl))
 	defer func() {
 		if resp != nil && resp.Body != nil {
 			_ = resp.Body.Close()
 		}
 	}()
+	if err != nil {
+		log.Debug().Err(err).Msgf("Can't reach %s", targetUrl)
+	} else {
+		log.Info().Str("status", resp.Status).Msgf("Reached %s", n.url())
+	}
 	return err == nil && resp.StatusCode == 200
 }
