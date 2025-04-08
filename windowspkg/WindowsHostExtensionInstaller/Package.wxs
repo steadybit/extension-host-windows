@@ -2,7 +2,6 @@
 		 xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
 		 xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
 		 >
-
   <Package Name="Windows Host Extension" Manufacturer="Steadybit GmbH" Version="1.0.0.0" UpgradeCode="3e616adc-d783-486a-83ff-333d45c856f6">
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." AllowSameVersionUpgrades="no"/>
 		<Media Id="1" EmbedCab="yes" Cabinet="cab1"/>
@@ -20,8 +19,7 @@
 		<Icon Id="icon" SourceFile="icon.ico"/>
 		<Property Id="ARPPRODUCTICON" Value="icon"/>
 
-
 		<util:QueryNativeMachine/>
-		<Launch Condition="WIX_NATIVE_MACHINE = 34404" Message="x64 is the only supported architecture. Current achitecture is [WIX_NATIVE_MACHINE]."/>	
+		<Launch Condition="WIX_NATIVE_MACHINE = 34404" Message="x64 is the only supported architecture. Current architecture is [WIX_NATIVE_MACHINE]."/>
   </Package>
 </Wix>
