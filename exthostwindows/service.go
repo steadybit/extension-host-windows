@@ -13,7 +13,6 @@ import (
 	"golang.org/x/sys/windows/svc/eventlog"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 var serviceName = "SteadybitExtensionHostWindows"
@@ -22,38 +21,42 @@ type ExtensionService struct {
 	stopHandler func()
 }
 
-func (s *ExtensionService) Execute(_ []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
-	changes <- svc.Status{State: svc.StartPending}
-	tick := time.Tick(500 * time.Millisecond)
-	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
-	for {
-		select {
-		case <-tick:
-			log.Trace().Msg("tick")
-		case c := <-r:
-			switch c.Cmd {
-			case svc.Stop, svc.Shutdown:
-				changes <- svc.Status{State: svc.Stopped, Accepts: cmdsAccepted}
-				log.Fatal().Msg("Received Windows service stop command")
-			default:
-				log.Info().Msgf("unexpected control request #%d", c)
+func ActivateWindowsServiceHandler(stopHandler func()) {
+	isInService, err := svc.IsWindowsService()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to detect if executed as Windows service")
+	}
+	if isInService {
+		go func() {
+			service, err := NewExtensionService(stopHandler)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Error starting as Windows service")
+				return
 			}
-		}
+			err = service.Run()
+			if err != nil {
+				log.Fatal().Err(err).Msg("Error starting as Windows service")
+				return
+			}
+			log.Info().Msg("Windows service stopped")
+		}()
 	}
 }
 
-func NewExtensionService(stopHandler func()) error {
+func NewExtensionService(stopHandler func()) (*ExtensionService, error) {
 	elog, err := eventlog.Open(serviceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer elog.Close()
+	defer func(elog *eventlog.Log) {
+		_ = elog.Close()
+	}(elog)
 
 	logDir := filepath.Join(os.Getenv("ProgramData"), serviceName, "logs")
 	if err = os.MkdirAll(logDir, 0755); err != nil {
 		_ = elog.Error(1, fmt.Sprintf("Failed to create log directory: %v", err))
 	}
+
 	logPath := filepath.Join(logDir, "extension.log")
 	logFile, err := os.OpenFile(
 		logPath,
@@ -62,21 +65,43 @@ func NewExtensionService(stopHandler func()) error {
 	)
 	if err != nil {
 		_ = elog.Error(1, fmt.Sprintf("Failed to open log file: %v", err))
-	} else {
-		_ = elog.Info(1, fmt.Sprintf("Log file opened: %s", logPath))
+		return nil, err
 	}
+	_ = elog.Info(1, fmt.Sprintf("Log file opened: %s", logPath))
 
-	defer logFile.Close()
+	defer func(logFile *os.File) {
+		_ = logFile.Close()
+	}(logFile)
 
 	elw := &eventLogWriter{
 		log: elog,
 	}
 	log.Logger = log.Output(elw)
 
-	extensionService := &ExtensionService{
+	return &ExtensionService{
 		stopHandler: stopHandler,
+	}, nil
+}
+
+func (s *ExtensionService) Run() error {
+	return svc.Run(serviceName, s)
+}
+
+func (s *ExtensionService) Execute(_ []string, changeRequests <-chan svc.ChangeRequest, statuses chan<- svc.Status) (ssec bool, errno uint32) {
+	statuses <- svc.Status{State: svc.StartPending}
+	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
+	statuses <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+	for {
+		changeRequest := <-changeRequests
+		switch changeRequest.Cmd {
+		case svc.Stop, svc.Shutdown:
+			statuses <- svc.Status{State: svc.Stopped, Accepts: cmdsAccepted}
+			log.Fatal().Msg("Received Windows service stop command")
+			s.stopHandler()
+		default:
+			log.Info().Msgf("unexpected control request #%d", changeRequest)
+		}
 	}
-	return svc.Run("SteadybitExtensionHostWindows", extensionService)
 }
 
 type eventLogWriter struct {
