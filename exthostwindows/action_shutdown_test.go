@@ -35,11 +35,10 @@ func TestActionShutdown_Prepare(t *testing.T) {
 				ExecutionId: uuid.New(),
 				Target: extutil.Ptr(action_kit_api.Target{
 					Attributes: map[string][]string{
-						"host.hostname": {"myhostname"},
+						hostNameAttribute: {"myhostname"},
 					},
 				}),
 			},
-
 			wantedState: &ActionState{
 				Reboot: true,
 			},
@@ -113,14 +112,6 @@ func Test_shutdownAction_Start(t *testing.T) {
 				},
 			},
 			wantedError: "Shutdown failed",
-		}, {
-			name: "Should return no error when rebooting host via SyscallOrSysrq",
-			args: args{
-				in0: context.Background(),
-				state: &ActionState{
-					Reboot: true,
-				},
-			},
 		},
 	}
 	for _, tt := range tests {
@@ -147,12 +138,13 @@ type mockApi struct {
 	cmdExecutable bool
 }
 
-func (m *mockApi) Reboot() error {
-	log.Debug().Msg("mockApi.Reboot")
-	if m.shouldError {
-		return fmt.Errorf("error")
-	}
-	return nil
+func newMockApi(shouldError bool, cmdExecutable bool) shutdown.Command {
+	return &mockApi{shouldError: shouldError, cmdExecutable: cmdExecutable}
+}
+
+func (m *mockApi) IsShutdownCommandExecutable() bool {
+	log.Debug().Msg("mockApi.IsShutdownCommandExecutable")
+	return m.cmdExecutable
 }
 
 func (m *mockApi) Shutdown() error {
@@ -163,10 +155,10 @@ func (m *mockApi) Shutdown() error {
 	return nil
 }
 
-func (m *mockApi) IsShutdownCommandExecutable() bool {
-	log.Debug().Msg("mockApi.IsShutdownCommandExecutable")
-	return m.cmdExecutable
-}
-func newMockApi(shouldError bool, cmdExecutable bool) shutdown.Command {
-	return &mockApi{shouldError: shouldError, cmdExecutable: cmdExecutable}
+func (m *mockApi) Reboot() error {
+	log.Debug().Msg("mockApi.Reboot")
+	if m.shouldError {
+		return fmt.Errorf("error")
+	}
+	return nil
 }

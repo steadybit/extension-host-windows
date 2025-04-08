@@ -58,13 +58,13 @@ func (d *hostDiscovery) DescribeTarget() discovery_kit_api.TargetDescription {
 		// Specify attributes shown in table columns and to be used for sorting
 		Table: discovery_kit_api.Table{
 			Columns: []discovery_kit_api.Column{
-				{Attribute: "host.hostname"},
-				{Attribute: "host.ipv4"},
+				{Attribute: hostNameAttribute},
+				{Attribute: hostIp4Attribute},
 				{Attribute: "aws.zone", FallbackAttributes: &[]string{"google.zone", "azure.zone"}},
 			},
 			OrderBy: []discovery_kit_api.OrderBy{
 				{
-					Attribute: "host.hostname",
+					Attribute: hostNameAttribute,
 					Direction: "ASC",
 				},
 			},
@@ -75,49 +75,49 @@ func (d *hostDiscovery) DescribeTarget() discovery_kit_api.TargetDescription {
 func (d *hostDiscovery) DescribeAttributes() []discovery_kit_api.AttributeDescription {
 	return []discovery_kit_api.AttributeDescription{
 		{
-			Attribute: "host.hostname",
+			Attribute: hostNameAttribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "Hostname",
 				Other: "Hostnames",
 			},
 		}, {
-			Attribute: "host.domainname",
+			Attribute: hostDomainnameAttribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "Domainname",
 				Other: "Domainnames",
 			},
 		}, {
-			Attribute: "host.ipv4",
+			Attribute: hostIp4Attribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "IPv4",
 				Other: "IPv4s",
 			},
 		}, {
-			Attribute: "host.ipv6",
+			Attribute: hostIpv6Attribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "IPv6",
 				Other: "IPv6s",
 			},
 		}, {
-			Attribute: "host.nic",
+			Attribute: hostNic,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "NIC",
 				Other: "NICs",
 			},
 		}, {
-			Attribute: "host.os.family",
+			Attribute: hostOsFamilyAttribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "OS Family",
 				Other: "OS Families",
 			},
 		}, {
-			Attribute: "host.os.manufacturer",
+			Attribute: hostOsManufacturer,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "OS Manufacturer",
 				Other: "OS Manufacturers",
 			},
 		}, {
-			Attribute: "host.os.version",
+			Attribute: hostOsVersion,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "OS Version",
 				Other: "OS Versions",
@@ -133,8 +133,8 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 		TargetType: targetID,
 		Label:      hostname,
 		Attributes: map[string][]string{
-			"host.hostname": {hostname},
-			"host.nic":      networkutils.GetOwnNetworkInterfaces(),
+			hostNameAttribute: {hostname},
+			hostNic:           networkutils.GetOwnNetworkInterfaces(),
 		},
 	}
 
@@ -147,31 +147,31 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 		}
 	}
 	if len(ownIpV4s) > 0 {
-		target.Attributes["host.ipv4"] = ownIpV4s
+		target.Attributes[hostIp4Attribute] = ownIpV4s
 	}
 	if len(ownIpV6s) > 0 {
-		target.Attributes["host.ipv6"] = ownIpV6s
+		target.Attributes[hostIpv6Attribute] = ownIpV6s
 	}
 
 	if host, err := sysinfo.Host(); err == nil {
-		target.Attributes["host.os.family"] = []string{host.Info().OS.Family}
-		target.Attributes["host.os.manufacturer"] = []string{host.Info().OS.Name}
-		target.Attributes["host.os.version"] = []string{host.Info().OS.Version}
+		target.Attributes[hostOsFamilyAttribute] = []string{host.Info().OS.Family}
+		target.Attributes[hostOsManufacturer] = []string{host.Info().OS.Name}
+		target.Attributes[hostOsVersion] = []string{host.Info().OS.Version}
 
 		if fqdn, err := host.FQDNWithContext(ctx); err == nil {
-			target.Attributes["host.domainname"] = []string{fqdn}
+			target.Attributes[hostDomainnameAttribute] = []string{fqdn}
 		} else {
-			target.Attributes["host.domainname"] = []string{host.Info().Hostname}
+			target.Attributes[hostDomainnameAttribute] = []string{host.Info().Hostname}
 		}
 	} else {
 		log.Error().Err(err).Msg("Failed to get host info")
 	}
 
 	for key, value := range getEnvironmentVariables() {
-		target.Attributes["host.env."+key] = []string{value}
+		target.Attributes[hostEnv+key] = []string{value}
 	}
 	for key, value := range getLabels() {
-		target.Attributes["host.label."+key] = []string{value}
+		target.Attributes[hostLabel+key] = []string{value}
 	}
 
 	targets := []discovery_kit_api.Target{target}

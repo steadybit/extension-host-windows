@@ -26,7 +26,7 @@ func TestCheckTargetHostname(t *testing.T) {
 			name: "Should return error when hostname is not set",
 			args: args{
 				attributes: map[string][]string{
-					"host.hostname": {},
+					hostNameAttribute: {},
 				},
 			},
 			wantErr: assert.Error,
@@ -35,7 +35,7 @@ func TestCheckTargetHostname(t *testing.T) {
 			name: "Should return error when hostname is empty",
 			args: args{
 				attributes: map[string][]string{
-					"host.hostname": {""},
+					hostNameAttribute: {""},
 				},
 			},
 			wantErr: assert.Error,
@@ -44,7 +44,7 @@ func TestCheckTargetHostname(t *testing.T) {
 			name: "Should return no error",
 			args: args{
 				attributes: map[string][]string{
-					"host.hostname": {"myhostname"},
+					hostNameAttribute: {"myhostname"},
 				},
 			},
 			wantErr: assert.NoError,
