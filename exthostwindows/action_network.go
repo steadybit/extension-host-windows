@@ -6,7 +6,6 @@ package exthostwindows
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -135,14 +134,6 @@ func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*
 
 	err = network.Apply(ctx, opts)
 	if err != nil {
-		var toomany *network.ErrTooManyTcCommands
-		if errors.As(err, &toomany) {
-			result.Messages = extutil.Ptr(append(*result.Messages, action_kit_api.Message{
-				Level:   extutil.Ptr(action_kit_api.Error),
-				Message: fmt.Sprintf("Too many tc commands (%d) generated. This happens when too many excludes for steadybit agent and extensions are needed. Please configure a more specific attack by adding ports, and/or CIDRs to the parameters.", toomany.Count),
-			}))
-			return &result, nil
-		}
 		return &result, extension_kit.ToError("Failed to apply network settings.", err)
 	}
 
