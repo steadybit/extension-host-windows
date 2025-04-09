@@ -167,6 +167,14 @@ func ContainsAttribute(attributes map[string][]string, key string) bool {
 	return ok
 }
 
+func getIpFor(s string) []net.IP {
+	ips, _ := net.LookupIP(s)
+	if len(ips) == 0 {
+		return nil
+	}
+	return ips
+}
+
 func getCIDRsFor(s string, maskLen int) (cidrs []string) {
 	ips, _ := net.LookupIP(s)
 	for _, p := range ips {

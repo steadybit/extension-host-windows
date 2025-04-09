@@ -33,6 +33,7 @@ var (
 			},
 		}),
 	}
+	steadybitIPs   = getIpFor("steadybit.com")
 	steadybitCIDRs = getCIDRsFor("steadybit.com", 16)
 )
 
@@ -161,25 +162,25 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			wantedDelay:         true,
 		},
 		{
-			name:                "should delay only port traffic",
-			port:                []string{strconv.Itoa(port)},
+			name:                "should delay specified port traffic",
+			port:                []string{strconv.Itoa(netperf.Port)},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         true,
 		},
 		{
 			name:                "should not delay other port traffic",
-			port:                []string{strconv.Itoa(port + 1)},
+			port:                []string{strconv.Itoa(netperf.Port + 1)},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         false,
 		},
 		{
-			name:                "should delay only traffic for netperf",
+			name:                "should delay traffic to netperf",
 			ip:                  []string{netperf.Ip},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         true,
 		},
 		{
-			name:                "should delay only traffic for netperf using cidr",
+			name:                "should delay traffic for netperf using cidr",
 			ip:                  []string{fmt.Sprintf("%s/32", netperf.Ip)},
 			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
 			wantedDelay:         true,
@@ -244,8 +245,6 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
-	t.Skip("Only works with activated Windows firewall")
-
 	port, err := FindAvailablePorts(8080, 8800, 2)
 	require.NoError(t, err)
 	netperf := NewHttpNetperf(port)
@@ -254,59 +253,102 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 	defer func() { _ = netperf.Delete() }()
 
 	tests := []struct {
-		name             string
-		ip               []string
-		hostname         []string
-		port             []string
-		wantedReachesUrl bool
+		name       string
+		ip         []string
+		hostname   []string
+		port       []string
+		interfaces []string
+		wantedDrop bool
 	}{
 		{
-			name:             "should blackhole all traffic",
-			wantedReachesUrl: false,
+			name:       "should blackhole all traffic",
+			wantedDrop: true,
 		},
 		{
-			name:             "should blackhole only port 8080 traffic",
-			port:             []string{"8080"},
-			wantedReachesUrl: true,
+			name:       "should blackhole specified port traffic",
+			port:       []string{"80"},
+			wantedDrop: true,
 		},
 		{
-			name:             "should blackhole only port 80, 443 traffic",
-			port:             []string{"80", "443"},
-			wantedReachesUrl: false,
+			name:       "should blackhole other port traffic",
+			port:       []string{"12345"},
+			wantedDrop: false,
 		},
 		{
-			name:             "should blackhole only traffic for steadybit.com hostname",
-			hostname:         []string{"steadybit.com"},
-			wantedReachesUrl: false,
+			name:       "should blackhole traffic to ip",
+			ip:         []string{steadybitIPs[0].String()},
+			wantedDrop: true,
 		},
 		{
-			name:             "should blackhole only traffic for steadybit.com cider",
-			ip:               steadybitCIDRs,
-			wantedReachesUrl: false,
+			name:       "should blackhole traffic to steadybit.com hostname",
+			hostname:   []string{"steadybit.com"},
+			wantedDrop: true,
 		},
+		{
+			name:       "should blackhole traffic to other hostname",
+			hostname:   []string{"google.com"},
+			wantedDrop: false,
+		},
+		{
+			name:       "should blackhole traffic to steadybit.com cider",
+			ip:         steadybitCIDRs,
+			wantedDrop: true,
+		},
+		{
+			name:       "should blackhole all interfaces",
+			interfaces: network.GetOwnNetworkInterfaces(),
+			wantedDrop: true,
+		},
+		{
+			name:       "should blackhole none loopback interfaces",
+			interfaces: network.GetLoopbackNetworkInterfaces(),
+			wantedDrop: false,
+		},
+	}
+
+	// WinDivert considers all local requests as outgoing, hence, use the
+	// proxy functionality to check remote endpoints.
+	// If local communication isn't ignored the blackhole starts before
+	// the start response could be returned and the test fails.
+	executionContext := &action_kit_api.ExecutionContext{
+		RestrictedEndpoints: extutil.Ptr([]action_kit_api.RestrictedEndpoint{
+			{
+				Name:    "extension",
+				Cidr:    "127.0.0.0/8",
+				PortMin: 2,
+				PortMax: 65534,
+			}, {
+				Name:    "extension",
+				Cidr:    "::1/128",
+				PortMin: 2,
+				PortMax: 65534,
+			},
+		}),
 	}
 
 	for _, tt := range tests {
 		config := struct {
-			Duration int      `json:"duration"`
-			Ip       []string `json:"ip"`
-			Hostname []string `json:"hostname"`
-			Port     []string `json:"port"`
+			Duration     int      `json:"duration"`
+			Ip           []string `json:"ip"`
+			Hostname     []string `json:"hostname"`
+			Port         []string `json:"port"`
+			NetInterface []string `json:"networkInterface"`
 		}{
-			Duration: 30000,
-			Ip:       tt.ip,
-			Hostname: tt.hostname,
-			Port:     tt.port,
+			Duration:     30000,
+			Ip:           tt.ip,
+			Hostname:     tt.hostname,
+			Port:         tt.port,
+			NetInterface: tt.interfaces,
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
 			require.True(t, netperf.CanReach("steadybit.com"))
 
-			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, defaultExecutionContext)
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, executionContext)
 			defer func() { _ = action.Cancel() }()
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("steadybit.com"))
+			assert.Equal(t, !tt.wantedDrop, netperf.CanReach("steadybit.com"))
 
 			require.NoError(t, action.Cancel())
 			require.True(t, netperf.CanReach("steadybit.com"))
@@ -315,8 +357,6 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
-	t.Skip("Only works with activated Windows firewall")
-
 	port, err := FindAvailablePorts(8080, 8800, 2)
 	require.NoError(t, err)
 	netperf := NewHttpNetperf(port)

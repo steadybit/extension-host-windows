@@ -5,7 +5,9 @@ package exthostwindows
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -26,7 +28,7 @@ func getNetworkBlockDnsDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_block_dns", BaseActionID),
 		Label:       "Block DNS",
-		Description: "Blocks access to DNS servers",
+		Description: "Blocks access to DNS servers using WinDivert",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(dnsIcon),
 		TargetSelection: &action_kit_api.TargetSelection{
@@ -62,8 +64,14 @@ func blockDns() networkOptsProvider {
 		}
 		dnsPort := uint16(extutil.ToUInt(request.Config["dnsPort"]))
 
+		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
+		if duration < time.Second {
+			return nil, nil, errors.New("duration must be greater / equal than 1s")
+		}
+
 		return &network.BlackholeOpts{
-			Filter: network.Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: dnsPort, To: dnsPort})},
+			Filter:   network.Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: dnsPort, To: dnsPort})},
+			Duration: duration,
 		}, nil, nil
 	}
 }

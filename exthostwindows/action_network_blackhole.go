@@ -9,7 +9,9 @@ package exthostwindows
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -30,7 +32,7 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_blackhole", BaseActionID),
 		Label:       "Block Outgoing Traffic",
-		Description: "Blocks outgoing network traffic using Windows Firewall rules.",
+		Description: "Blocks outgoing network traffic using WinDivert.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(blackHoleIcon),
 		TargetSelection: &action_kit_api.TargetSelection{
@@ -41,7 +43,10 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 		Category:    extutil.Ptr("Network"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
-		Parameters:  commonNetworkParameters,
+		Parameters: append(
+			commonNetworkParameters,
+			networkInterfaceParameter,
+		),
 	}
 }
 
@@ -52,14 +57,27 @@ func blackhole() networkOptsProvider {
 			return nil, nil, err
 		}
 
-		messages := []action_kit_api.Message{} // make sure messages is not nil
-		filter, netMessages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
+		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
+		if duration < time.Second {
+			return nil, nil, errors.New("duration must be greater / equal than 1s")
+		}
+
+		interfaces := extutil.ToStringArray(request.Config["networkInterface"])
+		var interfaceIndexes []int
+		if len(interfaces) != 0 {
+			interfaceIndexes = network.GetNetworkInterfaceIndexesByName(interfaces)
+		}
+
+		filter, messages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
 		if err != nil {
 			return nil, nil, err
 		}
-		messages = append(messages, netMessages...)
 
-		return &network.BlackholeOpts{Filter: filter}, messages, nil
+		return &network.BlackholeOpts{
+			Filter:           filter,
+			Duration:         duration,
+			InterfaceIndexes: interfaceIndexes,
+		}, messages, nil
 	}
 }
 
