@@ -16,6 +16,7 @@ import (
 )
 
 var serviceName = "SteadybitExtensionHostWindows"
+var logDir = filepath.Join(os.Getenv("ProgramData"), "Steadybit GmbH", "Windows Host Extension", "Core")
 
 type ExtensionService struct {
 	stopHandler func()
@@ -52,7 +53,6 @@ func NewExtensionService(stopHandler func()) (*ExtensionService, error) {
 		_ = elog.Close()
 	}(elog)
 
-	logDir := filepath.Join(os.Getenv("ProgramData"), serviceName, "logs")
 	if err = os.MkdirAll(logDir, 0755); err != nil {
 		_ = elog.Error(1, fmt.Sprintf("Failed to create log directory: %v", err))
 	}
