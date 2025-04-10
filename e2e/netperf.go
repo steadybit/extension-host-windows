@@ -22,7 +22,7 @@ type HttpNetperf struct {
 
 func NewHttpNetperf(port int) *HttpNetperf {
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 	return &HttpNetperf{"127.0.0.1", port, 1, client, nil}
 }
