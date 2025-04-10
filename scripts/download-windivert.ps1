@@ -2,7 +2,8 @@
 param(
   [string]$DownloadDir = "dist",
   [string]$ReleaseVersion = "latest",
-  [switch]$IncludePrereleases = $true
+  [switch]$IncludePrereleases = $true,
+  [switch]$ForceDownload = $false
 )
 
 # Create download directory if it doesn't exist
@@ -11,7 +12,7 @@ if (-not (Test-Path $DownloadDir)) {
   New-Item -ItemType Directory -Path $DownloadDir | Out-Null
 }
 
-Write-Host "Downloading WinDivert release \"$ReleaseVersion\" from steadybit/WinDivert to $DownloadDir"
+Write-Host "Downloading WinDivert release $ReleaseVersion from steadybit/WinDivert to $DownloadDir"
 if ($IncludePrereleases) {
   Write-Host "Including prereleases!"
 }
@@ -56,17 +57,30 @@ try {
     exit 1
   }
 
-  # Download the zip file to a temporary location
-  $tempZipPath = [System.IO.Path]::GetTempFileName() + ".zip"
-  Write-Host "Downloading $($windowsBuildAsset.name) to temporary location..."
-  Invoke-WebRequest -Uri $windowsBuildAsset.browser_download_url -OutFile $tempZipPath
+   # Create a dedicated temp directory named after the tag name
+  $tempDir = Join-Path $env:TEMP "steadybit-extension-host-windows"
+  $releaseTempDir = Join-Path $tempDir $($release.tag_name)
+  $assetTempPath = Join-Path $releaseTempDir $($windowsBuildAsset.id)
+  $assetZipPath = Join-Path $assetTempPath "$($windowsBuildAsset.name)"
+
+
+  # Check if the file already exists locally
+  if ((Test-Path $assetZipPath) -and (-not $ForceDownload)) {
+    Write-Host "Using existing download from $assetZipPath"
+  } else {
+    # Create temp directory if it doesn't exist
+    if (-not (Test-Path $assetTempPath)) {
+      New-Item -ItemType Directory -Path $assetTempPath | Out-Null
+    }
+
+    # Download the zip file to the dedicated temp location
+    Write-Host "Downloading $($windowsBuildAsset.name) to $assetZipPath"
+    Invoke-WebRequest -Uri $windowsBuildAsset.browser_download_url -OutFile $assetZipPath
+  }
 
   # Extract the zip file to the destination directory
   Write-Host "Extracting to $DownloadDir..."
-  Expand-Archive -Path $tempZipPath -DestinationPath $DownloadDir -Force
-
-  # Clean up the temporary zip file
-  Remove-Item -Path $tempZipPath -Force
+  Expand-Archive -Path $assetZipPath -DestinationPath $DownloadDir -Force
 
   Write-Host "Successfully downloaded and extracted windows-build to $DownloadDir"
 } catch {
