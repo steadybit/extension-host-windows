@@ -7,10 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_commons/network"
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
@@ -69,8 +70,17 @@ func blockDns() networkOptsProvider {
 			return nil, nil, errors.New("duration must be greater / equal than 1s")
 		}
 
+		filter := network.Filter{
+			Filter: akn.Filter{
+				Include: akn.NewNetWithPortRanges(akn.NetAny,
+					akn.PortRange{
+						From: dnsPort,
+						To:   dnsPort,
+					}),
+			},
+		}
 		return &network.BlackholeOpts{
-			Filter:   network.Filter{Include: network.NewNetWithPortRanges(network.NetAny, network.PortRange{From: dnsPort, To: dnsPort})},
+			Filter:   filter,
 			Duration: duration,
 		}, nil, nil
 	}
