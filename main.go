@@ -6,9 +6,7 @@ package main
 
 import (
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_commons/runc"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_sdk"
@@ -44,8 +42,6 @@ func main() {
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkDelayContainerAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkCorruptPackagesContainerAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkPackageLossContainerAction())
-
-	log.Info().Interface("cfg", runc.ConfigFromEnvironment())
 
 	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
 

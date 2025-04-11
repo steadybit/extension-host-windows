@@ -7,12 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
@@ -96,7 +97,7 @@ func limitBandwidth() networkOptsProvider {
 			return nil, nil, err
 		}
 
-		includeCidrs, err := mapToNetworks(ctx, extutil.ToString(request.Config["host"]), extutil.ToString(request.Config["ip"]))
+		includeCidrs, err := utils.MapToNetworks(ctx, extutil.ToString(request.Config["host"]), extutil.ToString(request.Config["ip"]))
 		if err != nil {
 			return nil, nil, err
 		}

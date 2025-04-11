@@ -7,14 +7,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"net"
 	"strings"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_commons/network"
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-host-windows/config"
-	extension_kit "github.com/steadybit/extension-kit"
+	extensionKit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extutil"
 )
 
@@ -102,7 +104,7 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 
 	opts, messages, err := a.optsProvider(ctx, request)
 	if err != nil {
-		return nil, extension_kit.WrapError(err)
+		return nil, extensionKit.WrapError(err)
 	}
 
 	if messages == nil {
@@ -111,7 +113,7 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 
 	rawOpts, err := json.Marshal(opts)
 	if err != nil {
-		return nil, extension_kit.ToError("Failed to serialize network settings.", err)
+		return nil, extensionKit.ToError("Failed to serialize network settings.", err)
 	}
 
 	state.NetworkOpts = rawOpts
@@ -122,7 +124,7 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*action_kit_api.StartResult, error) {
 	opts, err := a.optsDecoder(state.NetworkOpts)
 	if err != nil {
-		return nil, extension_kit.ToError("Failed to deserialize network settings.", err)
+		return nil, extensionKit.ToError("Failed to deserialize network settings.", err)
 	}
 
 	result := action_kit_api.StartResult{Messages: &action_kit_api.Messages{
@@ -134,7 +136,7 @@ func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*
 
 	err = network.Apply(ctx, opts)
 	if err != nil {
-		return &result, extension_kit.ToError("Failed to apply network settings.", err)
+		return &result, extensionKit.ToError("Failed to apply network settings.", err)
 	}
 
 	return &result, nil
@@ -143,45 +145,14 @@ func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*
 func (a *networkAction) Stop(ctx context.Context, state *NetworkActionState) (*action_kit_api.StopResult, error) {
 	opts, err := a.optsDecoder(state.NetworkOpts)
 	if err != nil {
-		return nil, extension_kit.ToError("Failed to deserialize network settings.", err)
+		return nil, extensionKit.ToError("Failed to deserialize network settings.", err)
 	}
 
 	if err := network.Revert(ctx, opts); err != nil {
-		return nil, extension_kit.ToError("Failed to revert network settings.", err)
+		return nil, extensionKit.ToError("Failed to revert network settings.", err)
 	}
 
 	return nil, nil
-}
-
-func parsePortRanges(raw []string) ([]network.PortRange, error) {
-	if raw == nil {
-		return nil, nil
-	}
-
-	var ranges []network.PortRange
-
-	for _, r := range raw {
-		if len(r) == 0 {
-			continue
-		}
-		parsed, err := network.ParsePortRange(r)
-		if err != nil {
-			return nil, err
-		}
-		ranges = append(ranges, parsed)
-	}
-
-	return ranges, nil
-}
-
-func mapToNetworks(ctx context.Context, ipsOrCidrsOrHostnames ...string) ([]net.IPNet, error) {
-	dig := network.HostnameResolver{}
-	includeCidrs, unresolved := network.ParseCIDRs(ipsOrCidrsOrHostnames)
-	resolved, err := dig.Resolve(ctx, unresolved...)
-	if err != nil {
-		return nil, err
-	}
-	return append(includeCidrs, network.IpsToNets(resolved)...), nil
 }
 
 func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}, restrictedEndpoints []action_kit_api.RestrictedEndpoint) (network.Filter, action_kit_api.Messages, error) {
@@ -189,26 +160,26 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}
 		extutil.ToStringArray(actionConfig["ip"]),
 		extutil.ToStringArray(actionConfig["hostname"])...,
 	)
-	includeCidrs, err := mapToNetworks(ctx, ipsAndHosts...)
+	includeCidrs, err := utils.MapToNetworks(ctx, ipsAndHosts...)
 	if err != nil {
 		return network.Filter{}, nil, err
 	}
 
 	//if no hostname/ip specified we affect all ips
 	if len(includeCidrs) == 0 {
-		includeCidrs = network.NetAny
+		includeCidrs = akn.NetAny
 	}
 
-	portRanges, err := parsePortRanges(extutil.ToStringArray(actionConfig["port"]))
+	portRanges, err := utils.ParsePortRanges(extutil.ToStringArray(actionConfig["port"]))
 	if err != nil {
 		return network.Filter{}, nil, err
 	}
 	if len(portRanges) == 0 {
 		//if no hostname/ip specified we affect all ports
-		portRanges = []network.PortRange{network.PortRangeAny}
+		portRanges = []akn.PortRange{akn.PortRangeAny}
 	}
 
-	includes := network.NewNetWithPortRanges(includeCidrs, portRanges...)
+	includes := akn.NewNetWithPortRanges(includeCidrs, portRanges...)
 	for _, i := range includes {
 		i.Comment = "parameters"
 	}
@@ -218,7 +189,7 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}
 		return network.Filter{}, nil, err
 	}
 
-	excludes = append(excludes, network.ComputeExcludesForOwnIpAndPorts(config.Config.Port, config.Config.HealthPort)...)
+	excludes = append(excludes, akn.ComputeExcludesForOwnIpAndPorts(config.Config.Port, config.Config.HealthPort)...)
 
 	messages := []action_kit_api.Message{} // make sure messages is not nil
 	excludes, condensed := condenseExcludes(excludes)
@@ -231,17 +202,29 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}
 		})
 	}
 
-	return network.Filter{Include: includes, Exclude: excludes}, messages, nil
+	interfaces := extutil.ToStringArray(actionConfig["networkInterface"])
+	var interfaceIndexes []int
+	if len(interfaces) != 0 {
+		interfaceIndexes = akn.GetNetworkInterfaceIndexesByName(interfaces)
+	}
+
+	return network.Filter{
+		Filter: akn.Filter{
+			Include: includes,
+			Exclude: excludes,
+		},
+		InterfaceIndexes: interfaceIndexes,
+	}, messages, nil
 }
 
-func condenseExcludes(excludes []network.NetWithPortRange) ([]network.NetWithPortRange, bool) {
+func condenseExcludes(excludes []akn.NetWithPortRange) ([]akn.NetWithPortRange, bool) {
 	l := len(excludes)
-	excludes = network.CondenseNetWithPortRange(excludes, 500)
+	excludes = utils.CondenseNetWithPortRange(excludes, 500)
 	return excludes, l != len(excludes)
 }
 
-func toExcludes(restrictedEndpoints []action_kit_api.RestrictedEndpoint) ([]network.NetWithPortRange, error) {
-	var excludes []network.NetWithPortRange
+func toExcludes(restrictedEndpoints []action_kit_api.RestrictedEndpoint) ([]akn.NetWithPortRange, error) {
+	var excludes []akn.NetWithPortRange
 
 	for _, restrictedEndpoint := range restrictedEndpoints {
 		_, cidr, err := net.ParseCIDR(restrictedEndpoint.Cidr)
@@ -249,7 +232,7 @@ func toExcludes(restrictedEndpoints []action_kit_api.RestrictedEndpoint) ([]netw
 			return nil, fmt.Errorf("invalid cidr %s: %w", restrictedEndpoint.Cidr, err)
 		}
 
-		nwps := network.NewNetWithPortRanges([]net.IPNet{*cidr}, network.PortRange{From: uint16(restrictedEndpoint.PortMin), To: uint16(restrictedEndpoint.PortMax)})
+		nwps := akn.NewNetWithPortRanges([]net.IPNet{*cidr}, akn.PortRange{From: uint16(restrictedEndpoint.PortMin), To: uint16(restrictedEndpoint.PortMax)})
 		for i := range nwps {
 			var sb strings.Builder
 			if restrictedEndpoint.Name != "" {

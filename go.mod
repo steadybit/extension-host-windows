@@ -10,15 +10,15 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/rs/zerolog v1.34.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250409102610-f9742ffd7546
-	github.com/steadybit/action-kit/go/action_kit_commons v1.2.24-0.20250409102610-f9742ffd7546
-	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250409102610-f9742ffd7546
-	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250409102610-f9742ffd7546
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250411144932-82feff9e2166
+	github.com/steadybit/action-kit/go/action_kit_commons v1.2.25-0.20250411144932-82feff9e2166
+	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250411144932-82feff9e2166
+	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250411144932-82feff9e2166
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.2.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.2.3
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.1.2
-	github.com/steadybit/extension-kit v1.9.1-0.20250314141047-1f2ef94df26e
+	github.com/steadybit/extension-kit v1.9.1-0.20250411135435-74a4e931d5e9
 	github.com/stretchr/testify v1.10.0
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	go.uber.org/automaxprocs v1.6.0
@@ -58,7 +58,7 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/zmwangx/debounce v1.0.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
