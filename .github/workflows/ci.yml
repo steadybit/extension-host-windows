@@ -74,6 +74,8 @@ jobs:
     name: Build & Release
     needs: audit
     runs-on: windows-2022
+    outputs:
+      artifact-id: ${{ steps.artifact-upload.outputs.artifact-id }}
     timeout-minutes: 60
     steps:
       - name: Checkout repository
@@ -99,6 +101,7 @@ jobs:
         shell: powershell
 
       - name: Upload Artifacts
+        id: artifact-upload
         uses: actions/upload-artifact@v4
         with:
           path: |
@@ -114,3 +117,23 @@ jobs:
           prerelease: ${{ !contains(github.ref, '-') }}
           fail_on_unmatched_files: true
           files: "dist/*.zip"
+
+  refresh-demo:
+    name: Refresh Dev Demo
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Trigger Update EC2 Windows Demo
+        env:
+          ARTIFACT_ID: ${{needs.build.outputs.artifact-id}}
+        uses: the-actions-org/workflow-dispatch@v4
+        with:
+          workflow: Windows-demo-deploy
+          ref: main
+          repo: steadybit/infrastructure-live
+          inputs: >-
+            {
+              "artifact_id": "${{ env.ARTIFACT_ID }}"
+            }
+          token: ${{ secrets.PAT_TOKEN }}
