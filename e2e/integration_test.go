@@ -12,6 +12,7 @@ import (
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_test/validate"
 	"github.com/steadybit/extension-host-windows/exthostwindows"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -429,8 +430,7 @@ func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
 	limited := unlimited / 3
 	log.Info().Msgf("limited bandwidth: %v", limited)
 
-	dig := network.HostnameResolver{}
-	iperfIps, err := dig.Resolve(t.Context(), iperf.Ip)
+	iperfIps, err := utils.Resolve(t.Context(), iperf.Ip)
 	require.NoError(t, err)
 	iperfIp := iperfIps[0]
 	iperfNet := net.IPNet{IP: iperfIp, Mask: net.CIDRMask(24, 32)}

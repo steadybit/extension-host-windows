@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2024 Steadybit GmbH
 
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Steadybit GmbH
-
 package exthostwindows
 
 import (
@@ -11,10 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
@@ -62,21 +59,14 @@ func blackhole() networkOptsProvider {
 			return nil, nil, errors.New("duration must be greater / equal than 1s")
 		}
 
-		interfaces := extutil.ToStringArray(request.Config["networkInterface"])
-		var interfaceIndexes []int
-		if len(interfaces) != 0 {
-			interfaceIndexes = network.GetNetworkInterfaceIndexesByName(interfaces)
-		}
-
 		filter, messages, err := mapToNetworkFilter(ctx, request.Config, getRestrictedEndpoints(request))
 		if err != nil {
 			return nil, nil, err
 		}
 
 		return &network.BlackholeOpts{
-			Filter:           filter,
-			Duration:         duration,
-			InterfaceIndexes: interfaceIndexes,
+			Filter:   filter,
+			Duration: duration,
 		}, messages, nil
 	}
 }
