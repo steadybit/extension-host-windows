@@ -4,14 +4,12 @@
 package network
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"github.com/rs/zerolog/log"
 	aku "github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"golang.org/x/sys/windows/svc"
-	"os/exec"
 	"sync"
 	"time"
 )
@@ -76,17 +74,14 @@ func logCurrentQoSRules(ctx context.Context, when string) {
 	if !log.Trace().Enabled() {
 		return
 	}
-	var outb, errb bytes.Buffer
-	cmd := exec.CommandContext(ctx, "powershell", "-Command", "Get-NetQosPolicy", "-PolicyStore", "ActiveStore", "|", "Where-Object", "{ $_.Name -like \"STEADYBIT*\" }")
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-	err := cmd.Run()
+
+	qosCommand := []string{"Get-NetQosPolicy -PolicyStore ActiveStore | Where-Object { $_.Name -like \"STEADYBIT*\" }"}
+	out, err := utils.Execute(ctx, qosCommand, utils.PSInvoke)
 
 	if err != nil {
 		log.Trace().Err(err).Msg("failed to get current firewall rules")
-		return
 	} else {
-		log.Trace().Str("when", when).Str("rules", outb.String()).Msg("current fw rules")
+		log.Trace().Str("when", when).Str("rules", out).Msg("current fw rules")
 	}
 }
 
