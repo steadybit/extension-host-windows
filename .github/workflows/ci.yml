@@ -120,6 +120,7 @@ jobs:
 
   refresh-demo:
     name: Refresh Dev Demo
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 60
