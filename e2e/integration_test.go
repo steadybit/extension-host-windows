@@ -61,12 +61,31 @@ func TestWithLocalhost(t *testing.T) {
 			Name: "target discovery",
 			Test: testDiscovery,
 		}, {
+			Name: "stop process",
+			Test: testStopProcess,
+		}, {
+			Name: "network delay",
+			Test: testNetworkDelay,
+		}, {
 			Name: "network blackhole",
 			Test: testNetworkBlackhole,
 		}, {
 			Name: "network block dns",
 			Test: testNetworkBlockDns,
-		}})
+		}, {
+			Name: "network limit bandwidth",
+			Test: testNetworkLimitBandwidth,
+		}, {
+			Name: "network package loss",
+			Test: testNetworkPackageLoss,
+		}, {
+			Name: "network package corruption",
+			Test: testNetworkPackageCorruption,
+		}, {
+			Name: "two simultaneous network attacks should error",
+			Test: testTwoNetworkAttacks,
+		},
+	})
 }
 
 func validateDiscovery(t *testing.T, _ Environment, e Extension) {
