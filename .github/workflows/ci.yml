@@ -19,12 +19,6 @@ defaults:
   run:
     shell: pwsh
 
-env:
-  GOCACHE: D:\gocache
-  GOMODCACHE: D:\gomodcache
-  GOTMPDIR: D:\gotmp
-
-
 jobs:
   audit:
     name: Audit
