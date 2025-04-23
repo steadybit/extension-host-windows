@@ -47,7 +47,7 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.stop-process", BaseActionID),
 		Label:       "Stop Processes",
-		Description: "Stops targeted processes in the given duration.",
+		Description: "Stop targeted processes in the given duration.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(stopProcessIcon),
 		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{

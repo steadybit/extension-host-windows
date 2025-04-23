@@ -40,7 +40,7 @@ func (l *shutdownAction) Describe() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.shutdown", BaseActionID),
 		Label:       "Shutdown Host",
-		Description: "Reboots or shuts down the host.",
+		Description: "Reboot or shut down the host.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(shutdownIcon),
 		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{

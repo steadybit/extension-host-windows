@@ -29,7 +29,7 @@ func getNetworkBlockDnsDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_block_dns", BaseActionID),
 		Label:       "Block DNS",
-		Description: "Blocks access to DNS servers using WinDivert",
+		Description: "Block access to DNS servers.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(dnsIcon),
 		TargetSelection: &action_kit_api.TargetSelection{

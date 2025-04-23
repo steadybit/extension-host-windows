@@ -29,7 +29,7 @@ func getNetworkDelayDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_delay", BaseActionID),
 		Label:       "Delay Outgoing Traffic",
-		Description: "Inject latency into egress network traffic using WinDivert.",
+		Description: "Inject latency into egress network traffic.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(delayIcon),
 		TargetSelection: &action_kit_api.TargetSelection{

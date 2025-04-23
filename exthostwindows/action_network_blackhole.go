@@ -64,6 +64,9 @@ func blackhole() networkOptsProvider {
 			return nil, nil, err
 		}
 
+		// Block incoming and outgoing traffic
+		filter.Direction = network.DirectionAll
+
 		return &network.BlackholeOpts{
 			Filter:   filter,
 			Duration: duration,
