@@ -230,3 +230,31 @@ func TestWinDivertBuildFilterInterfacesAndInclude(t *testing.T) {
 
 	assert.Equal(t, "(tcp or udp) and outbound and (ifIdx == 1 or ifIdx == 2 or ifIdx == 3) and ((( ip.DstAddr >= 1.1.1.14 and ip.DstAddr <= 1.1.1.14 )? (( tcp.DstPort < 8000 or tcp.DstPort > 8002 ) or ( udp.DstPort < 8000 or udp.DstPort > 8002 )): true))", filter)
 }
+
+func TestWinDivertBuildFilterDirection(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
+		filter, _ := buildWinDivertFilter(Filter{})
+		assert.Equal(t, "(tcp or udp) and outbound", filter)
+	})
+
+	t.Run("outgoing", func(t *testing.T) {
+		filter, _ := buildWinDivertFilter(Filter{
+			Direction: DirectionOutgoing,
+		})
+		assert.Equal(t, "(tcp or udp) and outbound", filter)
+	})
+
+	t.Run("incoming", func(t *testing.T) {
+		filter, _ := buildWinDivertFilter(Filter{
+			Direction: DirectionIncoming,
+		})
+		assert.Equal(t, "(tcp or udp) and inbound", filter)
+	})
+
+	t.Run("all", func(t *testing.T) {
+		filter, _ := buildWinDivertFilter(Filter{
+			Direction: DirectionAll,
+		})
+		assert.Equal(t, "(tcp or udp)", filter)
+	})
+}

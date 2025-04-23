@@ -91,13 +91,14 @@ const closeGroup string = ")"
 func buildWinDivertFilter(f Filter) (string, error) {
 	var sb strings.Builder
 
-	sb.WriteString("(tcp or udp) and outbound")
+	sb.WriteString("(tcp or udp)")
+
+	if f.Direction != DirectionAll {
+		writeDirectionFilter(&sb, f.Direction)
+	}
 
 	if len(f.InterfaceIndexes) > 0 {
-		err := writeInterfaceFilter(&sb, f.InterfaceIndexes)
-		if err != nil {
-			return "", err
-		}
+		writeInterfaceFilter(&sb, f.InterfaceIndexes)
 	}
 
 	if len(f.Filter.Include) > 0 {
@@ -117,7 +118,16 @@ func buildWinDivertFilter(f Filter) (string, error) {
 	return sb.String(), nil
 }
 
-func writeInterfaceFilter(sb *strings.Builder, ifIdxs []int) error {
+func writeDirectionFilter(sb *strings.Builder, direction Direction) {
+	sb.WriteString(" and ")
+	if direction == DirectionIncoming {
+		sb.WriteString("inbound")
+	} else {
+		sb.WriteString("outbound")
+	}
+}
+
+func writeInterfaceFilter(sb *strings.Builder, ifIdxs []int) {
 	sb.WriteString(openGroup)
 	ifIdxStatements := make([]string, len(ifIdxs))
 	for i, ifIdx := range ifIdxs {
@@ -125,7 +135,6 @@ func writeInterfaceFilter(sb *strings.Builder, ifIdxs []int) error {
 	}
 	sb.WriteString(strings.Join(ifIdxStatements, " or "))
 	sb.WriteString(closeGroup)
-	return nil
 }
 
 func writeIncludeFilter(sb *strings.Builder, filter network.Filter) error {
