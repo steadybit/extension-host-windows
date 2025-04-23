@@ -28,8 +28,8 @@ func NewNetworkBlackholeContainerAction() action_kit_sdk.Action[NetworkActionSta
 func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 	return action_kit_api.ActionDescription{
 		Id:          fmt.Sprintf("%s.network_blackhole", BaseActionID),
-		Label:       "Block Outgoing Traffic",
-		Description: "Blocks outgoing network traffic using WinDivert.",
+		Label:       "Block Traffic",
+		Description: "Block network traffic (incoming and outgoing).",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(blackHoleIcon),
 		TargetSelection: &action_kit_api.TargetSelection{

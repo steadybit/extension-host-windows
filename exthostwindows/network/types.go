@@ -29,12 +29,25 @@ type WinOpts interface {
 	String() string
 }
 
+type Direction string
+
+var (
+	DirectionIncoming Direction = "Incoming"
+	DirectionOutgoing Direction = "Outgoing"
+	DirectionAll      Direction = "All"
+)
+
 type Filter struct {
 	Filter           akn.Filter
 	InterfaceIndexes []int
+	Direction        Direction
 }
 
 func (filter *Filter) writeStringForFilters(sb *strings.Builder) {
+	if filter.Direction != "" {
+		sb.WriteString("\ndirection: ")
+		sb.WriteString(string(filter.Direction))
+	}
 	f := filter.Filter
 	sb.WriteString("\nto/from:\n")
 	for _, inc := range f.Include {

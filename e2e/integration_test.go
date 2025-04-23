@@ -318,12 +318,12 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 			{
 				Name:    "extension",
 				Cidr:    "127.0.0.0/8",
-				PortMin: 2,
+				PortMin: 1,
 				PortMax: 65534,
 			}, {
 				Name:    "extension",
 				Cidr:    "::1/128",
-				PortMin: 2,
+				PortMin: 1,
 				PortMax: 65534,
 			},
 		}),
