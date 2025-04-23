@@ -24,10 +24,15 @@ const (
 func Execute(ctx context.Context, cmds []string, shell Shell) (string, error) {
 	log.Info().Strs("cmds", cmds).Msg("running commands")
 
+	// Sanitize commands before concatenation
+	for i := range cmds {
+		cmds[i] = SanitizePowershellArg(cmds[i])
+	}
+	commands := strings.Join(cmds, ";")
+
 	if shell == PSInvoke {
 		var outb, errb bytes.Buffer
-		joinedCommands := "\"" + strings.Join(cmds, ";") + "\""
-		cmd := exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", joinedCommands)
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", "\""+commands+"\"") //NOSONAR commands are sanitizes
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
 		err := cmd.Run()
@@ -36,7 +41,7 @@ func Execute(ctx context.Context, cmds []string, shell Shell) (string, error) {
 		}
 		return outb.String(), err
 	} else {
-		cmd := exec.Command("powershell", "-Command", strings.Join(cmds, ";"))
+		cmd := exec.Command("powershell", "-Command", commands) //NOSONAR commands are sanitizes
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}

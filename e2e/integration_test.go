@@ -6,6 +6,11 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -16,10 +21,6 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net"
-	"strconv"
-	"testing"
-	"time"
 )
 
 var (
@@ -29,8 +30,8 @@ var (
 				Name:    "extension",
 				Url:     "localhost",
 				Cidr:    "0.0.0.0/0",
-				PortMin: 8085,
-				PortMax: 8085,
+				PortMin: 8084,
+				PortMax: 8084,
 			},
 		}),
 	}
@@ -42,11 +43,12 @@ func TestWithLocalhost(t *testing.T) {
 	environment := newLocalEnvironment()
 	extFactory := LocalExtensionFactory{
 		Name: "extension-host-windows",
-		Port: 8085,
+		Port: 8084,
 		ExtraEnv: func() map[string]string {
 			return map[string]string{
 				"STEADYBIT_EXTENSION_DISCOVERY_ATTRIBUTES_EXCLUDES_HOST": "host.nic",
 				"STEADYBIT_EXTENSION_LOGGING_LEVEL":                      "trace",
+				"STEADYBIT_LOG_LEVEL":                                    "trace",
 			}
 		},
 	}
@@ -724,8 +726,8 @@ func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint 
 	for i := 0; i < count; i++ {
 		result = append(result, action_kit_api.RestrictedEndpoint{
 			Cidr:    fmt.Sprintf("%s/32", address.String()),
-			PortMin: 8085,
-			PortMax: 8086,
+			PortMin: 8084,
+			PortMax: 8085,
 		})
 		incrementIP(address, len(address)-1)
 	}

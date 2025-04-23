@@ -85,101 +85,131 @@ func setCorrectReplacements(replacements *map[string]string, family Family) {
 	}
 }
 
+const openGroup string = " and ("
+const closeGroup string = ")"
+
 func buildWinDivertFilter(f Filter) (string, error) {
 	var sb strings.Builder
-	filter := f.Filter
-	ifIdxs := f.InterfaceIndexes
 
+	sb.WriteString("(tcp or udp) and outbound")
+
+	if len(f.InterfaceIndexes) > 0 {
+		err := writeInterfaceFilter(&sb, f.InterfaceIndexes)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if len(f.Filter.Include) > 0 {
+		err := writeIncludeFilter(&sb, f.Filter)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if len(f.Filter.Exclude) > 0 {
+		err := writeExcludeFilter(&sb, f.Filter)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return sb.String(), nil
+}
+
+func writeInterfaceFilter(sb *strings.Builder, ifIdxs []int) error {
+	sb.WriteString(openGroup)
+	ifIdxStatements := make([]string, len(ifIdxs))
+	for i, ifIdx := range ifIdxs {
+		ifIdxStatements[i] = fmt.Sprintf("ifIdx == %d", ifIdx)
+	}
+	sb.WriteString(strings.Join(ifIdxStatements, " or "))
+	sb.WriteString(closeGroup)
+	return nil
+}
+
+func writeIncludeFilter(sb *strings.Builder, filter network.Filter) error {
 	replaceMap := map[string]string{
 		"tcpDstPort": "tcp.DstPort",
 		"udpDstPort": "udp.DstPort",
 	}
 
-	portTemplate := "(( {{.tcpDstPort}} >= %d and {{.tcpDstPort}} <= %d ) or ( {{.udpDstPort}} >= %d and {{.udpDstPort}} <= %d ))"
-	portTemplateExclude := "(( {{.tcpDstPort}} < %d or {{.tcpDstPort}} > %d ) or ( {{.udpDstPort}} < %d or {{.udpDstPort}} > %d ))"
-
-	sb.WriteString("(tcp or udp) and outbound")
-
-	if len(ifIdxs) > 0 {
-		sb.WriteString(" and (")
-		ifIdxStatements := make([]string, len(ifIdxs))
-		for i, ifIdx := range ifIdxs {
-			ifIdxStatements[i] = fmt.Sprintf("ifIdx == %d", ifIdx)
+	sb.WriteString(openGroup)
+	for i, ran := range filter.Include {
+		family, err := getFamily(ran.Net)
+		if err != nil {
+			return err
 		}
-		sb.WriteString(strings.Join(ifIdxStatements, " or "))
-		sb.WriteString(")")
+
+		setCorrectReplacements(&replaceMap, family)
+		portFilter := fmt.Sprintf("(( {{.tcpDstPort}} >= %d and {{.tcpDstPort}} <= %d ) or ( {{.udpDstPort}} >= %d and {{.udpDstPort}} <= %d ))",
+			ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
+		startIp, endIp, err := getStartEndIP(ran.Net)
+		if err != nil {
+			return err
+		}
+
+		config := fmt.Sprintf("( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s and %s)",
+			startIp.String(), endIp.String(), portFilter)
+
+		tmpl, err := template.New("filter").Parse(config)
+		if err != nil {
+			return err
+		}
+
+		err = tmpl.Execute(sb, replaceMap)
+		if err != nil {
+			return err
+		}
+
+		if i < len(filter.Include)-1 {
+			sb.WriteString(" or ")
+		}
+	}
+	sb.WriteString(closeGroup)
+	return nil
+}
+
+func writeExcludeFilter(sb *strings.Builder, filter network.Filter) error {
+	replaceMap := map[string]string{
+		"tcpDstPort": "tcp.DstPort",
+		"udpDstPort": "udp.DstPort",
 	}
 
-	if len(filter.Include) > 0 {
-		sb.WriteString(" and (")
-		for i, ran := range filter.Include {
-			family, err := getFamily(ran.Net)
-			if err != nil {
-				return "", err
-			}
-
-			setCorrectReplacements(&replaceMap, family)
-			portFilter := fmt.Sprintf(portTemplate, ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
-			startIp, endIp, err := getStartEndIP(ran.Net)
-			if err != nil {
-				return "", err
-			}
-
-			config := fmt.Sprintf("( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s and %s)", startIp.String(), endIp.String(), portFilter)
-
-			tmpl, err := template.New("filter").Parse(config)
-			if err != nil {
-				return "", err
-			}
-
-			err = tmpl.Execute(&sb, replaceMap)
-			if err != nil {
-				return "", err
-			}
-
-			if i < len(filter.Include)-1 {
-				sb.WriteString(" or ")
-			}
+	sb.WriteString(openGroup)
+	for i, ran := range filter.Exclude {
+		family, err := getFamily(ran.Net)
+		if err != nil {
+			return err
 		}
-		sb.WriteString(")")
-	}
 
-	if len(filter.Exclude) > 0 {
-		sb.WriteString(" and (")
-		for i, ran := range filter.Exclude {
-			family, err := getFamily(ran.Net)
-			if err != nil {
-				return "", err
-			}
-
-			setCorrectReplacements(&replaceMap, family)
-			portFilter := fmt.Sprintf(portTemplateExclude, ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
-			startIp, endIp, err := getStartEndIP(ran.Net)
-			if err != nil {
-				return "", err
-			}
-
-			config := fmt.Sprintf("(( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s )? %s: true)",
-				startIp.String(), endIp.String(), portFilter)
-
-			tmpl, err := template.New("filter").Parse(config)
-			if err != nil {
-				return "", err
-			}
-
-			err = tmpl.Execute(&sb, replaceMap)
-			if err != nil {
-				return "", err
-			}
-
-			if i < len(filter.Exclude)-1 {
-				sb.WriteString(" and ")
-			}
+		setCorrectReplacements(&replaceMap, family)
+		portFilter := fmt.Sprintf("(( {{.tcpDstPort}} < %d or {{.tcpDstPort}} > %d ) or ( {{.udpDstPort}} < %d or {{.udpDstPort}} > %d ))",
+			ran.PortRange.From, ran.PortRange.To, ran.PortRange.From, ran.PortRange.To)
+		startIp, endIp, err := getStartEndIP(ran.Net)
+		if err != nil {
+			return err
 		}
-		sb.WriteString(")")
-	}
 
-	return sb.String(), nil
+		config := fmt.Sprintf("(( {{.ipDstAddr}} >= %s and {{.ipDstAddr}} <= %s )? %s: true)",
+			startIp.String(), endIp.String(), portFilter)
+
+		tmpl, err := template.New("filter").Parse(config)
+		if err != nil {
+			return err
+		}
+
+		err = tmpl.Execute(sb, replaceMap)
+		if err != nil {
+			return err
+		}
+
+		if i < len(filter.Exclude)-1 {
+			sb.WriteString(" and ")
+		}
+	}
+	sb.WriteString(closeGroup)
+	return nil
 }
 
 func buildWinDivertFilterFile(f Filter) (string, error) {

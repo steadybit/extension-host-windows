@@ -5,12 +5,10 @@ package utils
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"net"
-	"os/exec"
 	"slices"
 	"strings"
 )
@@ -82,22 +80,18 @@ func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]
 }
 
 func (i *HostnameInput) Resolve(ctx context.Context) (*HostnameOutput, error) {
-	var outb, errb bytes.Buffer
 	hostnameOutput := HostnameOutput{
 		IPAddresses: make([]net.IP, 0),
 	}
 
 	for _, record := range i.Records {
-		cmd := exec.CommandContext(ctx, "powershell", "-command", "(", "Resolve-DnsName", "-Name", i.Hostname, "-Type", record, ").IPAddress")
-		cmd.Stdout = &outb
-		cmd.Stderr = &errb
-
-		err := cmd.Run()
+		cmd := []string{fmt.Sprintf("(Resolve-DnsName -Name %s -Type %s).IPAddress", i.Hostname, record)}
+		out, err := Execute(ctx, cmd, PSInvoke)
 		if err != nil {
-			return nil, fmt.Errorf("could not resolve hostnames: %w: %s", err, errb.String())
+			return nil, fmt.Errorf("could not resolve hostnames: %w", err)
 		}
 
-		scanner := bufio.NewScanner(&outb)
+		scanner := bufio.NewScanner(strings.NewReader(out))
 		for scanner.Scan() {
 			ipStr := strings.TrimSpace(scanner.Text())
 			ip := net.ParseIP(ipStr)
@@ -105,8 +99,6 @@ func (i *HostnameInput) Resolve(ctx context.Context) (*HostnameOutput, error) {
 				hostnameOutput.IPAddresses = append(hostnameOutput.IPAddresses, ip)
 			}
 		}
-
-		outb.Reset()
 	}
 
 	return &hostnameOutput, nil
