@@ -20,6 +20,6 @@
 		<Property Id="ARPPRODUCTICON" Value="icon"/>
 
 		<util:QueryNativeMachine/>
-		<Launch Condition="WIX_NATIVE_MACHINE = 34404" Message="x64 is the only supported architecture. Current architecture is [WIX_NATIVE_MACHINE]."/>
+		<Launch Condition="Installed OR WIX_NATIVE_MACHINE = 34404" Message="x64 is the only supported architecture. Current architecture is [WIX_NATIVE_MACHINE]."/>
   </Package>
 </Wix>
