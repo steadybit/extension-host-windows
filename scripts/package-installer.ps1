@@ -1,3 +1,8 @@
+if (-not ($Env:SKIP_LICENSES_REPORT -eq "false")){
+    Write-Output "License report must be set to 'false' in order to package the installer."
+    return
+}
+
 $scriptPath = $PSScriptRoot
 $distPath = "$scriptPath\..\dist"
 $extractPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller\Artifacts"
@@ -25,6 +30,8 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::ExtractToDirectory($latestZip, $extractPath)
 
 Write-Output "Extraction completed."
+
+Copy-Item licenses\THIRD-PARTY-LICENSES.csv windowspkg\WindowsHostExtensionInstaller\Artifacts
 
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath

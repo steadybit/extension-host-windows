@@ -9,6 +9,7 @@
     <Feature Id="Main">
       <ComponentGroupRef Id="WDNA" />
       <ComponentGroupRef Id="CORE" />
+      <ComponentGroupRef Id="LICENSES" />
     </Feature>
 
 		<UI Id="UI">
