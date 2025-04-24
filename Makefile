@@ -49,7 +49,9 @@ audit:
 .PHONY: clean
 clean:
 	powershell -Command "if (Test-Path 'dist') { Remove-Item -Path 'dist' -Force -Recurse }"
-	powershell -Command "if (Test-Path 'licenses') { Remove-Item 'licenses' -Recurse -Force }"
+	powershell -Command "if (Test-Path 'dist') { Remove-Item -Path 'dist' -Force -Recurse }"
+	powershell -Command "if (Test-Path 'windowspkg/WindowsHostExtensionInstaller/Artifacts') { Remove-Item 'windowspkg/WindowsHostExtensionInstaller/Artifacts' -Recurse -Force }"
+	powershell -Command "if (Test-Path 'windowspkg/WindowsHostExtensionInstaller/obj') { Remove-Item 'windowspkg/WindowsHostExtensionInstaller/obj' -Recurse -Force }"
 
 ## build: build the extension
 .PHONY: build
