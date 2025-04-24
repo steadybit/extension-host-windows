@@ -17,5 +17,10 @@
 				<ServiceControl Id="StartService" Name="SteadybitWindowsHostExtension" Start="install" Stop="both" Remove="uninstall" Wait="yes"/>
       </Component>
     </ComponentGroup>
+		<ComponentGroup Id="LICENSES" Directory="LICENSESFOLDER">
+			<Component Guid="008f98bc-24ac-472f-8db5-1cb7075a500a">
+				<File Source="./Artifacts/THIRD-PARTY-LICENSES.csv" KeyPath="yes"/>
+			</Component>
+		</ComponentGroup>
   </Fragment>
 </Wix>

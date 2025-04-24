@@ -5,6 +5,7 @@
 				<Directory Id="EXTENSIONFOLDER" Name="!(bind.Property.ProductName)">
 					<Directory Id="WDNAFOLDER" Name="CLI"/>
 					<Directory Id="COREFOLDER" Name="Core"/>
+					<Directory Id="LICENSESFOLDER" Name="Licenses"/>
 				</Directory>
 			</Directory>
     </StandardDirectory>

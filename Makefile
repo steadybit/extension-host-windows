@@ -17,6 +17,8 @@ ifeq ($(SKIP_LICENSES_REPORT), false)
 	go run github.com/google/go-licenses@v1.6.0 save . --save_path licenses
 	go run github.com/google/go-licenses@v1.6.0 report . > licenses/THIRD-PARTY.csv
 	powershell -Command "copy LICENSE licenses\LICENSE.txt"
+	powershell -Command "cat licenses\THIRD-PARTY.csv > licenses\THIRD-PARTY-LICENSES.csv"
+	powershell -Command "echo 'github.com/steadybit/WinDivert,https://github.com/steadybit/WinDivert/blob/main/LICENSE,LGPLv3' >> licenses\THIRD-PARTY-LICENSES.csv"
 endif
 
 # ==================================================================================== #
@@ -49,7 +51,7 @@ audit:
 .PHONY: clean
 clean:
 	powershell -Command "if (Test-Path 'dist') { Remove-Item -Path 'dist' -Force -Recurse }"
-	powershell -Command "if (Test-Path 'dist') { Remove-Item -Path 'dist' -Force -Recurse }"
+	powershell -Command "if (Test-Path 'licenses') { Remove-Item -Path 'licenses' -Force -Recurse }"
 	powershell -Command "if (Test-Path 'windowspkg/WindowsHostExtensionInstaller/Artifacts') { Remove-Item 'windowspkg/WindowsHostExtensionInstaller/Artifacts' -Recurse -Force }"
 	powershell -Command "if (Test-Path 'windowspkg/WindowsHostExtensionInstaller/obj') { Remove-Item 'windowspkg/WindowsHostExtensionInstaller/obj' -Recurse -Force }"
 
