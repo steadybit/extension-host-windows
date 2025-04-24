@@ -11,16 +11,15 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"io"
 	"os"
 	"path/filepath"
 )
 
 var serviceName = "SteadybitExtensionHostWindows"
-var logDir = filepath.Join(os.Getenv("ProgramData"), "Steadybit GmbH", "Windows Host Extension", "Core")
-
-type ExtensionService struct {
-	stopHandler func()
-}
+var applicationDataPath = filepath.Join(os.Getenv("ProgramData"), "Steadybit GmbH")
+var logFilePath = filepath.Join(applicationDataPath, "extension-host-windows.log")
 
 func ActivateWindowsServiceHandler(stopHandler func()) {
 	isInService, err := svc.IsWindowsService()
@@ -29,7 +28,7 @@ func ActivateWindowsServiceHandler(stopHandler func()) {
 	}
 	if isInService {
 		go func() {
-			service, err := NewExtensionService(stopHandler)
+			service, err := newExtensionService(stopHandler)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error starting as Windows service")
 				return
@@ -44,22 +43,25 @@ func ActivateWindowsServiceHandler(stopHandler func()) {
 	}
 }
 
-func NewExtensionService(stopHandler func()) (*ExtensionService, error) {
+type extensionService struct {
+	stopHandler func()
+}
+
+func newExtensionService(stopHandler func()) (*extensionService, error) {
 	elog, err := eventlog.Open(serviceName)
 	if err != nil {
 		return nil, err
 	}
-	defer func(elog *eventlog.Log) {
-		_ = elog.Close()
-	}(elog)
+	elw := &eventLogWriter{
+		log: elog,
+	}
 
-	if err = os.MkdirAll(logDir, 0755); err != nil {
+	if err = os.MkdirAll(applicationDataPath, 0755); err != nil {
 		_ = elog.Error(1, fmt.Sprintf("Failed to create log directory: %v", err))
 	}
 
-	logPath := filepath.Join(logDir, "extension.log")
 	logFile, err := os.OpenFile(
-		logPath,
+		logFilePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0664,
 	)
@@ -67,27 +69,31 @@ func NewExtensionService(stopHandler func()) (*ExtensionService, error) {
 		_ = elog.Error(1, fmt.Sprintf("Failed to open log file: %v", err))
 		return nil, err
 	}
-	_ = elog.Info(1, fmt.Sprintf("Log file opened: %s", logPath))
+	_ = logFile.Close()
+	_ = elog.Info(1, fmt.Sprintf("Log file opened: %s", logFilePath))
 
-	defer func(logFile *os.File) {
-		_ = logFile.Close()
-	}(logFile)
-
-	elw := &eventLogWriter{
-		log: elog,
+	flw := &lumberjack.Logger{
+		Filename:   logFilePath,
+		MaxBackups: 10,
+		MaxSize:    5,
 	}
-	log.Logger = log.Output(elw)
 
-	return &ExtensionService{
-		stopHandler: stopHandler,
+	log.Logger = log.Output(io.MultiWriter(flw, elw))
+
+	return &extensionService{
+		stopHandler: func() {
+			stopHandler()
+			_ = elog.Close()
+			_ = eventlog.Remove(serviceName)
+		},
 	}, nil
 }
 
-func (s *ExtensionService) Run() error {
+func (s *extensionService) Run() error {
 	return svc.Run(serviceName, s)
 }
 
-func (s *ExtensionService) Execute(_ []string, changeRequests <-chan svc.ChangeRequest, statuses chan<- svc.Status) (ssec bool, errno uint32) {
+func (s *extensionService) Execute(_ []string, changeRequests <-chan svc.ChangeRequest, statuses chan<- svc.Status) (bool, uint32) {
 	statuses <- svc.Status{State: svc.StartPending}
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	statuses <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
@@ -95,11 +101,11 @@ func (s *ExtensionService) Execute(_ []string, changeRequests <-chan svc.ChangeR
 		changeRequest := <-changeRequests
 		switch changeRequest.Cmd {
 		case svc.Stop, svc.Shutdown:
+			s.stopHandler()
 			statuses <- svc.Status{State: svc.Stopped, Accepts: cmdsAccepted}
 			log.Fatal().Msg("Received Windows service stop command")
-			s.stopHandler()
 		default:
-			log.Info().Msgf("unexpected control request #%d", changeRequest)
+			log.Info().Msgf("Unexpected control request: cmd %d", changeRequest.Cmd)
 		}
 	}
 }
@@ -115,13 +121,17 @@ func (w *eventLogWriter) Write(p []byte) (n int, err error) {
 	var event map[string]interface{}
 	err = d.Decode(&event)
 	if err != nil {
-		return
+		return 0, err
 	}
 
 	var logFn = w.log.Info
 	if l, ok := event[zerolog.LevelFieldName].(string); ok {
 		logFn = w.mapLevel(l)
 	}
+	if m, ok := event[zerolog.MessageFieldName].(string); ok {
+		return 0, logFn(1, m)
+	}
+	// If no message field is present log everything
 	return 0, logFn(1, string(p))
 }
 
@@ -131,7 +141,6 @@ func (w *eventLogWriter) mapLevel(zLevel string) func(uint32, string) error {
 	case zerolog.NoLevel, zerolog.Disabled:
 		return func(uint32, string) error {
 			return nil
-
 		}
 	case zerolog.TraceLevel, zerolog.DebugLevel, zerolog.InfoLevel:
 		return w.log.Info

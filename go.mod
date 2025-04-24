@@ -24,6 +24,7 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 	golang.org/x/sys v0.32.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
