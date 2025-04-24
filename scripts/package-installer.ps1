@@ -1,6 +1,6 @@
 if (-not ($Env:SKIP_LICENSES_REPORT -eq "false")){
     Write-Output "License report must be set to 'false' in order to package the installer."
-    return
+    return 1
 }
 
 $scriptPath = $PSScriptRoot
