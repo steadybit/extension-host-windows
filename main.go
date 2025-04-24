@@ -24,6 +24,11 @@ import (
 func main() {
 	extlogging.InitZeroLog()
 
+	// Register Windows Service early during startup to log messages as Windows application events
+	exthostwindows.ActivateWindowsServiceHandler(func() {
+		exthttp.StopListen()
+	})
+
 	extbuild.PrintBuildInformation()
 	extruntime.LogRuntimeInformation(zerolog.InfoLevel)
 
@@ -46,10 +51,6 @@ func main() {
 	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
 
 	extsignals.ActivateSignalHandlers()
-
-	exthostwindows.ActivateWindowsServiceHandler(func() {
-		exthttp.StopListen()
-	})
 
 	action_kit_sdk.RegisterCoverageEndpoints()
 
