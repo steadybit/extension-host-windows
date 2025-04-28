@@ -173,6 +173,6 @@ jobs:
           repo: steadybit/infrastructure-live
           inputs: >-
             {
-              "artifact_id": "${{ env.ARTIFACT_ID }}"
+              "prod_artifact_id": "${{ env.ARTIFACT_ID }}"
             }
           token: ${{ secrets.PAT_TOKEN }}
