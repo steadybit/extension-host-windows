@@ -140,7 +140,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - name: Trigger Update EC2 Windows Demo
         env:
@@ -148,6 +148,27 @@ jobs:
         uses: the-actions-org/workflow-dispatch@v4
         with:
           workflow: Windows-demo-deploy
+          ref: main
+          repo: steadybit/infrastructure-live
+          inputs: >-
+            {
+              "artifact_id": "${{ env.ARTIFACT_ID }}"
+            }
+          token: ${{ secrets.PAT_TOKEN }}
+
+  refresh-prod:
+    name: Refresh Prod Demo
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger Update Prod EC2 Windows Demo
+        env:
+          ARTIFACT_ID: ${{needs.build.outputs.artifact-id}}
+        uses: the-actions-org/workflow-dispatch@v4
+        with:
+          workflow: Windows-prod-demo-deploy
           ref: main
           repo: steadybit/infrastructure-live
           inputs: >-
