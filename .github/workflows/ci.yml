@@ -159,7 +159,7 @@ jobs:
   refresh-prod:
     name: Refresh Prod Demo
     if: github.ref == 'refs/heads/main'
-    needs: build
+    needs: [build, refresh-demo]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
