@@ -42,9 +42,9 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 		if o.Port != 0 {
 			additionalParameters = fmt.Sprintf("%s -IPDstPortMatchCondition %d", additionalParameters, o.Port)
 		}
-		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Precedence 255 -PolicyStore ActiveStore -Confirm:`$false -ThrottleRateActionBitsPerSecond %s %s", bandwidth, bandwidth, additionalParameters))
+		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Precedence 255 -PolicyStore ActiveStore -Confirm:$false -ThrottleRateActionBitsPerSecond %s %s", bandwidth, bandwidth, additionalParameters))
 	} else {
-		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore -Confirm:`$false", bandwidth))
+		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore -Confirm:$false", bandwidth))
 	}
 
 	return cmds, nil
