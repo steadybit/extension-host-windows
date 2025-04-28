@@ -85,8 +85,12 @@ func (i *HostnameInput) Resolve(ctx context.Context) (*HostnameOutput, error) {
 	}
 
 	for _, record := range i.Records {
-		cmd := []string{fmt.Sprintf("(Resolve-DnsName -Name %s -Type %s).IPAddress", i.Hostname, record)}
-		out, err := Execute(ctx, cmd, PSInvoke)
+		cmd := []string{
+			fmt.Sprintf("(Resolve-DnsName -Name %s -Type %s).IPAddress",
+				SanitizePowershellArg(i.Hostname),
+				SanitizePowershellArg(record)),
+		}
+		out, err := Execute(ctx, cmd, PSRun)
 		if err != nil {
 			return nil, fmt.Errorf("could not resolve hostnames: %w", err)
 		}
