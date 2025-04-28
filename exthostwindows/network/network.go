@@ -76,12 +76,12 @@ func logCurrentQoSRules(ctx context.Context, when string) {
 	}
 
 	qosCommand := []string{"Get-NetQosPolicy -PolicyStore ActiveStore | Where-Object { $_.Name -like \"STEADYBIT*\" }"}
-	out, err := utils.Execute(ctx, qosCommand, utils.PSInvoke)
+	out, err := utils.Execute(ctx, qosCommand, utils.PSRun)
 
 	if err != nil {
-		log.Trace().Err(err).Msg("failed to get current firewall rules")
+		log.Trace().Err(err).Msg("failed to get current QoS rules")
 	} else {
-		log.Trace().Str("when", when).Str("rules", out).Msg("current fw rules")
+		log.Trace().Str("when", when).Str("rules", out).Msg("current QoS rules")
 	}
 }
 
@@ -124,7 +124,7 @@ func ExecuteWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (st
 		return "", nil
 	}
 
-	out, err := utils.Execute(ctx, cmds, utils.PS)
+	out, err := utils.Execute(ctx, utils.SanitizePowershellArgs(cmds...), utils.PSStart)
 	if err == nil {
 		timeout := 10 * time.Second
 		if mode == ModeAdd {
@@ -144,5 +144,5 @@ func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 		return "", nil
 	}
 
-	return utils.Execute(ctx, cmds, utils.PSInvoke)
+	return utils.Execute(ctx, cmds, utils.PSRun)
 }

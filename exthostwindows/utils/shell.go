@@ -17,22 +17,20 @@ import (
 type Shell = string
 
 const (
-	PS       Shell = "PowerShell" // regular powershell.
-	PSInvoke Shell = "PSInvoke"   // powershell Invoke-Command
+	PSStart Shell = "PSStart"
+	PSRun   Shell = "PSRun"
 )
 
+// Execute runs the given commands in a powershell session.
+// Callers must make sure that passed in commands are properly sanitizes.
 func Execute(ctx context.Context, cmds []string, shell Shell) (string, error) {
 	log.Info().Strs("cmds", cmds).Msg("running commands")
 
-	// Sanitize commands before concatenation
-	for i := range cmds {
-		cmds[i] = SanitizePowershellArg(cmds[i])
-	}
 	commands := strings.Join(cmds, ";")
 
-	if shell == PSInvoke {
+	if shell == PSRun {
 		var outb, errb bytes.Buffer
-		cmd := exec.CommandContext(ctx, "powershell", "-Command", "Invoke-Expression", "\""+commands+"\"") //NOSONAR commands are sanitizes
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", commands) //NOSONAR commands are sanitizes
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
 		err := cmd.Run()
@@ -47,6 +45,14 @@ func Execute(ctx context.Context, cmds []string, shell Shell) (string, error) {
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		return "", cmd.Start()
 	}
+}
+
+func SanitizePowershellArgs(args ...string) []string {
+	var sanitizedArgs []string
+	for _, arg := range args {
+		sanitizedArgs = append(sanitizedArgs, SanitizePowershellArg(arg))
+	}
+	return sanitizedArgs
 }
 
 func SanitizePowershellArg(arg string) string {
