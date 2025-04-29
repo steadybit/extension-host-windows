@@ -18,12 +18,37 @@ The extension supports all environment variables provided by [steadybit/extensio
 
 ## Installation
 
-### Windows Binaries
+### Windows Installer
 
-Download the latest binaries from the project`s [GitHub release page](https://github.com/steadybit/WinDivert/releases).
+**Note**: Only x64 systems are supported.
+
+Download the latest Windows installer from the project`s [GitHub release page](https://github.com/steadybit/WinDivert/releases).
+
+As the extension requires extended privileges to execute host attacks, like injecting network traffic errors, the installer and the extension need to be executed as **Administrator user**.
+During installation a Windows Service with the name `SteadybitWindowsExtensionHost` is created and configured it run on startup on port `8085`.
 
 ## Extension registration
 
-Make sure that the extension is registered with the agent. In most cases this is done automatically. Please refer to
+Make sure that the extension is registered with the Steadybit agent. Please refer to
 the [documentation](https://docs.steadybit.com/install-and-configure/install-agent/extension-registration) for more
 information about extension registration and how to verify.
+
+In many cases adding the `STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_<n>_URL` environment variable to the Steadybit agent is sufficient:
+
+```shell
+STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_0_URL=http://<extension-windows-host-ip>:8085/
+```
+
+## Security
+
+We try to limit the permissions required by the extension to the absolute minimum.
+
+In order to execute network attacks the extension needs to be executed as an `Administrator`. Furthermore, the limit outgoing bandwidth attack creates and removed network QoS policies in the `SYSTEM` context.
+
+## Troubleshooting
+
+In case of problems the extension logs are always a good starting point for investigations. They are available as Windows application events or in the logfile `%PROGRAMDATA%/Steadybit GmbH/extension-host-windows.log`.
+
+### Extension can not be reached
+
+Please check if the extension Windows service is started correctly and (re-)start it.
