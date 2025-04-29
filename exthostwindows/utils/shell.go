@@ -47,6 +47,17 @@ func Execute(ctx context.Context, cmds []string, shell Shell) (string, error) {
 	}
 }
 
+// BuildSystemCommandFor builds up the commands to wrap the given one into a scheduled task executed in SYSTEM scope.
+func BuildSystemCommandFor(cmd string) []string {
+	scheduledTaskAction := fmt.Sprintf("$A=New-ScheduledTaskAction -Execute powershell -Argument \"-WindowStyle Hidden -Command %s\"", cmd)
+	principal := "$P=New-ScheduledTaskPrincipal -UserId \"SYSTEM\" -RunLevel Highest"
+	registerScheduledTask := "Register-ScheduledTask SteadybitTempQoSPolicyTask -Action $A -Principal $P"
+	startTask := "Start-ScheduledTask SteadybitTempQoSPolicyTask"
+	awaitExecution := "Start-Sleep -Milliseconds 100;for($i=0;$i -lt 20;$i++){if((Get-ScheduledTask -TaskName SteadybitTempQoSPolicyTask).State -ne 'Running'){break};Start-Sleep -Milliseconds 500};"
+	unregisterScheduledTask := "Unregister-ScheduledTask SteadybitTempQoSPolicyTask -Confirm:$false"
+	return []string{scheduledTaskAction, principal, registerScheduledTask, startTask, awaitExecution, unregisterScheduledTask}
+}
+
 func SanitizePowershellArgs(args ...string) []string {
 	var sanitizedArgs []string
 	for _, arg := range args {

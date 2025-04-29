@@ -23,8 +23,6 @@ func (o *LimitBandwidthOpts) WinDivertCommands(_ Mode) ([]string, error) {
 }
 
 func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
-	var cmds []string
-
 	expression, err := regexp.Compile("^[0-7]$")
 	if err != nil {
 		return nil, err
@@ -34,6 +32,9 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 	}
 	bandwidth := utils.SanitizePowershellArg(o.Bandwidth)
 
+	// Execute the NetQosPolicy commands in SYSTEM scope to affect all / already existing login sessions,
+	// otherwise the QoS would be restricted to the one the extension is using.
+	// This method still allows to use the ActiveStore to only add temporary QoS policies which are removed on reboot.
 	if mode == ModeAdd {
 		additionalParameters := ""
 		if o.IncludeCidr != nil {
@@ -42,12 +43,12 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 		if o.Port != 0 {
 			additionalParameters = fmt.Sprintf("%s -IPDstPortMatchCondition %d", additionalParameters, o.Port)
 		}
-		cmds = append(cmds, fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Precedence 255 -PolicyStore ActiveStore -Confirm:$false -ThrottleRateActionBitsPerSecond %s %s", bandwidth, bandwidth, additionalParameters))
+		netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Precedence 255 -PolicyStore ActiveStore -Confirm:`$false -ThrottleRateActionBitsPerSecond %s %s", bandwidth, bandwidth, additionalParameters)
+		return utils.BuildSystemCommandFor(netQosPolicyCommand), nil
 	} else {
-		cmds = append(cmds, fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore -Confirm:$false", bandwidth))
+		netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore -Confirm:`$false", bandwidth)
+		return utils.BuildSystemCommandFor(netQosPolicyCommand), nil
 	}
-
-	return cmds, nil
 }
 
 func (o *LimitBandwidthOpts) String() string {
