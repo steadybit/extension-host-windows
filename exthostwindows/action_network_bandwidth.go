@@ -97,7 +97,7 @@ func limitBandwidth() networkOptsProvider {
 			return nil, nil, err
 		}
 
-		includeCidrs, err := utils.MapToNetworks(ctx, extutil.ToString(request.Config["host"]), extutil.ToString(request.Config["ip"]))
+		includeCidrs, err := utils.MapToNetworks(ctx, extutil.ToString(request.Config["hostname"]), extutil.ToString(request.Config["ip"]))
 		if err != nil {
 			return nil, nil, err
 		}
