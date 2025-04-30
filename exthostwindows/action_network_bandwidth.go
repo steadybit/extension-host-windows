@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
-	"net"
 	"strconv"
 	"strings"
 
@@ -48,7 +47,7 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 				Name:         "bandwidth",
 				Label:        "Network Bandwidth",
 				Description:  extutil.Ptr("How much traffic should be allowed per second?"),
-				Type:         action_kit_api.Bitrate,
+				Type:         action_kit_api.ActionParameterTypeBitrate,
 				DefaultValue: extutil.Ptr("1024kbit"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),
@@ -56,26 +55,32 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "hostname",
 				Label:        "Hostname",
-				Description:  extutil.Ptr("Restrict to which host the traffic is affected (Only host or IP allowed)."),
-				Type:         action_kit_api.String,
+				Description:  extutil.Ptr("Restrict to/from which hosts the traffic is affected."),
+				Type:         action_kit_api.ActionParameterTypeStringArray,
 				DefaultValue: extutil.Ptr(""),
-				Advanced:     extutil.Ptr(true),
 				Order:        extutil.Ptr(101),
+				Hint: &action_kit_api.ActionHint{
+					Content: "Either the hostname or IP parameter is required.",
+					Type:    action_kit_api.HintInfo,
+				},
 			},
 			{
 				Name:         "ip",
 				Label:        "IP Address/CIDR",
-				Description:  extutil.Ptr("Restrict to which IP address or blocks the traffic is affected (Only host or IP allowed)."),
-				Type:         action_kit_api.String,
+				Description:  extutil.Ptr("Restrict to/from which IP addresses or blocks the traffic is affected."),
+				Type:         action_kit_api.ActionParameterTypeStringArray,
 				DefaultValue: extutil.Ptr(""),
-				Advanced:     extutil.Ptr(true),
 				Order:        extutil.Ptr(102),
+				Hint: &action_kit_api.ActionHint{
+					Content: "Either the hostname or IP parameter is required.",
+					Type:    action_kit_api.HintInfo,
+				},
 			},
 			{
 				Name:         "port",
-				Label:        "Port",
-				Description:  extutil.Ptr("Restrict to which port the traffic is affected."),
-				Type:         action_kit_api.String,
+				Label:        "Ports",
+				Description:  extutil.Ptr("Restrict to/from which ports the traffic is affected."),
+				Type:         action_kit_api.ActionParameterTypeStringArray,
 				DefaultValue: extutil.Ptr(""),
 				Advanced:     extutil.Ptr(true),
 				Order:        extutil.Ptr(103),
@@ -91,27 +96,36 @@ func limitBandwidth() networkOptsProvider {
 			return nil, nil, err
 		}
 
+		parsedDuration := extutil.ToUInt64(request.Config["duration"])
+		if parsedDuration == 0 {
+			return nil, nil, fmt.Errorf("duration is required")
+		}
+
 		bandwidth := extutil.ToString(request.Config["bandwidth"])
 		bandwidth, err = sanitizeBandwidthAttribute(bandwidth)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		includeCidrs, err := utils.MapToNetworks(ctx, extutil.ToString(request.Config["hostname"]), extutil.ToString(request.Config["ip"]))
+		ipsAndHosts := append(
+			extutil.ToStringArray(request.Config["ip"]),
+			extutil.ToStringArray(request.Config["hostname"])...,
+		)
+		if len(ipsAndHosts) == 0 {
+			return nil, nil, fmt.Errorf("hostname or IP required")
+		}
+
+		includeCidrs, err := utils.MapToNetworks(ctx, ipsAndHosts...)
 		if err != nil {
 			return nil, nil, err
-		}
-		var includeCidr *net.IPNet
-		if len(includeCidrs) > 0 {
-			includeCidr = &includeCidrs[0]
 		}
 
 		port := extutil.ToInt(request.Config["port"])
 
 		return &network.LimitBandwidthOpts{
-			Bandwidth:   bandwidth,
-			IncludeCidr: includeCidr,
-			Port:        port,
+			Bandwidth:    bandwidth,
+			IncludeCidrs: includeCidrs,
+			Port:         port,
 		}, nil, nil
 	}
 }

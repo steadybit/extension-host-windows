@@ -708,11 +708,13 @@ func testTwoNetworkAttacks(t *testing.T, l Environment, e Extension) {
 	require.NoError(t, err)
 
 	configLimit := struct {
-		Duration  int    `json:"duration"`
-		Bandwidth string `json:"bandwidth"`
+		Duration  int      `json:"duration"`
+		Bandwidth string   `json:"bandwidth"`
+		Hostname  []string `json:"hostname"`
 	}{
 		Duration:  10000,
 		Bandwidth: "200mbit",
+		Hostname:  []string{"localhost"},
 	}
 	actionLimit, err2 := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), configLimit, defaultExecutionContext)
 	defer func() { _ = actionLimit.Cancel() }()
