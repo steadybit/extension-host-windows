@@ -46,7 +46,7 @@ func getNetworkCorruptPackagesDescription() action_kit_api.ActionDescription {
 				Name:         "networkCorruption",
 				Label:        "Package Corruption",
 				Description:  extutil.Ptr("How much of the traffic should be corrupted?"),
-				Type:         action_kit_api.Percentage,
+				Type:         action_kit_api.ActionParameterTypePercentage,
 				DefaultValue: extutil.Ptr("15"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),

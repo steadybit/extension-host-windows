@@ -46,7 +46,7 @@ func getNetworkPackageLossDescription() action_kit_api.ActionDescription {
 				Name:         "percentage",
 				Label:        "Network Loss",
 				Description:  extutil.Ptr("How much of the traffic should be lost?"),
-				Type:         action_kit_api.Percentage,
+				Type:         action_kit_api.ActionParameterTypePercentage,
 				DefaultValue: extutil.Ptr("70"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),
