@@ -13,9 +13,9 @@ import (
 )
 
 type LimitBandwidthOpts struct {
-	Bandwidth   string
-	IncludeCidr *net.IPNet
-	Port        int
+	Bandwidth    string
+	IncludeCidrs []net.IPNet
+	Port         int
 }
 
 func (o *LimitBandwidthOpts) WinDivertCommands(_ Mode) ([]string, error) {
@@ -35,34 +35,38 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 	// Execute the NetQosPolicy commands in SYSTEM scope to affect all / already existing login sessions,
 	// otherwise the QoS would be restricted to the one the extension is using.
 	// This method still allows to use the ActiveStore to only add temporary QoS policies which are removed on reboot.
-	if mode == ModeAdd {
-		additionalParameters := ""
-		if o.IncludeCidr != nil {
-			additionalParameters = fmt.Sprintf("%s -IPDstPrefixMatchCondition '%s'", additionalParameters, o.IncludeCidr.String())
+	var cmds []string
+	for i, includeCidr := range o.IncludeCidrs {
+		if mode == ModeAdd {
+			additionalParameters := ""
+			if o.Port != 0 {
+				additionalParameters = fmt.Sprintf("%s -IPDstPortMatchCondition %d", additionalParameters, o.Port)
+			}
+			netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s_%d -Precedence 255 -PolicyStore ActiveStore -Confirm:`$false -ThrottleRateActionBitsPerSecond %s -IPDstPrefixMatchCondition '%s' %s",
+				bandwidth, i, bandwidth, includeCidr.String(), additionalParameters)
+			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
+		} else {
+			netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s_%d -PolicyStore ActiveStore -Confirm:`$false", bandwidth, i)
+			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
 		}
-		if o.Port != 0 {
-			additionalParameters = fmt.Sprintf("%s -IPDstPortMatchCondition %d", additionalParameters, o.Port)
-		}
-		netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s -Precedence 255 -PolicyStore ActiveStore -Confirm:`$false -ThrottleRateActionBitsPerSecond %s %s", bandwidth, bandwidth, additionalParameters)
-		return utils.BuildSystemCommandFor(netQosPolicyCommand), nil
-	} else {
-		netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s -PolicyStore ActiveStore -Confirm:`$false", bandwidth)
-		return utils.BuildSystemCommandFor(netQosPolicyCommand), nil
 	}
+	return cmds, nil
 }
 
 func (o *LimitBandwidthOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("limit bandwidth to ")
 	sb.WriteString(o.Bandwidth)
-	if o.IncludeCidr != nil || o.Port != 0 {
-		sb.WriteString(" for ")
-		if o.IncludeCidr != nil {
-			sb.WriteString(o.IncludeCidr.String())
-		}
-		if o.Port != 0 {
-			sb.WriteString(":")
-			sb.WriteString(strconv.Itoa(o.Port))
+	if len(o.IncludeCidrs) > 0 {
+		sb.WriteString(" for:\n")
+		for _, includeCidr := range o.IncludeCidrs {
+			sb.WriteString(" ")
+			sb.WriteString(includeCidr.String())
+			if o.Port != 0 {
+				sb.WriteString(":")
+				sb.WriteString(strconv.Itoa(o.Port))
+			}
+			sb.WriteString("\n")
 		}
 	}
 	return sb.String()
