@@ -46,7 +46,7 @@ func getNetworkBlockDnsDescription() action_kit_api.ActionDescription {
 				Name:         "dnsPort",
 				Label:        "DNS Port",
 				Description:  extutil.Ptr("dnsPort"),
-				Type:         action_kit_api.Integer,
+				Type:         action_kit_api.ActionParameterTypeInteger,
 				DefaultValue: extutil.Ptr("53"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),

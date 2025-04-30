@@ -56,7 +56,7 @@ func (l *shutdownAction) Describe() action_kit_api.ActionDescription {
 				Name:         "reboot",
 				Label:        "Reboot",
 				Description:  extutil.Ptr("Should the host reboot after shutting down?"),
-				Type:         action_kit_api.Boolean,
+				Type:         action_kit_api.ActionParameterTypeBoolean,
 				DefaultValue: extutil.Ptr("true"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(2),
