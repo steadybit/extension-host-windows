@@ -78,9 +78,9 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 			},
 			{
 				Name:         "port",
-				Label:        "Ports",
-				Description:  extutil.Ptr("Restrict to/from which ports the traffic is affected."),
-				Type:         action_kit_api.ActionParameterTypeStringArray,
+				Label:        "Port",
+				Description:  extutil.Ptr("Restrict to/from which port the traffic is affected."),
+				Type:         action_kit_api.ActionParameterTypeString,
 				DefaultValue: extutil.Ptr(""),
 				Advanced:     extutil.Ptr(true),
 				Order:        extutil.Ptr(103),
