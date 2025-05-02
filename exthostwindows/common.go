@@ -6,9 +6,11 @@ package exthostwindows
 import (
 	"fmt"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extutil"
 	"os"
+	"time"
 )
 
 const (
@@ -75,4 +77,24 @@ func getRestrictedEndpoints(request action_kit_api.PrepareActionRequestBody) []a
 		restrictedEndpoints = *request.ExecutionContext.RestrictedEndpoints
 	}
 	return restrictedEndpoints
+}
+
+func RegisterQosPolicyCleanup() func() {
+	var stop chan struct{}
+
+	go func() {
+		ticker := time.NewTicker(60 * time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				network.CleanupQosPolicies()
+			case <-stop:
+				return
+			}
+		}
+	}()
+
+	return func() {
+		stop <- struct{}{}
+	}
 }

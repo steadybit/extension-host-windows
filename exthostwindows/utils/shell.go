@@ -24,7 +24,7 @@ const (
 // ExecutePowershellCommand runs the given commands in a powershell session.
 // Callers must make sure that passed in commands are properly sanitizes.
 func ExecutePowershellCommand(ctx context.Context, cmds []string, shell Shell) (string, error) {
-	log.Info().Strs("cmds", cmds).Msg("running commands")
+	log.Debug().Strs("cmds", cmds).Msg("running commands")
 
 	commands := strings.Join(cmds, ";")
 

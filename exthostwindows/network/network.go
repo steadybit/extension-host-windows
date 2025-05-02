@@ -29,6 +29,17 @@ func Revert(ctx context.Context, opts WinOpts) error {
 	return generateAndRunCommands(ctx, opts, ModeDelete)
 }
 
+func CleanupQosPolicies() {
+	runLock.LockKey("windows")
+	defer func() { _ = runLock.UnlockKey("windows") }()
+	if !activeFw() {
+		err := removeSteadybitQosPolicies(context.Background())
+		if err != nil {
+			log.Error().Err(err).Msg("Error removing Steadybit QoS policies")
+		}
+	}
+}
+
 func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error {
 	qosCommands, err := opts.QoSCommands(mode)
 	if err != nil {
@@ -50,15 +61,13 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 	}
 
 	if len(qosCommands) > 0 {
-		logCurrentQoSRules(ctx, "before")
 		if _, qosErr := executeQoSCommands(ctx, qosCommands); qosErr != nil {
 			err = errors.Join(err, qosErr)
 		}
-		logCurrentQoSRules(ctx, "after")
 	}
 
 	if len(winDivertCommands) > 0 {
-		if _, wdErr := ExecuteWinDivertCommands(ctx, winDivertCommands, mode); wdErr != nil {
+		if _, wdErr := executeWinDivertCommands(ctx, winDivertCommands, mode); wdErr != nil {
 			err = errors.Join(err, wdErr)
 		}
 	}
@@ -70,19 +79,10 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 	return err
 }
 
-func logCurrentQoSRules(ctx context.Context, when string) {
-	if !log.Trace().Enabled() {
-		return
-	}
-
-	qosCommand := []string{"Get-NetQosPolicy -PolicyStore ActiveStore | Where-Object { $_.Name -like \"STEADYBIT*\" }"}
-	out, err := utils.Execute(ctx, qosCommand, utils.PSRun)
-
-	if err != nil {
-		log.Trace().Err(err).Msg("failed to get current QoS rules")
-	} else {
-		log.Trace().Str("when", when).Str("rules", out).Msg("current QoS rules")
-	}
+func activeFw() bool {
+	activeFWLock.Lock()
+	defer activeFWLock.Unlock()
+	return len(activeFirewall["windows"]) > 0
 }
 
 func pushActiveFw(opts WinOpts) error {
@@ -90,7 +90,7 @@ func pushActiveFw(opts WinOpts) error {
 	defer activeFWLock.Unlock()
 
 	for _, active := range activeFirewall["windows"] {
-		if !equals(opts, active) {
+		if opts.String() != active.String() {
 			return errors.New("running multiple network attacks at the same time is not supported")
 		}
 	}
@@ -108,22 +108,14 @@ func popActiveFw(id string, opts WinOpts) {
 		return
 	}
 	for i, a := range active {
-		if equals(opts, a) {
+		if opts.String() == a.String() {
 			activeFirewall[id] = append(active[:i], active[i+1:]...)
 			return
 		}
 	}
 }
 
-func equals(opts WinOpts, active WinOpts) bool {
-	return opts.String() == active.String()
-}
-
-func ExecuteWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (string, error) {
-	if len(cmds) == 0 {
-		return "", nil
-	}
-
+func executeWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (string, error) {
 	out, err := utils.ExecutePowershellCommand(ctx, utils.SanitizePowershellArgs(cmds...), utils.PSStart)
 	if err == nil {
 		timeout := 10 * time.Second
@@ -135,14 +127,11 @@ func ExecuteWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (st
 			log.Debug().Msgf("WinDivert service is stopped")
 		}
 	}
-
 	return out, err
 }
 
 func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
-	if len(cmds) == 0 {
-		return "", nil
-	}
-
+	logCurrentQoSRules(ctx, "before")
+	defer logCurrentQoSRules(ctx, "after")
 	return utils.ExecutePowershellCommand(ctx, cmds, utils.PSRun)
 }
