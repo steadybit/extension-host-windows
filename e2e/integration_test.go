@@ -255,6 +255,11 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 	require.NoError(t, err)
 	defer func() { _ = netperf.Delete() }()
 
+	var steadybitAddresses []string
+	for _, ip := range steadybitIPs {
+		steadybitAddresses = append(steadybitAddresses, ip.String())
+	}
+
 	tests := []struct {
 		name       string
 		ip         []string
@@ -279,7 +284,7 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 		},
 		{
 			name:       "should blackhole traffic to ip",
-			ip:         []string{steadybitIPs[0].String()},
+			ip:         steadybitAddresses,
 			wantedDrop: true,
 		},
 		{
