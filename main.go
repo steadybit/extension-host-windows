@@ -24,8 +24,12 @@ import (
 func main() {
 	extlogging.InitZeroLog()
 
+	// Register a QoS policy cleanup routine as additional safeguard.
+	stopQosCleanup := exthostwindows.RegisterQosPolicyCleanup()
+
 	// Register Windows Service early during startup to log messages as Windows application events
 	exthostwindows.ActivateWindowsServiceHandler(func() {
+		stopQosCleanup()
 		exthttp.StopListen()
 	})
 

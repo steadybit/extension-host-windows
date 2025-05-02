@@ -23,18 +23,11 @@ func (o *LimitBandwidthOpts) WinDivertCommands(_ Mode) ([]string, error) {
 }
 
 func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
-	expression, err := regexp.Compile("^[0-7]$")
+	bandwidth, err := o.parseBandwidth()
 	if err != nil {
 		return nil, err
 	}
-	if expression.MatchString(o.Bandwidth) {
-		return nil, fmt.Errorf("windows qos policy does not support rate settings below 8bit/s. (%s)", o.Bandwidth)
-	}
-	bandwidth := utils.SanitizePowershellArg(o.Bandwidth)
 
-	// Execute the NetQosPolicy commands in SYSTEM scope to affect all / already existing login sessions,
-	// otherwise the QoS would be restricted to the one the extension is using.
-	// This method still allows to use the ActiveStore to only add temporary QoS policies which are removed on reboot.
 	var cmds []string
 	for i, includeCidr := range o.IncludeCidrs {
 		if mode == ModeAdd {
@@ -42,15 +35,27 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 			if o.Port != 0 {
 				additionalParameters = fmt.Sprintf("%s -IPDstPortMatchCondition %d", additionalParameters, o.Port)
 			}
-			netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name STEADYBIT_QOS_%s_%d -Precedence 255 -PolicyStore ActiveStore -Confirm:`$false -ThrottleRateActionBitsPerSecond %s -IPDstPrefixMatchCondition '%s' %s",
-				bandwidth, i, bandwidth, includeCidr.String(), additionalParameters)
-			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
+			netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name %s%s_%d -Precedence 255 -Confirm:$false -ThrottleRateActionBitsPerSecond %s -IPDstPrefixMatchCondition '%s' %s",
+				qosPolicyPrefix, bandwidth, i, bandwidth, includeCidr.String(), additionalParameters)
+			cmds = append(cmds, netQosPolicyCommand)
 		} else {
-			netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name STEADYBIT_QOS_%s_%d -PolicyStore ActiveStore -Confirm:`$false", bandwidth, i)
-			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
+			netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name %s%s_%d -Confirm:$false", qosPolicyPrefix, bandwidth, i)
+			cmds = append(cmds, netQosPolicyCommand)
 		}
 	}
 	return cmds, nil
+}
+
+func (o *LimitBandwidthOpts) parseBandwidth() (string, error) {
+	expression, err := regexp.Compile("^[0-7]$")
+	if err != nil {
+		return "", err
+	}
+	if expression.MatchString(o.Bandwidth) {
+		return "", fmt.Errorf("windows qos policy does not support rate settings below 8bit/s. (%s)", o.Bandwidth)
+	}
+	bandwidth := utils.SanitizePowershellArg(o.Bandwidth)
+	return bandwidth, nil
 }
 
 func (o *LimitBandwidthOpts) String() string {
