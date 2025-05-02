@@ -53,7 +53,7 @@ func BuildSystemCommandFor(cmd string) []string {
 	principal := "$P=New-ScheduledTaskPrincipal -UserId \"SYSTEM\" -RunLevel Highest"
 	registerScheduledTask := "Register-ScheduledTask SteadybitTempQoSPolicyTask -Action $A -Principal $P"
 	startTask := "Start-ScheduledTask SteadybitTempQoSPolicyTask"
-	awaitExecution := "Start-Sleep -Milliseconds 100;for($i=0;$i -lt 20;$i++){if((Get-ScheduledTask -TaskName SteadybitTempQoSPolicyTask).State -ne 'Running'){break};Start-Sleep -Milliseconds 500};"
+	awaitExecution := "for($i=0;$i -lt 20;$i++){if((Get-ScheduledTask -TaskName SteadybitTempQoSPolicyTask).State -ne 'Running'){break};Start-Sleep -Milliseconds 100};"
 	unregisterScheduledTask := "Unregister-ScheduledTask SteadybitTempQoSPolicyTask -Confirm:$false"
 	return []string{scheduledTaskAction, principal, registerScheduledTask, startTask, awaitExecution, unregisterScheduledTask}
 }
