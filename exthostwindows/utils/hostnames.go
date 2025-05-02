@@ -90,7 +90,7 @@ func (i *HostnameInput) Resolve(ctx context.Context) (*HostnameOutput, error) {
 				SanitizePowershellArg(i.Hostname),
 				SanitizePowershellArg(record)),
 		}
-		out, err := Execute(ctx, cmd, PSRun)
+		out, err := ExecutePowershellCommand(ctx, cmd, PSRun)
 		if err != nil {
 			return nil, fmt.Errorf("could not resolve hostnames: %w", err)
 		}
