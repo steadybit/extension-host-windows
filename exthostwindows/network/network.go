@@ -124,7 +124,7 @@ func ExecuteWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (st
 		return "", nil
 	}
 
-	out, err := utils.Execute(ctx, utils.SanitizePowershellArgs(cmds...), utils.PSStart)
+	out, err := utils.ExecutePowershellCommand(ctx, utils.SanitizePowershellArgs(cmds...), utils.PSStart)
 	if err == nil {
 		timeout := 10 * time.Second
 		if mode == ModeAdd {
@@ -144,5 +144,5 @@ func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 		return "", nil
 	}
 
-	return utils.Execute(ctx, cmds, utils.PSRun)
+	return utils.ExecutePowershellCommand(ctx, cmds, utils.PSRun)
 }
