@@ -43,7 +43,7 @@ STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_0_URL=http://<extension-windows-host-ip
 
 We try to limit the permissions required by the extension to the absolute minimum.
 
-In order to execute network attacks the extension needs to be executed as an `Administrator`. Furthermore, the limit outgoing bandwidth attack creates and removed network QoS policies in the `SYSTEM` context.
+In order to execute network attacks the extension needs to be executed as `Administrator`. Furthermore, the limit outgoing bandwidth attack creates and removes network QoS policies in the `SYSTEM` context.
 
 ## Troubleshooting
 
