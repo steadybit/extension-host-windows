@@ -35,12 +35,12 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 			if o.Port != 0 {
 				additionalParameters = fmt.Sprintf("%s -IPDstPortMatchCondition %d", additionalParameters, o.Port)
 			}
-			netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name %s%s_%d -Precedence 255 -Confirm:$false -ThrottleRateActionBitsPerSecond %s -IPDstPrefixMatchCondition '%s' %s",
+			netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name %s%s_%d -Precedence 255 -Confirm:`$false -ThrottleRateActionBitsPerSecond %s -IPDstPrefixMatchCondition '%s' %s",
 				qosPolicyPrefix, bandwidth, i, bandwidth, includeCidr.String(), additionalParameters)
-			cmds = append(cmds, netQosPolicyCommand)
+			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
 		} else {
-			netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name %s%s_%d -Confirm:$false", qosPolicyPrefix, bandwidth, i)
-			cmds = append(cmds, netQosPolicyCommand)
+			netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name %s%s_%d -Confirm:`$false", qosPolicyPrefix, bandwidth, i)
+			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
 		}
 	}
 	return cmds, nil
