@@ -22,10 +22,10 @@ The extension supports all environment variables provided by [steadybit/extensio
 
 **Note**: Only x64 systems are supported.
 
-Download the latest Windows installer from the project`s [GitHub release page](https://github.com/steadybit/WinDivert/releases).
+Once available, download the latest Windows installer from the project`s [GitHub release page](https://github.com/steadybit/WinDivert/releases).
 
-As the extension requires extended privileges to execute host attacks, like injecting network traffic errors, the installer and the extension need to be executed as **Administrator user**.
-During installation a Windows Service with the name `SteadybitWindowsExtensionHost` is created and configured it run on startup on port `8085`.
+As the extension requires extended privileges to execute host attacks, like injecting network traffic errors, the installer and the extension need to be executed as an **Administrator user**.
+During installation, a Windows Service named `SteadybitWindowsExtensionHost` is created and configured. It runs on startup on port `8085`.
 
 ## Extension registration
 
@@ -41,14 +41,14 @@ STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_0_URL=http://<extension-windows-host-ip
 
 ## Security
 
-We try to limit the permissions required by the extension to the absolute minimum.
+We limit the permissions required by the extension to the absolute minimum.
 
-In order to execute network attacks the extension needs to be executed as `Administrator`. Furthermore, the limit outgoing bandwidth attack creates and removes network QoS policies in the `SYSTEM` context.
+The extension must be executed as `Administrator` to perform network attacks. Furthermore, the "limit outgoing bandwidth attack" creates and removes network quality of service policies in the `SYSTEM` context.
 
 ## Troubleshooting
 
-In case of problems the extension logs are always a good starting point for investigations. They are available as Windows application events or in the logfile `%PROGRAMDATA%/Steadybit GmbH/extension-host-windows.log`.
+In case of problems, the extension logs are always a good starting point for investigation. They are available as Windows application events or in the logfile `%PROGRAMDATA%/Steadybit GmbH/extension-host-windows.log`.
 
 ### Extension can not be reached
 
-Please check if the extension Windows service is started correctly and (re-)start it.
+Please check if the Windows service `SteadybitWindowsExtensionHost` is started correctly and (re-)start it.

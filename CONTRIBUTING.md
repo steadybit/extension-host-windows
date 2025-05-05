@@ -1,23 +1,5 @@
 # Contributing
 
-## Getting Started
-
-1. Clone the repository
-2. `$ make tidy`
-3. `$ make run`
-4. `$ open http://localhost:8080`
-
-## Tasks
-
-The `Makefile` in the project root contains commands to easily run common admin tasks:
-
-| Command        | Meaning                                                                                               |
-|----------------|-------------------------------------------------------------------------------------------------------|
-| `$ make tidy`  | Format all code using `go fmt` and tidy the `go.mod` file.                                            |
-| `$ make audit` | Run `go vet`, `staticheck`, execute all tests and verify required modules.                            |
-| `$ make build` | Build a binary for the extension. Creates a file called `extension` in the repository root directory. |
-| `$ make run`   | Build and then run the created binary.                                                                |
-
 ## Releasing the Code
 
 To make a new release, do the following:
