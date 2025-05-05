@@ -17,7 +17,7 @@ func Test_DiscoverTargets(t *testing.T) {
 	_ = os.Setenv("MyEnvVar", "MyEnvVarValue")
 	_ = os.Setenv("MyEnvVar2", "MyEnvVarValue2")
 	_ = os.Setenv("MyEnvVar3", "MyEnvVarValue3")
-	config.Config.DiscoveryAttributesExcludesHost = []string{hostNic}
+	config.Config.DiscoveryAttributesExcludesHost = []string{hostNicAttribute}
 
 	targets, _ := (&hostDiscovery{}).DiscoverTargets(context.Background())
 
@@ -31,12 +31,12 @@ func Test_DiscoverTargets(t *testing.T) {
 	assert.NotEmpty(t, attributes[hostNameAttribute])
 	assert.NotEmpty(t, attributes[hostDomainnameAttribute])
 	assert.NotEmpty(t, attributes[hostIp4Attribute])
-	assert.NotContains(t, attributes, hostNic)
+	assert.NotContains(t, attributes, hostNicAttribute)
 	assert.NotEmpty(t, attributes[hostOsFamilyAttribute])
-	assert.NotEmpty(t, attributes[hostOsManufacturer])
-	assert.NotEmpty(t, attributes[hostOsVersion])
-	assert.Equal(t, attributes[hostLabel+"foo"], []string{"Bar"})
-	assert.Equal(t, attributes[hostEnv+"myenvvar"], []string{"MyEnvVarValue"})
-	assert.Equal(t, attributes[hostEnv+"myenvvar2"], []string{"MyEnvVarValue2"})
-	assert.Equal(t, attributes[hostEnv+"myenvvar3"], []string{"MyEnvVarValue3"})
+	assert.NotEmpty(t, attributes[hostOsManufacturerAttribute])
+	assert.NotEmpty(t, attributes[hostOsVersionAttribute])
+	assert.Equal(t, attributes[hostLabelAttributePrefix+"foo"], []string{"Bar"})
+	assert.Equal(t, attributes[hostEnvAttributePrefix+"myenvvar"], []string{"MyEnvVarValue"})
+	assert.Equal(t, attributes[hostEnvAttributePrefix+"myenvvar2"], []string{"MyEnvVarValue2"})
+	assert.Equal(t, attributes[hostEnvAttributePrefix+"myenvvar3"], []string{"MyEnvVarValue3"})
 }
