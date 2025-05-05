@@ -12,6 +12,7 @@ import (
 	"github.com/steadybit/discovery-kit/go/discovery_kit_commons"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_sdk"
 	"github.com/steadybit/extension-host-windows/config"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 	"os"
@@ -174,6 +175,26 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 		target.Attributes[hostLabelAttributePrefix+key] = []string{value}
 	}
 
+	if id := awsInstanceId(ctx); id != "" {
+		target.Attributes[awsInstanceIdAttribute] = []string{id}
+	}
+
 	targets := []discovery_kit_api.Target{target}
 	return discovery_kit_commons.ApplyAttributeExcludes(targets, config.Config.DiscoveryAttributesExcludesHost), nil
+}
+
+func awsInstanceId(ctx context.Context) string {
+	if awsEnv := os.Getenv("AWS_EXECUTION_ENV"); awsEnv == "" {
+		return ""
+	}
+	commands := []string{
+		"$token = Invoke-RestMethod -Method PUT -Headers @{'X-aws-ec2-metadata-token-ttl-seconds' = '60'} http://169.254.169.254/latest/api/token",
+		"Invoke-RestMethod -Method GET -Headers @{'X-aws-ec2-metadata-token' = $token} http://169.254.169.254/latest/meta-data/local-hostname",
+	}
+	instanceId, err := utils.ExecutePowershellCommand(ctx, commands, utils.PSRun)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to retrieve AWS EC2 instance id")
+		return ""
+	}
+	return instanceId
 }
