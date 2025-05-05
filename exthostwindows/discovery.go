@@ -99,7 +99,7 @@ func (d *hostDiscovery) DescribeAttributes() []discovery_kit_api.AttributeDescri
 				Other: "IPv6s",
 			},
 		}, {
-			Attribute: hostNic,
+			Attribute: hostNicAttribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "NIC",
 				Other: "NICs",
@@ -111,13 +111,13 @@ func (d *hostDiscovery) DescribeAttributes() []discovery_kit_api.AttributeDescri
 				Other: "OS Families",
 			},
 		}, {
-			Attribute: hostOsManufacturer,
+			Attribute: hostOsManufacturerAttribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "OS Manufacturer",
 				Other: "OS Manufacturers",
 			},
 		}, {
-			Attribute: hostOsVersion,
+			Attribute: hostOsVersionAttribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "OS Version",
 				Other: "OS Versions",
@@ -134,7 +134,7 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 		Label:      hostname,
 		Attributes: map[string][]string{
 			hostNameAttribute: {hostname},
-			hostNic:           networkutils.GetOwnNetworkInterfaces(),
+			hostNicAttribute:  networkutils.GetOwnNetworkInterfaces(),
 		},
 	}
 
@@ -155,8 +155,8 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 
 	if host, err := sysinfo.Host(); err == nil {
 		target.Attributes[hostOsFamilyAttribute] = []string{host.Info().OS.Family}
-		target.Attributes[hostOsManufacturer] = []string{host.Info().OS.Name}
-		target.Attributes[hostOsVersion] = []string{host.Info().OS.Version}
+		target.Attributes[hostOsManufacturerAttribute] = []string{host.Info().OS.Name}
+		target.Attributes[hostOsVersionAttribute] = []string{host.Info().OS.Version}
 
 		if fqdn, err := host.FQDNWithContext(ctx); err == nil {
 			target.Attributes[hostDomainnameAttribute] = []string{fqdn}
@@ -168,10 +168,10 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 	}
 
 	for key, value := range getEnvironmentVariables() {
-		target.Attributes[hostEnv+key] = []string{value}
+		target.Attributes[hostEnvAttributePrefix+key] = []string{value}
 	}
 	for key, value := range getLabels() {
-		target.Attributes[hostLabel+key] = []string{value}
+		target.Attributes[hostLabelAttributePrefix+key] = []string{value}
 	}
 
 	targets := []discovery_kit_api.Target{target}

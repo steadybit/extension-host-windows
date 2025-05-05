@@ -39,6 +39,7 @@ func getEnvironmentVariables() map[string]string {
 	}
 	return envVars
 }
+
 func getLabels() map[string]string {
 	labels := map[string]string{}
 	env := os.Environ()
