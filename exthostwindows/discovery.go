@@ -178,6 +178,9 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 	if id := awsInstanceId(ctx); id != "" {
 		target.Attributes[awsInstanceIdAttribute] = []string{id}
 	}
+	if id := gcpInstanceId(ctx); id != "" {
+		target.Attributes[gcpInstanceIdAttribute] = []string{id}
+	}
 
 	targets := []discovery_kit_api.Target{target}
 	return discovery_kit_commons.ApplyAttributeExcludes(targets, config.Config.DiscoveryAttributesExcludesHost), nil
@@ -194,6 +197,16 @@ func awsInstanceId(ctx context.Context) string {
 	instanceId, err := utils.ExecutePowershellCommand(ctx, commands, utils.PSRun)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to retrieve AWS EC2 instance id")
+		return ""
+	}
+	return instanceId
+}
+
+func gcpInstanceId(ctx context.Context) string {
+	command := "if ((Get-WmiObject Win32_BIOS).Manufacturer -eq 'Google') { Invoke-RestMethod -Headers @{'Metadata-Flavor' = 'Google'} -Uri 'http://metadata.google.internal/computeMetadata/v1/instance/id' }"
+	instanceId, err := utils.ExecutePowershellCommand(ctx, []string{command}, utils.PSRun)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to retrieve GCP instance id")
 		return ""
 	}
 	return instanceId
