@@ -189,7 +189,7 @@ func awsInstanceId(ctx context.Context) string {
 	}
 	commands := []string{
 		"$token = Invoke-RestMethod -Method PUT -Headers @{'X-aws-ec2-metadata-token-ttl-seconds' = '60'} http://169.254.169.254/latest/api/token",
-		"Invoke-RestMethod -Method GET -Headers @{'X-aws-ec2-metadata-token' = $token} http://169.254.169.254/latest/meta-data/local-hostname",
+		"Invoke-RestMethod -Method GET -Headers @{'X-aws-ec2-metadata-token' = $token} http://169.254.169.254/latest/meta-data/instance-id",
 	}
 	instanceId, err := utils.ExecutePowershellCommand(ctx, commands, utils.PSRun)
 	if err != nil {
