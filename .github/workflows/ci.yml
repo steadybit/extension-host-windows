@@ -111,11 +111,8 @@ jobs:
         run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
 
       - name: Build extension installer
-        run: |
-          make installer
+        run: make installer
         shell: powershell
-        env:
-          SKIP_LICENSES_REPORT: false
 
       - name: Upload Artifacts
         id: artifact-upload

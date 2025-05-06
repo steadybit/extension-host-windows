@@ -13,7 +13,9 @@ help:
 ## licenses-report: generate a report of all licenses
 .PHONY: licenses-report
 licenses-report:
-ifeq ($(SKIP_LICENSES_REPORT), false)
+ifeq ($(SKIP_LICENSES_REPORT), true)
+	echo "Skipping licenses report generation"
+else
 	go run github.com/google/go-licenses@v1.6.0 save . --save_path licenses
 	go run github.com/google/go-licenses@v1.6.0 report . > licenses/THIRD-PARTY.csv
 	powershell -Command "copy LICENSE licenses\LICENSE.txt"
