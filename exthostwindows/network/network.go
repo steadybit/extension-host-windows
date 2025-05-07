@@ -6,12 +6,13 @@ package network
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
+
 	"github.com/rs/zerolog/log"
 	aku "github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"golang.org/x/sys/windows/svc"
-	"sync"
-	"time"
 )
 
 var (

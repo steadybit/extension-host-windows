@@ -8,8 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"time"
+
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
@@ -84,6 +85,8 @@ func delay() networkOptsProvider {
 		if err != nil {
 			return nil, nil, err
 		}
+
+		filter.Direction = network.DirectionOutgoing
 
 		return &network.DelayOpts{
 			Filter:   filter,

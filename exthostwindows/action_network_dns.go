@@ -7,8 +7,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"time"
+
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -79,6 +80,9 @@ func blockDns() networkOptsProvider {
 					}),
 			},
 		}
+
+		filter.Direction = network.DirectionOutgoing
+
 		return &network.BlackholeOpts{
 			Filter:   filter,
 			Duration: duration,

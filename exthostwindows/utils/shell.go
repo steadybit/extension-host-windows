@@ -7,11 +7,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Shell = string
@@ -30,7 +31,7 @@ func ExecutePowershellCommand(ctx context.Context, cmds []string, shell Shell) (
 
 	if shell == PSRun {
 		var outb, errb bytes.Buffer
-		cmd := exec.CommandContext(ctx, "powershell", "-Command", commands) //NOSONAR commands are sanitizes
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", commands) //NOSONAR commands are sanitized
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
 		err := cmd.Run()
@@ -39,7 +40,7 @@ func ExecutePowershellCommand(ctx context.Context, cmds []string, shell Shell) (
 		}
 		return outb.String(), err
 	} else {
-		cmd := exec.Command("powershell", "-Command", commands) //NOSONAR commands are sanitizes
+		cmd := exec.Command("powershell", "-Command", commands) //NOSONAR commands are sanitized
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
