@@ -53,16 +53,22 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 				Order:        extutil.Ptr(1),
 			},
 			{
+				Name:  "filter",
+				Label: "Traffic Filter",
+				Type:  action_kit_api.ActionParameterTypeHeader,
+				Order: extutil.Ptr(100),
+				Hint: &action_kit_api.ActionHint{
+					Content: "Either the hostname or IP parameter is required.",
+					Type:    action_kit_api.HintInfo,
+				},
+			},
+			{
 				Name:         "hostname",
 				Label:        "Hostname",
 				Description:  extutil.Ptr("Restrict to/from which hosts the traffic is affected."),
 				Type:         action_kit_api.ActionParameterTypeStringArray,
 				DefaultValue: extutil.Ptr(""),
 				Order:        extutil.Ptr(101),
-				Hint: &action_kit_api.ActionHint{
-					Content: "Either the hostname or IP parameter is required.",
-					Type:    action_kit_api.HintInfo,
-				},
 			},
 			{
 				Name:         "ip",
@@ -71,10 +77,6 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 				Type:         action_kit_api.ActionParameterTypeStringArray,
 				DefaultValue: extutil.Ptr(""),
 				Order:        extutil.Ptr(102),
-				Hint: &action_kit_api.ActionHint{
-					Content: "Either the hostname or IP parameter is required.",
-					Type:    action_kit_api.HintInfo,
-				},
 			},
 			{
 				Name:         "port",
