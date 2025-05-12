@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
+	"net"
 	"strconv"
 	"strings"
 
@@ -122,14 +124,43 @@ func limitBandwidth() networkOptsProvider {
 			return nil, nil, err
 		}
 
-		port := extutil.ToInt(request.Config["port"])
+		var portRange akn.PortRange
+		if portRangeParameter := extutil.ToString(request.Config["port"]); portRangeParameter != "" {
+			portRange, err = akn.ParsePortRange(portRangeParameter)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
+		err = validateRestrictedEndpoints(request, includeCidrs, portRange)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		return &network.LimitBandwidthOpts{
 			Bandwidth:    bandwidth,
 			IncludeCidrs: includeCidrs,
-			Port:         port,
+			PortRange:    portRange,
 		}, nil, nil
 	}
+}
+
+func validateRestrictedEndpoints(request action_kit_api.PrepareActionRequestBody, includeCidrs []net.IPNet, portRange akn.PortRange) error {
+	restrictedEndpoints, err := toExcludes(getRestrictedEndpoints(request))
+	if err != nil {
+		return fmt.Errorf("failed to validate restricted endpoints: %w", err)
+	}
+
+	targets := akn.NewNetWithPortRanges(includeCidrs, portRange)
+	for _, target := range targets {
+		for _, restricted := range restrictedEndpoints {
+			if target.Overlap(restricted) {
+				return fmt.Errorf("target %s overlaps with restricted endpoint %s", target.String(), restricted.String())
+			}
+		}
+	}
+
+	return nil
 }
 
 func sanitizeBandwidthAttribute(bandwidth string) (string, error) {

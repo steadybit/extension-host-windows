@@ -4,6 +4,7 @@
 package network
 
 import (
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
@@ -24,7 +25,10 @@ func Test_LimitBandwidth_create_one_policy_per_ip(t *testing.T) {
 		IncludeCidrs: []net.IPNet{
 			*ipNet1, *ipNet2,
 		},
-		Port: 9876,
+		PortRange: network.PortRange{
+			From: 9876,
+			To:   9876,
+		},
 	}
 
 	err = Apply(t.Context(), &limitBandwidthOpts)

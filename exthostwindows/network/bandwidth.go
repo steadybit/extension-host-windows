@@ -5,17 +5,17 @@ package network
 
 import (
 	"fmt"
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"net"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
 type LimitBandwidthOpts struct {
 	Bandwidth    string
 	IncludeCidrs []net.IPNet
-	Port         int
+	PortRange    network.PortRange
 }
 
 func (o *LimitBandwidthOpts) WinDivertCommands(_ Mode) ([]string, error) {
@@ -32,8 +32,8 @@ func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
 	for i, includeCidr := range o.IncludeCidrs {
 		if mode == ModeAdd {
 			additionalParameters := ""
-			if o.Port != 0 {
-				additionalParameters = fmt.Sprintf("%s -IPDstPortMatchCondition %d", additionalParameters, o.Port)
+			if o.PortRange.From != 0 && o.PortRange.To != 0 {
+				additionalParameters = fmt.Sprintf("%s -IPDstPortStartMatchCondition %d -IPDstPortEndMatchCondition %d", additionalParameters, o.PortRange.From, o.PortRange.To)
 			}
 			netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name %s%s_%d -Precedence 255 -Confirm:`$false -ThrottleRateActionBitsPerSecond %s -IPDstPrefixMatchCondition '%s' %s",
 				qosPolicyPrefix, bandwidth, i, bandwidth, includeCidr.String(), additionalParameters)
@@ -67,9 +67,8 @@ func (o *LimitBandwidthOpts) String() string {
 		for _, includeCidr := range o.IncludeCidrs {
 			sb.WriteString(" ")
 			sb.WriteString(includeCidr.String())
-			if o.Port != 0 {
-				sb.WriteString(":")
-				sb.WriteString(strconv.Itoa(o.Port))
+			if o.PortRange.From != 0 && o.PortRange.To != 0 {
+				sb.WriteString(fmt.Sprintf(":%d-%d", o.PortRange.From, o.PortRange.To))
 			}
 			sb.WriteString("\n")
 		}
