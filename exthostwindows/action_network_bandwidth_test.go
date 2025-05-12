@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/stretchr/testify/assert"
@@ -106,6 +107,120 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 				},
 			},
 			wantedError: "duration is required",
+		}, {
+			name: "Should return error on restricted endpoint",
+			requestBody: action_kit_api.PrepareActionRequestBody{
+				ExecutionContext: &action_kit_api.ExecutionContext{
+					RestrictedEndpoints: &[]action_kit_api.RestrictedEndpoint{
+						{
+							Cidr: "1.1.1.1/32",
+						},
+					},
+				},
+				Config: map[string]interface{}{
+					"action":    "prepare",
+					"duration":  "10000",
+					"bandwidth": "1000mbit",
+					"ip":        []interface{}{"1.1.1.1"},
+				},
+				ExecutionId: uuid.New(),
+				Target: &action_kit_api.Target{
+					Attributes: map[string][]string{
+						hostNameAttribute: {"myhostname"},
+					},
+				},
+			},
+			wantedError: "target 1.1.1.1/32 0 overlaps with restricted endpoint 1.1.1.1/32 0",
+		}, {
+			name: "Should return error on restricted endpoint with matching port",
+			requestBody: action_kit_api.PrepareActionRequestBody{
+				ExecutionContext: &action_kit_api.ExecutionContext{
+					RestrictedEndpoints: &[]action_kit_api.RestrictedEndpoint{
+						{
+							Cidr:    "1.1.1.1/32",
+							PortMin: 123,
+							PortMax: 321,
+						},
+					},
+				},
+				Config: map[string]interface{}{
+					"action":    "prepare",
+					"duration":  "10000",
+					"bandwidth": "1000mbit",
+					"ip":        []interface{}{"1.1.1.1"},
+					"port":      "200",
+				},
+				ExecutionId: uuid.New(),
+				Target: &action_kit_api.Target{
+					Attributes: map[string][]string{
+						hostNameAttribute: {"myhostname"},
+					},
+				},
+			},
+			wantedError: "target 1.1.1.1/32 200 overlaps with restricted endpoint 1.1.1.1/32 123-321",
+		}, {
+			name: "Should return error on restricted endpoint with matching port range",
+			requestBody: action_kit_api.PrepareActionRequestBody{
+				ExecutionContext: &action_kit_api.ExecutionContext{
+					RestrictedEndpoints: &[]action_kit_api.RestrictedEndpoint{
+						{
+							Cidr:    "1.1.1.1/32",
+							PortMin: 123,
+							PortMax: 321,
+						},
+					},
+				},
+				Config: map[string]interface{}{
+					"action":    "prepare",
+					"duration":  "10000",
+					"bandwidth": "1000mbit",
+					"ip":        []interface{}{"1.1.1.1"},
+					"port":      "111-222",
+				},
+				ExecutionId: uuid.New(),
+				Target: &action_kit_api.Target{
+					Attributes: map[string][]string{
+						hostNameAttribute: {"myhostname"},
+					},
+				},
+			},
+			wantedError: "target 1.1.1.1/32 111-222 overlaps with restricted endpoint 1.1.1.1/32 123-321",
+		}, {
+			name: "Should return config on restricted endpoint with different port range",
+			requestBody: action_kit_api.PrepareActionRequestBody{
+				ExecutionContext: &action_kit_api.ExecutionContext{
+					RestrictedEndpoints: &[]action_kit_api.RestrictedEndpoint{
+						{
+							Cidr:    "1.1.1.1/32",
+							PortMin: 123,
+							PortMax: 321,
+						},
+					},
+				},
+				Config: map[string]interface{}{
+					"action":    "prepare",
+					"duration":  "10000",
+					"bandwidth": "1000mbit",
+					"ip":        []interface{}{"1.1.1.1"},
+					"port":      "111-122",
+				},
+				ExecutionId: uuid.New(),
+				Target: &action_kit_api.Target{
+					Attributes: map[string][]string{
+						hostNameAttribute: {"myhostname"},
+					},
+				},
+			},
+			wantedState: &network.LimitBandwidthOpts{
+				Bandwidth: "1000MB",
+				PortRange: akn.PortRange{
+					From: 111,
+					To:   122,
+				},
+				IncludeCidrs: []net.IPNet{
+					{IP: net.ParseIP("1.1.1.1"), Mask: net.CIDRMask(32, 32)},
+				},
+			},
 		},
 	}
 
@@ -141,7 +256,7 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.wantedState.Bandwidth, opts.Bandwidth)
 				assert.True(t, assertContainsCidrs(tt.wantedState.IncludeCidrs, opts.IncludeCidrs), "IncludeCidrs not found in network")
-				assert.Equal(t, tt.wantedState.Port, opts.Port)
+				assert.Equal(t, tt.wantedState.PortRange, opts.PortRange)
 			}
 		})
 	}
