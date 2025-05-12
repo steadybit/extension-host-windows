@@ -14,7 +14,7 @@ require (
 	github.com/steadybit/action-kit/go/action_kit_commons v1.2.25-0.20250415130013-897f7fd0d8bd
 	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250415130013-897f7fd0d8bd
 	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250415130013-897f7fd0d8bd
-	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
+	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.2.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.2.3
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.1.2
@@ -33,7 +33,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/elastic/go-windows v1.0.2 // indirect
-	github.com/getkin/kin-openapi v0.131.0 // indirect
+	github.com/getkin/kin-openapi v0.132.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
 	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
