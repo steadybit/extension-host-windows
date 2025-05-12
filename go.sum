@@ -114,8 +114,8 @@ github.com/smartystreets/assertions v1.13.1/go.mod h1:cXr/IwVfSo/RbCSPhoAPv73p3h
 github.com/smartystreets/goconvey v1.8.0 h1:Oi49ha/2MURE0WexF052Z0m+BNSGirfjg5RL+JXWq3w=
 github.com/smartystreets/goconvey v1.8.0/go.mod h1:EdX8jtrTIj26jmjCOVNMVSIYAtgexqXKHOXW2Dx9JLg=
 github.com/spkg/bom v0.0.0-20160624110644-59b7046e48ad/go.mod h1:qLr4V1qq6nMqFKkMo8ZTx3f+BZEkzsRUY10Xsm2mwU0=
-github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250415130013-897f7fd0d8bd h1:kD7k4QXbd8SRd3qfUOVNWYNrjMh6Fr8mB54Wc79dEYw=
-github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250415130013-897f7fd0d8bd/go.mod h1:i05cLEAT7qfalICHbQN/J+YH6M881TPkS0l5tfIOVW0=
+github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.0 h1:XIEeNvyXacUn52nONt7rMQDTvWUht+sX2RyrGxzcmts=
+github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.0/go.mod h1:kc36KasHIY867fB7rBJtxg2orPaCU7xbezsAA05qcA8=
 github.com/steadybit/action-kit/go/action_kit_commons v1.3.0 h1:AgBtsijAnR3j8Dbl2DodeM6/LF9GabPBD0E8dCpERAQ=
 github.com/steadybit/action-kit/go/action_kit_commons v1.3.0/go.mod h1:nbDsAMiTh7lrqB2PbQxKgOVmyWj//Gswiy38MidUWSo=
 github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250415130013-897f7fd0d8bd h1:IVokOyXcAYZHXjbO9ptt37CilzbuklXettCJKaajWSs=
