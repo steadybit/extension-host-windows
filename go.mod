@@ -10,9 +10,9 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/rs/zerolog v1.34.0
-	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250415130013-897f7fd0d8bd
+	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.0
 	github.com/steadybit/action-kit/go/action_kit_commons v1.3.0
-	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250415130013-897f7fd0d8bd
+	github.com/steadybit/action-kit/go/action_kit_sdk v1.2.0
 	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250415130013-897f7fd0d8bd
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.2.0
