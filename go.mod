@@ -16,8 +16,8 @@ require (
 	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250415130013-897f7fd0d8bd
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.2.0
-	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.2.3
-	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.1.2
+	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.0
+	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.0
 	github.com/steadybit/extension-kit v1.10.0
 	github.com/stretchr/testify v1.10.0
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
@@ -58,8 +58,8 @@ require (
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/zmwangx/debounce v1.0.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
