@@ -11,7 +11,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/rs/zerolog v1.34.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.9.8-0.20250415130013-897f7fd0d8bd
-	github.com/steadybit/action-kit/go/action_kit_commons v1.2.25-0.20250415130013-897f7fd0d8bd
+	github.com/steadybit/action-kit/go/action_kit_commons v1.3.0
 	github.com/steadybit/action-kit/go/action_kit_sdk v1.1.15-0.20250415130013-897f7fd0d8bd
 	github.com/steadybit/action-kit/go/action_kit_test v1.3.3-0.20250415130013-897f7fd0d8bd
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.6.0
@@ -23,7 +23,7 @@ require (
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/sys v0.32.0
+	golang.org/x/sys v0.33.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
