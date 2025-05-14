@@ -6,6 +6,9 @@ package exthostwindows
 import (
 	"context"
 	"encoding/json"
+	"net"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -13,8 +16,6 @@ import (
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net"
-	"testing"
 )
 
 func TestActionNetworkBandwidth_Prepare(t *testing.T) {
@@ -107,6 +108,33 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 				},
 			},
 			wantedError: "duration is required",
+		}, {
+			name: "Should return error if all IPs are targeted",
+			requestBody: action_kit_api.PrepareActionRequestBody{
+				ExecutionContext: &action_kit_api.ExecutionContext{
+					RestrictedEndpoints: &[]action_kit_api.RestrictedEndpoint{
+						{
+							Cidr:    "192.168.188.69/32",
+							Name:    "Extension",
+							PortMax: 8000,
+							PortMin: 8000,
+						},
+					},
+				},
+				Config: map[string]interface{}{
+					"action":    "prepare",
+					"duration":  "10000",
+					"bandwidth": "1000mbit",
+					"ip":        []interface{}{"0.0.0.0/0"},
+				},
+				ExecutionId: uuid.New(),
+				Target: &action_kit_api.Target{
+					Attributes: map[string][]string{
+						hostNameAttribute: {"myhostname"},
+					},
+				},
+			},
+			wantedError: "target 1.1.1.1/32 0 overlaps with restricted endpoint 1.1.1.1/32 0",
 		}, {
 			name: "Should return error on restricted endpoint",
 			requestBody: action_kit_api.PrepareActionRequestBody{

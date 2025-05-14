@@ -7,12 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
-	"github.com/steadybit/extension-host-windows/exthostwindows/network"
-	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"net"
 	"strconv"
 	"strings"
+
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
@@ -124,7 +125,7 @@ func limitBandwidth() networkOptsProvider {
 			return nil, nil, err
 		}
 
-		var portRange akn.PortRange
+		portRange := akn.PortRangeAny
 		if portRangeParameter := extutil.ToString(request.Config["port"]); portRangeParameter != "" {
 			portRange, err = akn.ParsePortRange(portRangeParameter)
 			if err != nil {
