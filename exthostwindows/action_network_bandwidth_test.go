@@ -51,6 +51,7 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 			wantedState: &network.LimitBandwidthOpts{
 				Bandwidth:    "1000MB",
 				IncludeCidrs: networks,
+				PortRange:    akn.PortRangeAny,
 			},
 		}, {
 			name: "Should return config on ip",
@@ -74,6 +75,7 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 					{IP: net.ParseIP("1.1.1.1"), Mask: net.CIDRMask(32, 32)},
 					{IP: net.ParseIP("2.2.2.2"), Mask: net.CIDRMask(32, 32)},
 				},
+				PortRange: akn.PortRangeAny,
 			},
 		}, {
 			name: "Should return error on missing hostname or IP",
@@ -134,7 +136,7 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 					},
 				},
 			},
-			wantedError: "target 1.1.1.1/32 0 overlaps with restricted endpoint 1.1.1.1/32 0",
+			wantedError: "target 0.0.0.0/0 overlaps with restricted endpoint 192.168.188.69/32 8000 # Extension",
 		}, {
 			name: "Should return error on restricted endpoint",
 			requestBody: action_kit_api.PrepareActionRequestBody{
@@ -158,7 +160,7 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 					},
 				},
 			},
-			wantedError: "target 1.1.1.1/32 0 overlaps with restricted endpoint 1.1.1.1/32 0",
+			wantedError: "target 1.1.1.1/32 overlaps with restricted endpoint 1.1.1.1/32",
 		}, {
 			name: "Should return error on restricted endpoint with matching port",
 			requestBody: action_kit_api.PrepareActionRequestBody{

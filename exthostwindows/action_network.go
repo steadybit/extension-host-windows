@@ -232,7 +232,12 @@ func toExcludes(restrictedEndpoints []action_kit_api.RestrictedEndpoint) ([]akn.
 			return nil, fmt.Errorf("invalid cidr %s: %w", restrictedEndpoint.Cidr, err)
 		}
 
-		nwps := akn.NewNetWithPortRanges([]net.IPNet{*cidr}, akn.PortRange{From: uint16(restrictedEndpoint.PortMin), To: uint16(restrictedEndpoint.PortMax)})
+		portRange := akn.PortRangeAny
+		if restrictedEndpoint.PortMin != 0 || restrictedEndpoint.PortMax != 0 {
+			portRange = akn.PortRange{From: uint16(restrictedEndpoint.PortMin), To: uint16(restrictedEndpoint.PortMax)}
+		}
+
+		nwps := akn.NewNetWithPortRanges([]net.IPNet{*cidr}, portRange)
 		for i := range nwps {
 			var sb strings.Builder
 			if restrictedEndpoint.Name != "" {
