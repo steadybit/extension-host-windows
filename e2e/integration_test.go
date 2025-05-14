@@ -29,7 +29,7 @@ var (
 			{
 				Name:    "extension",
 				Url:     "localhost",
-				Cidr:    "0.0.0.0/0",
+				Cidr:    "1.1.1.1/32",
 				PortMin: 8084,
 				PortMax: 8084,
 			},
@@ -719,7 +719,7 @@ func testTwoNetworkAttacks(t *testing.T, l Environment, e Extension) {
 	}{
 		Duration:  10000,
 		Bandwidth: "200mbit",
-		Hostname:  []string{"localhost"},
+		Hostname:  []string{"steadybit.com"},
 	}
 	actionLimit, err2 := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), configLimit, defaultExecutionContext)
 	defer func() { _ = actionLimit.Cancel() }()
