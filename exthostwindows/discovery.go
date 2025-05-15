@@ -181,6 +181,9 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 	if id := gcpInstanceId(ctx); id != "" {
 		target.Attributes[gcpInstanceIdAttribute] = []string{id}
 	}
+	if id := azureInstanceId(ctx); id != "" {
+		target.Attributes[azureInstanceIdAttribute] = []string{id}
+	}
 
 	targets := []discovery_kit_api.Target{target}
 	return discovery_kit_commons.ApplyAttributeExcludes(targets, config.Config.DiscoveryAttributesExcludesHost), nil
@@ -207,6 +210,21 @@ func gcpInstanceId(ctx context.Context) string {
 	instanceId, err := utils.ExecutePowershellCommand(ctx, []string{command}, utils.PSRun)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to retrieve GCP instance id")
+		return ""
+	}
+	return instanceId
+}
+
+func azureInstanceId(ctx context.Context) string {
+	commands := []string{
+		"$sys=Get-CimInstance Win32_ComputerSystem",
+		"$bios=Get-CimInstance Win32_BIOS",
+		"if($sys.Manufacturer -eq 'Microsoft Corporation' -and $sys.Model -eq 'Virtual Machine' -and $bios.Manufacturer -eq 'Microsoft Corporation') { " +
+			"try{(Invoke-RestMethod -Headers @{Metadata='true'} -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01').compute.vmId} catch{''}} else {''}",
+	}
+	instanceId, err := utils.ExecutePowershellCommand(ctx, commands, utils.PSRun)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to retrieve Azure instance id")
 		return ""
 	}
 	return instanceId
