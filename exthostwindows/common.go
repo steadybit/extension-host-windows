@@ -17,7 +17,7 @@ const (
 	WindowsHostTechnology = "Windows Host"
 
 	targetID   = "com.steadybit.extension_host_windows.host"
-	targetIcon = "data:image/svg+xml,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M11.5312%2021H3V12.4688H11.5312V21ZM20.999%2012.4688V21H12.4678V12.4688H20.999ZM11.5312%2011.5312H3V3H11.5312V11.5312ZM20.999%2011.5312%2012.4678V3H20.999V11.5312Z%22%20fill%3D%22currentColor%22%2F%3E%3C%2Fsvg%3E"
+	targetIcon = "data:image/svg+xml,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M3%2011.53H11.53V3H3V11.53ZM3%2021H11.53V12.47H3V21ZM12.47%2021H21V12.47H12.47V21ZM12.47%203V11.53H21V3H12.47Z%22%20fill%3D%2222currentColor%22%2F%3E%3C%2Fsvg%3E"
 
 	hostNameAttribute           = "host.hostname"
 	hostOsFamilyAttribute       = "host.os.family"
