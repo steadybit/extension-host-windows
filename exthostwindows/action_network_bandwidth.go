@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
@@ -155,6 +156,7 @@ func validateRestrictedEndpoints(request action_kit_api.PrepareActionRequestBody
 	targets := akn.NewNetWithPortRanges(includeCidrs, portRange)
 	for _, target := range targets {
 		for _, restricted := range restrictedEndpoints {
+			log.Info().Msgf("Check Overlap of %+v - %+v", target, restricted)
 			if target.Overlap(restricted) {
 				return fmt.Errorf("target %s overlaps with restricted endpoint %s", target.String(), restricted.String())
 			}
