@@ -55,8 +55,8 @@ func BuildSystemCommandFor(cmd string) []string {
 	registerScheduledTask := "Register-ScheduledTask SteadybitTempQoSPolicyTask -Action $A -Principal $P"
 	startTask := "Start-ScheduledTask SteadybitTempQoSPolicyTask"
 	awaitExecution := "for($i=0;$i -lt 20;$i++){if((Get-ScheduledTask -TaskName SteadybitTempQoSPolicyTask).State -ne 'Running'){break};Start-Sleep -Milliseconds 100};"
-	unregisterScheduledTask := "Unregister-ScheduledTask SteadybitTempQoSPolicyTask -Confirm:$false"
-	return []string{scheduledTaskAction, principal, registerScheduledTask, startTask, awaitExecution, unregisterScheduledTask}
+	unregisterScheduledTask := "try{ Unregister-ScheduledTask SteadybitTempQoSPolicyTask -Confirm:$false } catch {}"
+	return []string{unregisterScheduledTask, scheduledTaskAction, principal, registerScheduledTask, startTask, awaitExecution, unregisterScheduledTask}
 }
 
 func SanitizePowershellArgs(args ...string) []string {
