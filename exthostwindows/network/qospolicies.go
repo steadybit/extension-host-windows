@@ -7,9 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
-	"strings"
 )
 
 const qosPolicyPrefix = "STEADYBIT_QOS_"
@@ -36,9 +37,6 @@ func listSteadybitQosPolicyNames(ctx context.Context) ([]string, error) {
 
 func listQosPolicies(ctx context.Context, command string, separator string) ([]string, error) {
 	result, err := utils.ExecutePowershellCommand(ctx, []string{command}, utils.PSRun)
-
-	log.Info().Msgf("result: %s", result)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to list QoS policies: %w", err)
 	}
