@@ -118,8 +118,8 @@ jobs:
         id: artifact-upload
         uses: actions/upload-artifact@v4
         with:
+          name: ${{ github.ref_name }}
           path: |
-            dist/*.zip
             dist/*.msi
           retention-days: 7
 
