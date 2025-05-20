@@ -27,6 +27,15 @@ Once available, download the latest Windows installer from the project`s [GitHub
 As the extension requires extended privileges to execute host attacks, like injecting network traffic errors, the installer and the extension need to be executed as an **Administrator user**.
 During installation, a Windows Service named `SteadybitWindowsExtensionHost` is created and configured. It runs on startup on port `8085`.
 
+#### Pre-Release Versions
+
+Pre-Release versions of the extension contain a test-signed Windows network driver. The driver is used to execute network attacks and essential to the extension.
+
+By default, Windows does not load test-signed kernel-mode drivers. To allow this several things must be done:
+- Turn off secure boot (if you use bitlocker volume encryption don't forget to retrieve recovery key beforehand)
+- Enable test signing via CLI ```Bcdedit.exe -set TESTSIGNING ON```
+- Restart the machine
+
 ## Extension registration
 
 Make sure that the extension is registered with the Steadybit agent. Please refer to
