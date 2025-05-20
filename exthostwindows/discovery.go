@@ -177,11 +177,9 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 
 	if id := awsInstanceId(ctx); id != "" {
 		target.Attributes[awsInstanceIdAttribute] = []string{id}
-	}
-	if id := gcpInstanceId(ctx); id != "" {
+	} else if id := gcpInstanceId(ctx); id != "" {
 		target.Attributes[gcpInstanceIdAttribute] = []string{id}
-	}
-	if id := azureInstanceId(ctx); id != "" {
+	} else if id := azureInstanceId(ctx); id != "" {
 		target.Attributes[azureInstanceIdAttribute] = []string{id}
 	}
 
