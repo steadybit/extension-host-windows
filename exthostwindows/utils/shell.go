@@ -35,10 +35,11 @@ func ExecutePowershellCommand(ctx context.Context, cmds []string, shell Shell) (
 		cmd.Stdout = &outb
 		cmd.Stderr = &errb
 		err := cmd.Run()
+		out := strings.TrimSpace(outb.String())
 		if err != nil {
-			return "", fmt.Errorf("execution failed: %w, output: %s, error: %s", err, outb.String(), errb.String())
+			return "", fmt.Errorf("execution failed: %w, output: %s, error: %s", err, out, errb.String())
 		}
-		return outb.String(), err
+		return out, err
 	} else {
 		cmd := exec.Command("powershell", "-Command", commands) //NOSONAR commands are sanitized
 		cmd.Stdout = os.Stdout
