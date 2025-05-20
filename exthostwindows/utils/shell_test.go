@@ -4,8 +4,15 @@
 package utils
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 )
+
+func Test_TrimShellOutput(t *testing.T) {
+	command, err := ExecutePowershellCommand(t.Context(), []string{"echo 'hello world'"}, PSRun)
+	require.NoError(t, err)
+	require.Equal(t, "hello world", command)
+}
 
 func Test_sanitizePowerShellArg(t *testing.T) {
 	tests := []struct {
