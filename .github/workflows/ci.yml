@@ -155,8 +155,8 @@ jobs:
       - name: Upload to S3
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          aws s3 cp latest.zip s3://steadybit-shared-eu-central-1-windows-artifacts-public/steadybit-agent/ 
-          aws s3 cp $ARTIFACT_NAME.zip s3://steadybit-shared-eu-central-1-windows-artifacts-public/steadybit-agent/ 
+          aws s3 cp latest.zip s3://steadybit-shared-eu-central-1-windows-artifacts-public/steadybit-extension-host-windows/ 
+          aws s3 cp $ARTIFACT_NAME.zip s3://steadybit-shared-eu-central-1-windows-artifacts-public/steadybit-extension-host-windows/ 
 
   refresh-demo:
     name: Refresh Dev Demo
