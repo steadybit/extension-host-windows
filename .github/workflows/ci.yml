@@ -120,6 +120,7 @@ jobs:
         with:
           name: ${{ github.head_ref || github.ref_name }}
           path: |
+            dist/*.zip
             dist/*.msi
           retention-days: 7
 
@@ -131,6 +132,40 @@ jobs:
           prerelease: ${{ !contains(github.ref, '-') }}
           fail_on_unmatched_files: true
           files: "dist/*.zip"
+
+  upload-to-s3:
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Configure AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: 'eu-central-1'
+          role-to-assume: 'arn:aws:iam::292929100161:role/allow-auto-deploy-from-other-accounts'
+          role-duration-seconds: 900
+          role-session-name: S3DeployWindowsArtifacts
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: "${{ github.head_ref || github.ref_name }}"
+          path: artifact/
+
+      - name: Zip artifact
+        run: |
+          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
+          zip $ARTIFACT_NAME.zip artifact/*.msi
+          zip latest.zip artifact/*.msi
+        
+      - name: Upload to S3
+        run: |
+          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
+          aws s3 cp latest.zip s3://steadybit-shared-eu-central-1-windows-artifacts-public/steadybit-agent/ 
+          aws s3 cp $ARTIFACT_NAME.zip s3://steadybit-shared-eu-central-1-windows-artifacts-public/steadybit-agent/ 
 
   refresh-demo:
     name: Refresh Dev Demo
