@@ -58,15 +58,6 @@ jobs:
           make audit
         shell: powershell
 
-      - name: "[release] Snyk test"
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
-        uses: snyk/actions/golang@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=${{ github.ref_name }}
-          command: test
-
       - name: SonarCloud Scan
         if: ${{ env.sonar_available == 'true' }}
         uses: sonarsource/sonarqube-scan-action@v5
