@@ -147,12 +147,14 @@ jobs:
           path: artifact/
 
       - name: Zip artifact
+        shell: bash
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
           zip $ARTIFACT_NAME.zip artifact/*.msi
           zip latest.zip artifact/*.msi
         
       - name: Upload to S3
+        shell: bash
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
           aws s3 cp latest.zip s3://steadybit-shared-eu-central-1-windows-artifacts-public/steadybit-extension-host-windows/ 
