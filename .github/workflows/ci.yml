@@ -157,8 +157,8 @@ jobs:
         shell: bash
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          aws s3 cp latest.zip s3://windows-registry-steadybit/steadybit-extension-host-windows/ 
-          aws s3 cp $ARTIFACT_NAME.zip s3://windows-registry-steadybit/steadybit-extension-host-windows/ 
+          aws s3 cp latest.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
+          aws s3 cp $ARTIFACT_NAME.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
 
 
   refresh-demo:
