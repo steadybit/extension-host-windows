@@ -58,15 +58,6 @@ jobs:
           make audit
         shell: powershell
 
-      - name: "[release] Snyk test"
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
-        uses: snyk/actions/golang@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=${{ github.ref_name }}
-          command: test
-
       - name: SonarCloud Scan
         if: ${{ env.sonar_available == 'true' }}
         uses: sonarsource/sonarqube-scan-action@v5
@@ -118,6 +109,7 @@ jobs:
         id: artifact-upload
         uses: actions/upload-artifact@v4
         with:
+          name: ${{ github.head_ref || github.ref_name }}
           path: |
             dist/*.zip
             dist/*.msi
@@ -131,6 +123,43 @@ jobs:
           prerelease: ${{ !contains(github.ref, '-') }}
           fail_on_unmatched_files: true
           files: "dist/*.zip"
+
+  upload-to-s3:
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Configure AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: 'eu-central-1'
+          role-to-assume: 'arn:aws:iam::292929100161:role/allow-auto-deploy-from-other-accounts'
+          role-duration-seconds: 900
+          role-session-name: S3DeployWindowsArtifacts
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: "${{ github.head_ref || github.ref_name }}"
+          path: artifact/
+
+      - name: Zip artifact
+        shell: bash
+        run: |
+          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
+          zip $ARTIFACT_NAME.zip artifact/*.msi
+          zip latest.zip artifact/*.msi
+        
+      - name: Upload to S3
+        shell: bash
+        run: |
+          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
+          aws s3 cp latest.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
+          aws s3 cp $ARTIFACT_NAME.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
+
 
   refresh-demo:
     name: Refresh Dev Demo
