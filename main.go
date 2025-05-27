@@ -55,6 +55,7 @@ func main() {
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkDelayContainerAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkCorruptPackagesContainerAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkPackageLossContainerAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewTimetravelAction())
 
 	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
 
