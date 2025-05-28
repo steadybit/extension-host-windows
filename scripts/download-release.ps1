@@ -36,6 +36,8 @@ param (
   [string]$OutputPath = (Get-Location).Path
 )
 
+$ProgressPreference = 'SilentlyContinue'
+
 # Constants
 $repoOwner = "steadybit"
 $repoName = "extension-host-windows"
