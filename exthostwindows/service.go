@@ -7,14 +7,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"io"
-	"os"
-	"path/filepath"
 )
 
 var serviceName = "SteadybitExtensionHostWindows"
@@ -48,6 +49,7 @@ type extensionService struct {
 }
 
 func newExtensionService(stopHandler func()) (*extensionService, error) {
+	eventlog.InstallAsEventCreate("SteadybitExtensionHostWindows", eventlog.Info|eventlog.Error|eventlog.Warning)
 	elog, err := eventlog.Open(serviceName)
 	if err != nil {
 		return nil, err

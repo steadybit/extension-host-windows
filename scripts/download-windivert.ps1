@@ -6,6 +6,7 @@ param(
   [switch]$ForceDownload = $false
 )
 
+$ProgressPreference = 'SilentlyContinue'
 # Create download directory if it doesn't exist
 if (-not (Test-Path $DownloadDir)) {
   Write-Host "Creating directory: $DownloadDir"

@@ -6,15 +6,16 @@ package exthostwindows
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
-	"github.com/steadybit/extension-host-windows/exthostwindows/process"
+	stopprocess "github.com/steadybit/extension-host-windows/exthostwindows/process"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
-	"sync"
-	"time"
 )
 
 type stopProcessAction struct {
@@ -71,7 +72,7 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 			{
 				Name:         "graceful",
 				Label:        "Graceful",
-				Description:  extutil.Ptr("If true a TERM signal is sent before the KILL signal."),
+				Description:  extutil.Ptr("If true a process is killed forcibly."),
 				Type:         action_kit_api.ActionParameterTypeBoolean,
 				DefaultValue: extutil.Ptr("true"),
 				Required:     extutil.Ptr(true),
@@ -81,7 +82,7 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 				Label:        "Delay",
 				Description:  extutil.Ptr("The delay before the kill signal is sent."),
 				Type:         action_kit_api.ActionParameterTypeDuration,
-				DefaultValue: extutil.Ptr("5s"),
+				DefaultValue: extutil.Ptr("0s"),
 				Required:     extutil.Ptr(true),
 				Advanced:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),
