@@ -78,6 +78,7 @@ jobs:
     runs-on: windows-2022
     outputs:
       artifact-id: ${{ steps.artifact-upload.outputs.artifact-id }}
+      artifact-digest: ${{ steps.artifact-upload.outputs.artifact-digest }}
     timeout-minutes: 60
     steps:
       - name: Checkout repository
@@ -157,8 +158,12 @@ jobs:
         shell: bash
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          aws s3 cp latest.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
-          aws s3 cp $ARTIFACT_NAME.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
+          ARTIFACT_DIGEST="${{ needs.build.outputs.artifact-digest }}"
+          echo $ARTIFACT_DIGEST > digest.sha256
+          aws s3 cp digest.sha256 "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/latest.sha256"
+          aws s3 cp latest.zip "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
+          aws s3 cp "$ARTIFACT_NAME.zip" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
+          aws s3 cp digest.sha256 "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/$ARTIFACT_NAME.sha256"
 
 
   refresh-demo:
