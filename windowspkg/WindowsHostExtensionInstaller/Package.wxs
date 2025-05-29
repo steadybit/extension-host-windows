@@ -10,6 +10,7 @@
       <ComponentGroupRef Id="WDNA" />
       <ComponentGroupRef Id="CORE" />
       <ComponentGroupRef Id="LICENSES" />
+      <ComponentGroupRef Id="CPUSTRESS" />
     </Feature>
 
 		<UI Id="UI">
