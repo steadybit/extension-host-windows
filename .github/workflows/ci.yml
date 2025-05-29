@@ -150,15 +150,20 @@ jobs:
         shell: bash
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          zip $ARTIFACT_NAME.zip artifact/*.msi
-          zip latest.zip artifact/*.msi
+          zip -j $ARTIFACT_NAME.zip artifact/*.msi
+          zip -j latest.zip artifact/*.msi
         
       - name: Upload to S3
         shell: bash
         run: |
+          aws s3 cp latest.zip "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
+          sha256sum latest.zip > latest.sha256
+          aws s3 cp latest.sha256 "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/latest.sha256"
+
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          aws s3 cp latest.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
-          aws s3 cp $ARTIFACT_NAME.zip s3://windows-registry.steadybit.com/steadybit-extension-host-windows/ 
+          aws s3 cp "$ARTIFACT_NAME.zip" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
+          sha256sum "$ARTIFACT_NAME.zip" > "$ARTIFACT_NAME.sha256"
+          aws s3 cp "$ARTIFACT_NAME.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/$ARTIFACT_NAME.sha256"
 
 
   refresh-demo:
