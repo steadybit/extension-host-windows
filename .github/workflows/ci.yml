@@ -150,20 +150,20 @@ jobs:
         shell: bash
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          zip -j $ARTIFACT_NAME.zip artifact/*.msi
-          zip -j latest.zip artifact/*.msi
+          zip -j "windows-host-extension-$ARTIFACT_NAME.zip" artifact/*.msi
+          zip -j windows-host-extension-latest.zip artifact/*.msi
         
       - name: Upload to S3
         shell: bash
         run: |
-          aws s3 cp latest.zip "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
-          sha256sum latest.zip > latest.sha256
-          aws s3 cp latest.sha256 "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/latest.sha256"
+          aws s3 cp windows-host-extension-latest.zip "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
+          sha256sum windows-host-extension-latest.zip > windows-host-extension-latest.sha256
+          aws s3 cp windows-host-extension-latest.sha256 "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-latest.sha256"
 
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          aws s3 cp "$ARTIFACT_NAME.zip" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
-          sha256sum "$ARTIFACT_NAME.zip" > "$ARTIFACT_NAME.sha256"
-          aws s3 cp "$ARTIFACT_NAME.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/$ARTIFACT_NAME.sha256"
+          aws s3 cp "windows-host-extension-$ARTIFACT_NAME.zip" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
+          sha256sum "windows-host-extension-$ARTIFACT_NAME.zip" > "windows-host-extension-$ARTIFACT_NAME.sha256"
+          aws s3 cp "windows-host-extension-$ARTIFACT_NAME.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-$ARTIFACT_NAME.sha256"
 
 
   refresh-demo:
