@@ -7,25 +7,47 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
-	"golang.org/x/sync/syncmap"
 )
 
-type Opts struct {
-	Cores    *int
+var validProcessPriorities [4]string = [4]string{"Normal", "AboveNormal", "High", "RealTime"}
+
+type cpuStressAction struct {
+	description  action_kit_api.ActionDescription
+	optsProvider stressOptsProvider
+}
+
+type CpuStressOpts struct {
+	Cores    int
 	CpuLoad  int
 	Priority string
 	Duration time.Duration
+}
+
+func (o *CpuStressOpts) Args() []string {
+	args := []string{"--duration", strconv.Itoa(int(o.Duration.Seconds()))}
+	args = append(args, "--cores", strconv.Itoa(int(o.Cores)))
+	args = append(args, "--priority", o.Priority)
+	args = append(args, "--percentage", strconv.Itoa(o.CpuLoad))
+
+	return args
+}
+
+type StressActionState struct {
+	StressOpts  CpuStressOpts
+	ExecutionId uuid.UUID
 }
 
 var (
@@ -34,17 +56,57 @@ var (
 	_ action_kit_sdk.ActionWithStop[StressActionState]   = (*cpuStressAction)(nil) // Optional, needed when the action needs a stop method
 )
 
-type stressOptsProvider func(request action_kit_api.PrepareActionRequestBody) (Opts, error)
+type stressOptsProvider func(request action_kit_api.PrepareActionRequestBody) (*CpuStressOpts, error)
 
-type cpuStressAction struct {
-	description  action_kit_api.ActionDescription
-	optsProvider stressOptsProvider
-	stresses     syncmap.Map
+func NewStressCpuAction() action_kit_sdk.Action[StressActionState] {
+	return &cpuStressAction{
+		description:  getStressCpuDescription(),
+		optsProvider: stressCpu(),
+	}
 }
 
-type StressActionState struct {
-	StressOpts  Opts
-	ExecutionId uuid.UUID
+func (a *cpuStressAction) NewEmptyState() StressActionState {
+	return StressActionState{}
+}
+
+func stressCpu() stressOptsProvider {
+	return func(request action_kit_api.PrepareActionRequestBody) (*CpuStressOpts, error) {
+		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
+
+		if duration < 1*time.Second {
+			return nil, errors.New("duration must be greater / equal than 1s")
+		}
+
+		cores := extutil.ToInt(request.Config["cores"])
+		availableCores := runtime.NumCPU()
+
+		if cores > availableCores {
+			return nil, fmt.Errorf("number of cores must not be more than maximum available number of cores (%d).", availableCores)
+		}
+
+		if cores == 0 {
+			cores = availableCores
+		}
+
+		cpuLoad := extutil.ToInt(request.Config["cpuLoad"])
+
+		if cpuLoad < 1 || cpuLoad > 100 {
+			return nil, extension_kit.ToError("CPU load must be in an inclusive range from 1%% to 100%%.", nil)
+		}
+
+		priority := extutil.ToString(request.Config["priority"])
+
+		if !slices.Contains(validProcessPriorities[:], priority) {
+			return nil, extension_kit.ToError("Priority must be one of the following: 'Normal', 'High', 'RealTime'.", nil)
+		}
+
+		return &CpuStressOpts{
+			Cores:    cores,
+			CpuLoad:  cpuLoad,
+			Duration: duration,
+			Priority: priority,
+		}, nil
+	}
 }
 
 func getStressCpuDescription() action_kit_api.ActionDescription {
@@ -61,7 +123,7 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 			// A template can be used to pre-fill a selection
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr("Host"),
+		Technology: extutil.Ptr(WindowsHostTechnology),
 		// Category for the targets to appear in
 		Category: extutil.Ptr("Resource"),
 
@@ -93,7 +155,7 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 			},
 			{
 				Name:         "cores",
-				Label:        "Host CPUs",
+				Label:        "Host Cores",
 				Description:  extutil.Ptr("How many CPU cores should be targeted during the stress attack?"),
 				Type:         action_kit_api.ActionParameterTypeStressngWorkers,
 				DefaultValue: extutil.Ptr("1"),
@@ -108,6 +170,24 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 				DefaultValue: extutil.Ptr("Normal"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(3),
+				Options: &[]action_kit_api.ParameterOption{
+					action_kit_api.ExplicitParameterOption{
+						Label: "Normal",
+						Value: validProcessPriorities[0],
+					},
+					action_kit_api.ExplicitParameterOption{
+						Label: "Above Normal",
+						Value: validProcessPriorities[1],
+					},
+					action_kit_api.ExplicitParameterOption{
+						Label: "High",
+						Value: validProcessPriorities[2],
+					},
+					action_kit_api.ExplicitParameterOption{
+						Label: "Real Time",
+						Value: validProcessPriorities[3],
+					},
+				},
 			},
 			{
 				Name:         "duration",
@@ -121,18 +201,6 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 		},
 		Stop: extutil.Ptr(action_kit_api.MutatingEndpointReference{}),
 	}
-}
-
-func NewStressCpuAction(description func() action_kit_api.ActionDescription, optsProvider stressOptsProvider) action_kit_sdk.Action[StressActionState] {
-	return &cpuStressAction{
-		description:  description(),
-		optsProvider: optsProvider,
-		stresses:     syncmap.Map{},
-	}
-}
-
-func (a *cpuStressAction) NewEmptyState() StressActionState {
-	return StressActionState{}
 }
 
 // Describe returns the action description for the platform with all required information.
@@ -155,130 +223,91 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 		return nil, err
 	}
 
-	adaptCpuHosts(&opts)
-
-	state.StressOpts = opts
+	state.StressOpts = *opts
 	state.ExecutionId = request.ExecutionId
 	return nil, nil
 }
 
-func adaptCpuHosts(s *Opts) {
-	if s.Cores == nil || *s.Cores != 0 {
-		return
-	}
-
-	//stress-ng will use all configured processors, we deem this to be wrong and expect all online cpus to be used.
-	if c, err := utils.ReadCpusAllowedCount("/proc/1/status"); err == nil {
-		s.Cores = extutil.Ptr(c)
-	} else {
-		log.Debug().Err(err).Msg("failed to read cpus allowed for pid 1")
-	}
-}
-
 func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (*action_kit_api.StartResult, error) {
-	s, err := stress.New(ctx, a.runc, state.Sidecar, state.StressOpts)
-	if err != nil {
-		return nil, extension_kit.ToError("Failed to stress host", err)
-	}
+	ctx = context.Background()
+	command := exec.CommandContext(ctx, "powershell", "-Command", "Start-Process", "steadybit-stress-cpu", "-ArgumentList", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " ")))
 
-	a.stresses.Store(state.ExecutionId, s)
+	go func() {
+		output, err := command.CombinedOutput()
 
-	if err := s.Start(); err != nil {
-		return nil, extension_kit.ToError("Failed to stress host", err)
-	}
+		if err != nil {
+			log.Error().Msg("Failed to start cpu stress attack.")
+		}
+
+		log.Info().Msgf("%s", output)
+	}()
 
 	return &action_kit_api.StartResult{
 		Messages: extutil.Ptr([]action_kit_api.Message{
 			{
 				Level:   extutil.Ptr(action_kit_api.Info),
-				Message: fmt.Sprintf("Starting stress host with args %s", strings.Join(state.StressOpts.Args(), " ")),
+				Message: fmt.Sprintf("Starting stress host with args.."),
 			},
 		}),
 	}, nil
 }
 
 func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*action_kit_api.StatusResult, error) {
-	exited, err := a.stressExited(state.ExecutionId)
-	if !exited {
-		return &action_kit_api.StatusResult{Completed: false}, nil
-	}
+	isRunning, err := isSteadybitStressCpuRunning()
 
-	if err == nil {
+	if err != nil {
 		return &action_kit_api.StatusResult{
 			Completed: true,
-			Messages: &[]action_kit_api.Message{
-				{
-					Level:   extutil.Ptr(action_kit_api.Info),
-					Message: "Stress host stopped",
-				},
+			Error: &action_kit_api.ActionKitError{
+				Status: extutil.Ptr(action_kit_api.Failed),
+				Title:  fmt.Sprintf("unable to retrieve 'steadybit-stress-cpu' process status: %s", err),
 			},
 		}, nil
 	}
 
-	errMessage := err.Error()
-
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		exitCode := exitErr.ExitCode()
-		if len(exitErr.Stderr) > 0 {
-			errMessage = fmt.Sprintf("%s\n%s", exitErr.Error(), string(exitErr.Stderr))
-		}
-
-		for _, ignore := range state.IgnoreExitCodes {
-			if exitCode == ignore {
-				return &action_kit_api.StatusResult{
-					Completed: true,
-					Messages: &[]action_kit_api.Message{
-						{
-							Level:   extutil.Ptr(action_kit_api.Warn),
-							Message: fmt.Sprintf("stress-ng exited unexpectedly: %s", errMessage),
-						},
-					},
-				}, nil
-			}
-		}
+	if isRunning {
+		return &action_kit_api.StatusResult{Completed: false}, nil
 	}
 
 	return &action_kit_api.StatusResult{
 		Completed: true,
-		Error: &action_kit_api.ActionKitError{
-			Status: extutil.Ptr(action_kit_api.Failed),
-			Title:  fmt.Sprintf("Failed to stress host: %s", errMessage),
+		Messages: &[]action_kit_api.Message{
+			{
+				Level:   extutil.Ptr(action_kit_api.Info),
+				Message: "Stress host stopped",
+			},
 		},
 	}, nil
+
 }
 
 func (a *cpuStressAction) Stop(_ context.Context, state *StressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
+	isRunning, err := isSteadybitStressCpuRunning()
 
-	stopped := a.stopStressHost(state.ExecutionId)
-	if stopped {
-		messages = append(messages, action_kit_api.Message{
-			Level:   extutil.Ptr(action_kit_api.Info),
-			Message: "Canceled stress host",
-		})
+	if err != nil {
+		return nil, err
 	}
+
+	if isRunning {
+		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "steadybit-stress-cpu")
+		out, err := cmd.CombinedOutput()
+
+		if err != nil {
+			return nil, err
+		}
+
+		log.Info().Msgf("%s", out)
+	}
+
+	messages = append(messages, action_kit_api.Message{
+		Level:   extutil.Ptr(action_kit_api.Info),
+		Message: "Canceled stress host",
+	})
 
 	return &action_kit_api.StopResult{
 		Messages: &messages,
 	}, nil
-}
-
-func (a *cpuStressAction) stressExited(executionId uuid.UUID) (bool, error) {
-	s, ok := a.stresses.Load(executionId)
-	if !ok {
-		return true, nil
-	}
-	return s.(*stress.Stress).Exited()
-}
-
-func (a *cpuStressAction) stopStressHost(executionId uuid.UUID) bool {
-	s, ok := a.stresses.LoadAndDelete(executionId)
-	if !ok {
-		return false
-	}
-	s.(*stress.Stress).Stop()
-	return true
 }
 
 func isSteadybitStressCpuInstalled() bool {
@@ -294,7 +323,17 @@ func isSteadybitStressCpuInstalled() bool {
 	}
 	success := cmd.ProcessState.Success()
 	if !success {
-		log.Error().Err(err).Msgf("steadybit-stress-cpu is not installed: 'stress-ng -V' in %v returned: %v", os.TempDir(), outputBuffer.Bytes())
+		log.Error().Err(err).Msgf("steadybit-stress-cpu is not installed: 'steadybit-stress-cpu --version' in %v returned: %v", os.TempDir(), outputBuffer.Bytes())
 	}
 	return success
+}
+
+func isSteadybitStressCpuRunning() (bool, error) {
+	cmd := exec.Command("powershell", "-Command", "Get-Process -Name 'steadybit-stress-cpu.exe' -ErrorAction SilentlyContinue")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, nil
+	}
+
+	return len(strings.TrimSpace(string(output))) > 0, nil
 }

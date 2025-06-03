@@ -50,7 +50,7 @@ func (a *timeTravelAction) Describe() action_kit_api.ActionDescription {
 			// A template can be used to pre-fill a selection
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr(string(WindowsHostTechnology)),
+		Technology: extutil.Ptr(WindowsHostTechnology),
 		// Category for the targets to appear in
 		Category: extutil.Ptr("State"),
 
