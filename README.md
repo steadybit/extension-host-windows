@@ -22,7 +22,9 @@ The extension supports all environment variables provided by [steadybit/extensio
 
 **Note**: Only x64 systems are supported.
 
-Once available, download the latest Windows installer from the project`s [GitHub release page](https://github.com/steadybit/WinDivert/releases) or [S3 Directory Listing](https://steadybit-shared-eu-central-1-windows-artifacts-public.s3.amazonaws.com/index.html).
+Download the latest Windows installer [here](https://windows-registry.steadybit.com/steadybit-agent/windows-agent-latest.zip). SHA-256 checksum of the artifact can be found [here](https://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-latest.sha256).
+
+Specific versions of the Windows Host Extension can be found in the [Steadybit Windows Registry](https://windows-registry.steadybit.com/#steadybit-extension-host-windows/).
 
 As the extension requires extended privileges to execute host attacks, like injecting network traffic errors, the installer and the extension need to be executed as an **Administrator user**.
 During installation, a Windows Service named `SteadybitWindowsExtensionHost` is created and configured. It runs on startup on port `8085`.
