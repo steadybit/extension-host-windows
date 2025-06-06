@@ -9,6 +9,12 @@
 				<Environment Id="WdnaPath" Name="PATH" Value="[WDNAFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
       </Component>
     </ComponentGroup>
+		<ComponentGroup Id="CPUSTRESS" Directory="CPUFOLDER">
+			<Component Guid="3b8aabfd-1fb8-4498-ade1-023e164d5e29">
+				<File Source="./Artifacts/steadybit-stress-cpu.exe"	/>
+				<Environment Id="StressCpuPath" Name="PATH" Value="[CPUFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
+			</Component>
+		</ComponentGroup>
     <ComponentGroup Id="CORE" Directory="COREFOLDER">
       <Component Guid="12621f61-666b-40f4-ac24-d02e4d5436ed">
 				<Environment Id="ExtensionPort" Name="STEADYBIT_EXTENSION_PORT" Value="8085" Permanent="yes" Action="create" System="yes"/>

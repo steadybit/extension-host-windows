@@ -5,8 +5,9 @@ if ($Env:SKIP_LICENSES_REPORT -eq "true"){
 
 $scriptPath = $PSScriptRoot
 $distPath = "$scriptPath\..\dist"
-$extractPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller\Artifacts"
+$artifactPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller\Artifacts"
 $solutionPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller"
+$cpuStressPath = "$scriptPath\..\steadybit-stress-cpu"
 
 Write-Output "Looking for latest ZIP file in: $distPath"
 $latestZip = (Get-ChildItem -Path "$distPath" -Filter "*.zip" -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
@@ -17,25 +18,31 @@ if ([string]::IsNullOrEmpty($latestZip)) {
 
 Write-Output "Found ZIP file: $latestZip"
 
-if (-not (Test-Path $extractPath)) {
-    Write-Output "Creating extraction directory: $extractPath"
-    New-Item -ItemType Directory -Path $extractPath -Force | Out-Null
+if (-not (Test-Path $artifactPath)) {
+    Write-Output "Creating extraction directory: $artifactPath"
+    New-Item -ItemType Directory -Path $artifactPath -Force | Out-Null
 }
 
 Write-Output "Clearing Artifacts directory except .gitkeep"
-Get-ChildItem -Path $extractPath -Exclude ".gitkeep" -Recurse | Remove-Item -Force -Recurse
+Get-ChildItem -Path $artifactPath -Exclude ".gitkeep" -Recurse | Remove-Item -Force -Recurse
 
-Write-Output "Extracting ZIP file to: $extractPath"
+Write-Output "Extracting ZIP file to: $artifactPath"
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::ExtractToDirectory($latestZip, $extractPath)
+[System.IO.Compression.ZipFile]::ExtractToDirectory($latestZip, $artifactPath)
 
 Write-Output "Extraction completed."
 
 Copy-Item licenses\THIRD-PARTY-LICENSES.csv windowspkg\WindowsHostExtensionInstaller\Artifacts
 
+Write-Output "Running dotnet publish in: $cpuStressPath"
+Push-Location $cpuStressPath
+dotnet publish -c Release -r "win-x64"  -o $artifactPath /p:SelfContained=true /p:PublishSingleFile=true /p:PublishTrimmed=true
+Pop-Location
+
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath
 msbuild -Restore WindowsHostExtensionInstaller.sln /p:Configuration=Release /m /p:OutDir=..\..\dist
 Pop-Location
+
 
 Write-Output "MSBuild completed."

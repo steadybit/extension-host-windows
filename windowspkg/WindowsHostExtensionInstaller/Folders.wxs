@@ -4,6 +4,7 @@
 			<Directory Id="STEADYBITFOLDER" Name="!(bind.Property.Manufacturer)">
 				<Directory Id="EXTENSIONFOLDER" Name="!(bind.Property.ProductName)">
 					<Directory Id="WDNAFOLDER" Name="CLI"/>
+					<Directory Id="CPUFOLDER" Name="CPU"/>
 					<Directory Id="COREFOLDER" Name="Core"/>
 					<Directory Id="LICENSESFOLDER" Name="Licenses"/>
 				</Directory>
