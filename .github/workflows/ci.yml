@@ -74,10 +74,12 @@ jobs:
   snyk-scan:
     name: Run Snyk Scan
     needs: audit
-    if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.SNYK_TOKEN != '' }}
     runs-on: ubuntu-latest
+    env:
+      snyk_available: ${{ secrets.SNYK_TOKEN  != '' && 'true' || 'false' }}
     steps:
       - name: "[release] Snyk test"
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
         uses: snyk/actions/golang@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
