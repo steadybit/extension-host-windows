@@ -25,6 +25,7 @@ env:
   GOCACHE: D:\gocache
   GOMODCACHE: D:\gomodcache
   GOTMPDIR: D:\gotmp
+  snyk_available: ${{ secrets.SNYK_TOKEN  != '' && 'true' || 'false' }}
 
 jobs:
   audit:
@@ -33,7 +34,6 @@ jobs:
     timeout-minutes: 60
     env:
       sonar_available: ${{ secrets.SONAR_TOKEN  != '' && 'true' || 'false' }}
-      snyk_available: ${{ secrets.SNYK_TOKEN  != '' && 'true' || 'false' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -75,12 +75,10 @@ jobs:
   snyk-scan:
     name: Run Snyk Scan
     needs: audit
+    if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
     runs-on: ubuntu-latest
-    env:
-      snyk_available: ${{ secrets.SNYK_TOKEN  != '' && 'true' || 'false' }}
     steps:
       - name: "[release] Snyk test"
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
         uses: snyk/actions/golang@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
