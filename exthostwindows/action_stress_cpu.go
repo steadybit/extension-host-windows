@@ -81,7 +81,7 @@ func stressCpu() stressOptsProvider {
 		availableCores := runtime.NumCPU()
 
 		if cores > availableCores {
-			return nil, fmt.Errorf("number of cores must not be more than maximum available number of cores (%d).", availableCores)
+			return nil, fmt.Errorf("number of cores must not be more than maximum available number of cores (%d)", availableCores)
 		}
 
 		if cores == 0 {
@@ -91,13 +91,13 @@ func stressCpu() stressOptsProvider {
 		cpuLoad := extutil.ToInt(request.Config["cpuLoad"])
 
 		if cpuLoad < 1 || cpuLoad > 100 {
-			return nil, extension_kit.ToError("CPU load must be in an inclusive range from 1%% to 100%%.", nil)
+			return nil, extension_kit.ToError("cpu load must be in an inclusive range from 1%% to 100%%", nil)
 		}
 
 		priority := extutil.ToString(request.Config["priority"])
 
 		if !slices.Contains(validProcessPriorities[:], priority) {
-			return nil, extension_kit.ToError("Priority must be one of the following: 'Normal', 'High', 'RealTime'.", nil)
+			return nil, extension_kit.ToError("priority must be one of the following: 'Normal', 'High', 'RealTime'.", nil)
 		}
 
 		return &CpuStressOpts{
@@ -229,8 +229,7 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 }
 
 func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (*action_kit_api.StartResult, error) {
-	ctx = context.Background()
-	command := exec.CommandContext(ctx, "powershell", "-Command", "Start-Process", "steadybit-stress-cpu", "-ArgumentList", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " ")))
+	command := exec.CommandContext(context.Background(), "powershell", "-Command", "Start-Process", "steadybit-stress-cpu", "-ArgumentList", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " ")))
 
 	go func() {
 		output, err := command.CombinedOutput()
@@ -246,7 +245,7 @@ func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (
 		Messages: extutil.Ptr([]action_kit_api.Message{
 			{
 				Level:   extutil.Ptr(action_kit_api.Info),
-				Message: fmt.Sprintf("Starting stress host with args.."),
+				Message: fmt.Sprintf("Starting stress host with args: %s.", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " "))),
 			},
 		}),
 	}, nil
