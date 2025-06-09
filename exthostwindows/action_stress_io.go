@@ -54,8 +54,19 @@ type IoStressOpts struct {
 }
 
 func (o *IoStressOpts) Args() []string {
-	args := []string{"--duration", strconv.Itoa(int(o.Duration.Seconds()))}
-	// TODO
+	args := []string{fmt.Sprintf("-d%d", int(o.Duration.Seconds()))}
+	args = append(args, fmt.Sprintf("-F%d", o.ThreadCount))
+	if o.DisableSwHwCaching {
+		args = append(args, fmt.Sprintf("-Sh"))
+	}
+
+	if o.StressLayer == PhysicalDisk {
+		args = append(args, fmt.Sprintf("#%s", o.StressLayerInput))
+	} else if o.StressLayer == NamedPartition {
+		args = append(args, fmt.Sprintf("%s:", o.StressLayerInput))
+	} else {
+		args = append(args, fmt.Sprintf("%s", o.StressLayerInput))
+	}
 
 	return args
 }
@@ -100,13 +111,17 @@ func stressIo() ioStressOptsProvider {
 
 		stressLayerInput := extutil.ToString(request.Config["stressLayerInput"])
 
+		var stressLayerEnum StressLayer
+
 		if stressLayer == FileSystem.String() {
+			stressLayerEnum = FileSystem
 			if _, err := os.Stat(stressLayerInput); err != nil {
 				return nil, err
 			}
 		}
 
 		if stressLayer == NamedPartition.String() {
+			stressLayerEnum = NamedPartition
 			stressLayerInput = string(bytes.ToUpper([]byte(stressLayerInput)))
 
 			if len(stressLayerInput) != 1 {
@@ -121,6 +136,7 @@ func stressIo() ioStressOptsProvider {
 		}
 
 		if stressLayer == PhysicalDisk.String() {
+			stressLayerEnum = PhysicalDisk
 			deviceId, err := strconv.ParseUint(stressLayerInput, 10, 0)
 			if err != nil {
 				return nil, err
@@ -140,16 +156,23 @@ func stressIo() ioStressOptsProvider {
 		threadCount := extutil.ToInt(request.Config["threadCount"])
 		availableThreadCount := runtime.NumCPU()
 
-		if threadCount > availableThreadCount {
-			return nil, fmt.Errorf("number of cores must not be more than maximum available number of cores (%d)", availableThreadCount)
-		}
-
 		if threadCount == 0 {
 			threadCount = availableThreadCount
 		}
 
-		// TODO
-		return &IoStressOpts{}, nil
+		if threadCount > availableThreadCount {
+			return nil, fmt.Errorf("number of cores must not be more than maximum available number of cores (%d)", availableThreadCount)
+		}
+
+		disableSwHwCaching := extutil.ToBool(request.Config["disableSwHwCaching"])
+
+		return &IoStressOpts{
+			Duration:           duration,
+			StressLayer:        stressLayerEnum,
+			StressLayerInput:   stressLayerInput,
+			ThreadCount:        uint(threadCount),
+			DisableSwHwCaching: disableSwHwCaching,
+		}, nil
 	}
 }
 
@@ -159,7 +182,7 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 		Label:       "Stress IO",
 		Description: "Stresses IO on the host using read/write operations for the given duration.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(stressCPUIcon),
+		Icon:        extutil.Ptr(stressIOIcon),
 		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
 			// The target type this action is for
 			TargetType: targetID,
@@ -273,13 +296,15 @@ func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState
 }
 
 func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) (*action_kit_api.StartResult, error) {
-	command := exec.CommandContext(context.Background(), "powershell", "-Command", "Start-Process", "steadybit-stress-cpu", "-ArgumentList", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " ")))
+	command := exec.CommandContext(context.Background(), "diskspd", state.StressOpts.Args()...)
+
+	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
 
 	go func() {
 		output, err := command.CombinedOutput()
 
 		if err != nil {
-			log.Error().Msg("Failed to start cpu stress attack.")
+			log.Error().Msgf("Failed to start io stress attack: %s.", err)
 		}
 
 		log.Info().Msgf("%s", output)
@@ -296,14 +321,14 @@ func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) 
 }
 
 func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := isSteadybitStressCpuRunning()
+	isRunning, err := isDskSpdRunning()
 
 	if err != nil {
 		return &action_kit_api.StatusResult{
 			Completed: true,
 			Error: &action_kit_api.ActionKitError{
 				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve 'steadybit-stress-cpu' process status: %s", err),
+				Title:  fmt.Sprintf("unable to retrieve 'diskspd' process status: %s", err),
 			},
 		}, nil
 	}
@@ -326,14 +351,14 @@ func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (
 
 func (a *ioStressAction) Stop(_ context.Context, state *IoStressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := isSteadybitStressCpuRunning()
+	isRunning, err := isDskSpdRunning()
 
 	if err != nil {
 		return nil, err
 	}
 
 	if isRunning {
-		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "diskspd")
+		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "diskspd", "-Force")
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
@@ -372,10 +397,10 @@ func isDskSpdInstalled() bool {
 }
 
 func isDskSpdRunning() (bool, error) {
-	cmd := exec.Command("powershell", "-Command", "Get-Process -Name 'diskspd.exe' -ErrorAction SilentlyContinue")
+	cmd := exec.Command("powershell", "-Command", "Get-Process", "-Name", "diskspd", "-ErrorAction", "SilentlyContinue")
 	output, err := cmd.Output()
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 
 	return len(strings.TrimSpace(string(output))) > 0, nil
@@ -385,7 +410,7 @@ func isPhysicalDeviceAvailable(deviceId uint64) (bool, error) {
 	cmd := exec.Command("powershell", "-Command", "Get-PhysicalDisk | ForEach-Object { $_.DeviceId }")
 	output, err := cmd.Output()
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 
 	reader := strings.NewReader(string(output))

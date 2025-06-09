@@ -289,7 +289,7 @@ func (a *cpuStressAction) Stop(_ context.Context, state *StressActionState) (*ac
 	}
 
 	if isRunning {
-		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "steadybit-stress-cpu")
+		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "steadybit-stress-cpu", "-Force")
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
@@ -328,7 +328,7 @@ func isSteadybitStressCpuInstalled() bool {
 }
 
 func isSteadybitStressCpuRunning() (bool, error) {
-	cmd := exec.Command("powershell", "-Command", "Get-Process -Name 'steadybit-stress-cpu.exe' -ErrorAction SilentlyContinue")
+	cmd := exec.Command("powershell", "-Command", "Get-Process -Name 'steadybit-stress-cpu' -ErrorAction SilentlyContinue")
 	output, err := cmd.Output()
 	if err != nil {
 		return false, nil
