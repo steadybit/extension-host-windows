@@ -57,7 +57,7 @@ func (o *IoStressOpts) Args() []string {
 	args := []string{fmt.Sprintf("-d%d", int(o.Duration.Seconds()))}
 	args = append(args, fmt.Sprintf("-F%d", o.ThreadCount))
 	if o.DisableSwHwCaching {
-		args = append(args, fmt.Sprintf("-Sh"))
+		args = append(args, "-Sh")
 	}
 
 	if o.StressLayer == PhysicalDisk {
@@ -65,7 +65,7 @@ func (o *IoStressOpts) Args() []string {
 	} else if o.StressLayer == NamedPartition {
 		args = append(args, fmt.Sprintf("%s:", o.StressLayerInput))
 	} else {
-		args = append(args, fmt.Sprintf("%s", o.StressLayerInput))
+		args = append(args, o.StressLayerInput)
 	}
 
 	return args
