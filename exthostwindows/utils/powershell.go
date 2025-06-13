@@ -35,6 +35,10 @@ func IsExecutableOperational(executableName string, args ...string) error {
 	if !success {
 		return fmt.Errorf("%s is not operational: '%s' in %v returned: %v", executableName, executableName, os.TempDir(), outputBuffer.Bytes())
 	}
-	return nil
 
+	return nil
+}
+
+func PowershellCommand(args ...string) *exec.Cmd {
+	return exec.Command("powershell", "-Command", strings.Join(args, " "))
 }

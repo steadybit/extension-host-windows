@@ -3,12 +3,12 @@ package exthostwindows
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
@@ -134,7 +134,7 @@ func (a *timeTravelAction) Prepare(_ context.Context, state *TimeTravelActionSta
 func (a *timeTravelAction) Start(ctx context.Context, state *TimeTravelActionState) (*action_kit_api.StartResult, error) {
 	if state.DisableNtp {
 		log.Info().Msg("Blocking NTP traffic")
-		command := exec.Command("powershell", "-Command", "Stop-Service w32time")
+		command := utils.PowershellCommand("Stop-Service", "w32time")
 		output, err := command.CombinedOutput()
 
 		if err != nil {
@@ -147,7 +147,7 @@ func (a *timeTravelAction) Start(ctx context.Context, state *TimeTravelActionSta
 
 	log.Info().Dur("offset", state.Offset).Msg("Adjusting time")
 
-	command := exec.Command("powershell", "-Command", fmt.Sprintf("Set-Date -Date (Get-Date).AddMinutes(%f)", state.Offset.Minutes()))
+	command := utils.PowershellCommand(fmt.Sprintf("Set-Date -Date (Get-Date).AddMinutes(%f)", state.Offset.Minutes()))
 	output, err := command.CombinedOutput()
 	if err != nil {
 		log.Error().Msg("Failed to adjust time.")
@@ -173,7 +173,7 @@ func (a *timeTravelAction) Stop(ctx context.Context, state *TimeTravelActionStat
 	log.Info().Msg("Adjusting time back.")
 	if state.DisableNtp {
 		log.Info().Msg("Unblocking NTP traffic.")
-		command := exec.Command("powershell", "-Command", "Start-Service w32time")
+		command := utils.PowershellCommand("Start-Service", "w32time")
 
 		output, err := command.CombinedOutput()
 
@@ -185,7 +185,7 @@ func (a *timeTravelAction) Stop(ctx context.Context, state *TimeTravelActionStat
 		log.Info().Msgf("%s", output)
 	}
 
-	command := exec.Command("powershell", "-Command", fmt.Sprintf("Set-Date -Date (Get-Date).AddMinutes(-%f)", state.Offset.Minutes()))
+	command := utils.PowershellCommand(fmt.Sprintf("Set-Date -Date (Get-Date).AddMinutes(-%f)", state.Offset.Minutes()))
 	output, err := command.CombinedOutput()
 	if err != nil {
 		log.Error().Msg("Failed to revert time adjustment.")
@@ -194,7 +194,7 @@ func (a *timeTravelAction) Stop(ctx context.Context, state *TimeTravelActionStat
 
 	log.Info().Msgf("%s", output)
 
-	command = exec.Command("powershell", "-Command", "w32tm /resync")
+	command = utils.PowershellCommand("w32tm", "/resync")
 	output, err = command.CombinedOutput()
 	if err != nil {
 		log.Error().Msg("Failed to resync time using NTP.")
