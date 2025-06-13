@@ -58,6 +58,7 @@ func main() {
 	action_kit_sdk.RegisterAction(exthostwindows.NewTimetravelAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewStressCpuAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewStressIoAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewFillMemAction())
 
 	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
 

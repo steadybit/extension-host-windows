@@ -9,6 +9,12 @@
 				<Environment Id="WdnaPath" Name="PATH" Value="[WDNAFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
       </Component>
     </ComponentGroup>
+		<ComponentGroup Id="MEMORY" Directory="MEMFOLDER">
+			<Component Guid="3e17a3d6-052f-44ba-9fcf-eb084c47b035">
+				<File Source="./Artifacts/memfill.exe"/>
+				<Environment Id="FillMemPath" Name="PATH" Value="[MEMFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
+			</Component>
+		</ComponentGroup>
 		<ComponentGroup Id="CPUSTRESS" Directory="CPUFOLDER">
 			<Component Guid="3b8aabfd-1fb8-4498-ade1-023e164d5e29">
 				<File Source="./Artifacts/steadybit-stress-cpu.exe"	/>
