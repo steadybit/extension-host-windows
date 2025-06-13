@@ -234,7 +234,7 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 }
 
 func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (*action_kit_api.StartResult, error) {
-	command := exec.CommandContext(context.Background(), "powershell", "-Command", "Start-Process", "steadybit-stress-cpu", "-ArgumentList", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " ")))
+	command := exec.CommandContext(context.Background(), "steadybit-stress-cpu", state.StressOpts.Args()...)
 
 	go func() {
 		output, err := command.CombinedOutput()
