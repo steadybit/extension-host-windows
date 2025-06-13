@@ -1,11 +1,9 @@
 package exthostwindows
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -14,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
@@ -139,30 +138,15 @@ func getFillMemDescription() action_kit_api.ActionDescription {
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(fillMemoryIcon),
 		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
-			// The target type this action is for
-			TargetType: targetID,
-			// You can provide a list of target templates to help the user select targets.
-			// A template can be used to pre-fill a selection
+			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
 		Technology: extutil.Ptr(WindowsHostTechnology),
-		// Category for the targets to appear in
-		Category: extutil.Ptr("Resource"),
+		Category:   extutil.Ptr("Resource"),
 
-		// To clarify the purpose of the action, you can set a kind.
-		//   Attack: Will cause harm to targets
-		//   Check: Will perform checks on the targets
-		//   LoadTest: Will perform load tests on the targets
-		//   Other
 		Kind: action_kit_api.Attack,
 
-		// How the action is controlled over time.
-		//   External: The agent takes care and calls stop then the time has passed. Requires a duration parameter. Use this when the duration is known in advance.
-		//   Internal: The action has to implement the status endpoint to signal when the action is done. Use this when the duration is not known in advance.
-		//   Instantaneous: The action is done immediately. Use this for actions that happen immediately, e.g. a reboot.
 		TimeControl: action_kit_api.TimeControlExternal,
-
-		// The parameters for the action
 
 		Parameters: []action_kit_api.ActionParameter{
 			{
@@ -226,23 +210,19 @@ func getFillMemDescription() action_kit_api.ActionDescription {
 	}
 }
 
-// Describe returns the action description for the platform with all required information.
 func (a *fillMemAction) Describe() action_kit_api.ActionDescription {
 	return a.description
 }
 
-// Prepare is called before the action is started.
-// It can be used to validate the parameters and prepare the action.
-// It must not cause any harmful effects.
-// The passed in state is included in the subsequent calls to start/status/stop.
-// So the state should contain all information needed to execute the action and even more important: to be able to stop it.
 func (a *fillMemAction) Prepare(ctx context.Context, state *FillMemActionState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	if _, err := CheckTargetHostname(request.Target.Attributes); err != nil {
 		return nil, err
 	}
 
-	if !isMemFillInstalled() {
-		return nil, errors.New("memfill is not installed or cannot be found in %PATH%")
+	err := utils.IsExecutableOperational("memfill", "--help")
+
+	if err != nil {
+		return nil, err
 	}
 
 	opts, err := a.optsProvider(request)
@@ -281,7 +261,7 @@ func (a *fillMemAction) Start(ctx context.Context, state *FillMemActionState) (*
 }
 
 func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := isMemFillRunning()
+	isRunning, err := utils.IsProcessRunning("memfill")
 
 	if err != nil {
 		return &action_kit_api.StatusResult{
@@ -311,7 +291,7 @@ func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*a
 
 func (a *fillMemAction) Stop(_ context.Context, state *FillMemActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := isMemFillRunning()
+	isRunning, err := utils.IsProcessRunning("memfill")
 
 	if err != nil {
 		return nil, err
@@ -338,35 +318,4 @@ func (a *fillMemAction) Stop(_ context.Context, state *FillMemActionState) (*act
 	return &action_kit_api.StopResult{
 		Messages: &messages,
 	}, nil
-}
-
-func isMemFillInstalled() bool {
-	cmd := exec.Command("memfill", "--help")
-	cmd.Dir = os.TempDir()
-	var outputBuffer bytes.Buffer
-	cmd.Stdout = &outputBuffer
-	cmd.Stderr = &outputBuffer
-	err := cmd.Run()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to start memfill")
-		return false
-	}
-	success := cmd.ProcessState.Success()
-	if !success {
-		log.Error().Err(err).Msgf("memfill is not installed: 'memfill' in %v returned: %v", os.TempDir(), outputBuffer.Bytes())
-	}
-	return success
-}
-
-func isMemFillRunning() (bool, error) {
-	cmd := exec.Command("powershell", "-Command", "Get-Process", "-Name", "memfill")
-	output, err := cmd.Output()
-	if err != nil {
-		if !strings.Contains(string(output), "Cannot find a process with the name") {
-			return false, nil
-		}
-		return false, err
-	}
-
-	return len(strings.TrimSpace(string(output))) > 0, nil
 }

@@ -1,11 +1,9 @@
 package exthostwindows
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 	"slices"
@@ -17,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	extension_kit "github.com/steadybit/extension-kit"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
@@ -218,8 +217,10 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 		return nil, err
 	}
 
-	if !isSteadybitStressCpuInstalled() {
-		return nil, fmt.Errorf("")
+	err := utils.IsExecutableOperational("steadybit-stress-cpu", "--version")
+
+	if err != nil {
+		return nil, err
 	}
 
 	opts, err := a.optsProvider(request)
@@ -256,7 +257,7 @@ func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (
 }
 
 func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := isSteadybitStressCpuRunning()
+	isRunning, err := utils.IsProcessRunning("steadybit-stress-cpu")
 
 	if err != nil {
 		return &action_kit_api.StatusResult{
@@ -286,7 +287,7 @@ func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*
 
 func (a *cpuStressAction) Stop(_ context.Context, state *StressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := isSteadybitStressCpuRunning()
+	isRunning, err := utils.IsProcessRunning("steadybit-stress-cpu")
 
 	if err != nil {
 		return nil, err
@@ -311,32 +312,4 @@ func (a *cpuStressAction) Stop(_ context.Context, state *StressActionState) (*ac
 	return &action_kit_api.StopResult{
 		Messages: &messages,
 	}, nil
-}
-
-func isSteadybitStressCpuInstalled() bool {
-	cmd := exec.Command("steadybit-stress-cpu", "--version")
-	cmd.Dir = os.TempDir()
-	var outputBuffer bytes.Buffer
-	cmd.Stdout = &outputBuffer
-	cmd.Stderr = &outputBuffer
-	err := cmd.Run()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to Start steadybit-stress-cpu")
-		return false
-	}
-	success := cmd.ProcessState.Success()
-	if !success {
-		log.Error().Err(err).Msgf("steadybit-stress-cpu is not installed: 'steadybit-stress-cpu --version' in %v returned: %v", os.TempDir(), outputBuffer.Bytes())
-	}
-	return success
-}
-
-func isSteadybitStressCpuRunning() (bool, error) {
-	cmd := exec.Command("powershell", "-Command", "Get-Process -Name 'steadybit-stress-cpu' -ErrorAction SilentlyContinue")
-	output, err := cmd.Output()
-	if err != nil {
-		return false, nil
-	}
-
-	return len(strings.TrimSpace(string(output))) > 0, nil
 }

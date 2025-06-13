@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
@@ -184,30 +185,13 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
 		Icon:        extutil.Ptr(stressIOIcon),
 		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
-			// The target type this action is for
-			TargetType: targetID,
-			// You can provide a list of target templates to help the user select targets.
-			// A template can be used to pre-fill a selection
+			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr(WindowsHostTechnology),
-		// Category for the targets to appear in
-		Category: extutil.Ptr("Resource"),
-
-		// To clarify the purpose of the action, you can set a kind.
-		//   Attack: Will cause harm to targets
-		//   Check: Will perform checks on the targets
-		//   LoadTest: Will perform load tests on the targets
-		//   Other
-		Kind: action_kit_api.Attack,
-
-		// How the action is controlled over time.
-		//   External: The agent takes care and calls stop then the time has passed. Requires a duration parameter. Use this when the duration is known in advance.
-		//   Internal: The action has to implement the status endpoint to signal when the action is done. Use this when the duration is not known in advance.
-		//   Instantaneous: The action is done immediately. Use this for actions that happen immediately, e.g. a reboot.
+		Technology:  extutil.Ptr(WindowsHostTechnology),
+		Category:    extutil.Ptr("Resource"),
+		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
-
-		// The parameters for the action
 		Parameters: []action_kit_api.ActionParameter{
 			{
 				Name:         "stressLayer",
@@ -270,23 +254,19 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 	}
 }
 
-// Describe returns the action description for the platform with all required information.
 func (a *ioStressAction) Describe() action_kit_api.ActionDescription {
 	return a.description
 }
 
-// Prepare is called before the action is started.
-// It can be used to validate the parameters and prepare the action.
-// It must not cause any harmful effects.
-// The passed in state is included in the subsequent calls to start/status/stop.
-// So the state should contain all information needed to execute the action and even more important: to be able to stop it.
 func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	if _, err := CheckTargetHostname(request.Target.Attributes); err != nil {
 		return nil, err
 	}
 
-	if !isDskSpdInstalled() {
-		return nil, errors.New("diskspd is not installed or cannot be found in %PATH%")
+	err := utils.IsExecutableOperational("diskspd", "-?")
+
+	if err != nil {
+		return nil, err
 	}
 
 	opts, err := a.optsProvider(request)
@@ -325,7 +305,7 @@ func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) 
 }
 
 func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := isDskSpdRunning()
+	isRunning, err := utils.IsProcessRunning("diskspd")
 
 	if err != nil {
 		return &action_kit_api.StatusResult{
@@ -355,7 +335,7 @@ func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (
 
 func (a *ioStressAction) Stop(_ context.Context, state *IoStressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := isDskSpdRunning()
+	isRunning, err := utils.IsProcessRunning("diskspd")
 
 	if err != nil {
 		return nil, err
@@ -380,34 +360,6 @@ func (a *ioStressAction) Stop(_ context.Context, state *IoStressActionState) (*a
 	return &action_kit_api.StopResult{
 		Messages: &messages,
 	}, nil
-}
-
-func isDskSpdInstalled() bool {
-	cmd := exec.Command("diskspd", "-?")
-	cmd.Dir = os.TempDir()
-	var outputBuffer bytes.Buffer
-	cmd.Stdout = &outputBuffer
-	cmd.Stderr = &outputBuffer
-	err := cmd.Run()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to start diskspd")
-		return false
-	}
-	success := cmd.ProcessState.Success()
-	if !success {
-		log.Error().Err(err).Msgf("diskspd is not installed: 'diskspd' in %v returned: %v", os.TempDir(), outputBuffer.Bytes())
-	}
-	return success
-}
-
-func isDskSpdRunning() (bool, error) {
-	cmd := exec.Command("powershell", "-Command", "Get-Process", "-Name", "diskspd", "-ErrorAction", "SilentlyContinue")
-	output, err := cmd.Output()
-	if err != nil {
-		return false, err
-	}
-
-	return len(strings.TrimSpace(string(output))) > 0, nil
 }
 
 func isPhysicalDeviceAvailable(deviceId uint64) (bool, error) {
