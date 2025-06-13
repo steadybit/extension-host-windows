@@ -218,6 +218,10 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 		return nil, err
 	}
 
+	if !isSteadybitStressCpuInstalled() {
+		return nil, fmt.Errorf("")
+	}
+
 	opts, err := a.optsProvider(request)
 	if err != nil {
 		return nil, err
