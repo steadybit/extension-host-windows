@@ -23,6 +23,8 @@ import (
 
 var validProcessPriorities [4]string = [4]string{"Normal", "AboveNormal", "High", "RealTime"}
 
+const steadybitStressCpuExecutableName = "steadybit-stress-cpu"
+
 type cpuStressAction struct {
 	description  action_kit_api.ActionDescription
 	optsProvider stressOptsProvider
@@ -217,7 +219,7 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 		return nil, err
 	}
 
-	err := utils.IsExecutableOperational("steadybit-stress-cpu", "--version")
+	err := utils.IsExecutableOperational(steadybitStressCpuExecutableName, "--version")
 
 	if err != nil {
 		return nil, err
@@ -234,7 +236,7 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 }
 
 func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (*action_kit_api.StartResult, error) {
-	command := exec.CommandContext(context.Background(), "steadybit-stress-cpu", state.StressOpts.Args()...)
+	command := exec.CommandContext(context.Background(), steadybitStressCpuExecutableName, state.StressOpts.Args()...)
 
 	go func() {
 		output, err := command.CombinedOutput()
@@ -257,14 +259,14 @@ func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (
 }
 
 func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := utils.IsProcessRunning("steadybit-stress-cpu")
+	isRunning, err := utils.IsProcessRunning(steadybitStressCpuExecutableName)
 
 	if err != nil {
 		return &action_kit_api.StatusResult{
 			Completed: true,
 			Error: &action_kit_api.ActionKitError{
 				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve 'steadybit-stress-cpu' process status: %s", err),
+				Title:  fmt.Sprintf("unable to retrieve '%s' process status: %s", steadybitStressCpuExecutableName, err),
 			},
 		}, nil
 	}
@@ -287,14 +289,14 @@ func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*
 
 func (a *cpuStressAction) Stop(_ context.Context, state *StressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := utils.IsProcessRunning("steadybit-stress-cpu")
+	isRunning, err := utils.IsProcessRunning(steadybitStressCpuExecutableName)
 
 	if err != nil {
 		return nil, err
 	}
 
 	if isRunning {
-		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "steadybit-stress-cpu", "-Force")
+		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", steadybitStressCpuExecutableName, "-Force")
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
