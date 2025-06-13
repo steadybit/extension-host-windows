@@ -285,6 +285,10 @@ func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState
 		return nil, err
 	}
 
+	if !isDskSpdInstalled() {
+		return nil, errors.New("diskspd is not installed or cannot be found in %PATH%")
+	}
+
 	opts, err := a.optsProvider(request)
 	if err != nil {
 		return nil, err
@@ -379,7 +383,7 @@ func (a *ioStressAction) Stop(_ context.Context, state *IoStressActionState) (*a
 }
 
 func isDskSpdInstalled() bool {
-	cmd := exec.Command("diskspd")
+	cmd := exec.Command("diskspd", "-?")
 	cmd.Dir = os.TempDir()
 	var outputBuffer bytes.Buffer
 	cmd.Stdout = &outputBuffer
