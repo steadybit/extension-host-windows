@@ -262,13 +262,7 @@ func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*
 	isRunning, err := utils.IsProcessRunning(steadybitStressCpuExecutableName)
 
 	if err != nil {
-		return &action_kit_api.StatusResult{
-			Completed: true,
-			Error: &action_kit_api.ActionKitError{
-				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve '%s' process status: %s", steadybitStressCpuExecutableName, err),
-			},
-		}, nil
+		return nil, err
 	}
 
 	if isRunning {

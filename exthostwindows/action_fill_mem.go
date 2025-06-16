@@ -264,13 +264,7 @@ func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*a
 	isRunning, err := utils.IsProcessRunning("memfill")
 
 	if err != nil {
-		return &action_kit_api.StatusResult{
-			Completed: true,
-			Error: &action_kit_api.ActionKitError{
-				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve 'memfill' process status: %s", err),
-			},
-		}, nil
+		return nil, err
 	}
 
 	if isRunning {

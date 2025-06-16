@@ -6,6 +6,7 @@ if ($Env:SKIP_LICENSES_REPORT -eq "true"){
 $ProgressPreference = 'SilentlyContinue'
 $scriptPath = $PSScriptRoot
 $distPath = "$scriptPath\..\dist"
+$devzeroPath = "$scriptPath\..\devzero"
 $artifactPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller\Artifacts"
 $solutionPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller"
 $cpuStressPath = "$scriptPath\..\steadybit-stress-cpu"
@@ -54,6 +55,10 @@ Write-Output "Running dotnet publish in: $cpuStressPath"
 Push-Location $cpuStressPath
 dotnet publish -c Release -r "win-x64"  -o $artifactPath /p:SelfContained=true /p:PublishSingleFile=true /p:PublishTrimmed=true
 Pop-Location
+
+Write-Output "Building devzero in: $devzeroPath"
+Push-Location $devzeroPath
+go build -o $artifactPath\devzero.exe main.go
 
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath

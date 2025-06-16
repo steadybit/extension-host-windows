@@ -308,13 +308,7 @@ func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (
 	isRunning, err := utils.IsProcessRunning("diskspd")
 
 	if err != nil {
-		return &action_kit_api.StatusResult{
-			Completed: true,
-			Error: &action_kit_api.ActionKitError{
-				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve 'diskspd' process status: %s", err),
-			},
-		}, nil
+		return nil, err 
 	}
 
 	if isRunning {

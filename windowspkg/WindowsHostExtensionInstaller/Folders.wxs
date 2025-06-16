@@ -6,6 +6,7 @@
 					<Directory Id="WDNAFOLDER" Name="CLI"/>
 					<Directory Id="CPUFOLDER" Name="CPU"/>
 					<Directory Id="MEMFOLDER" Name="Memory"/>
+					<Directory Id="DISKFOLDER" Name="Disk" />
 					<Directory Id="COREFOLDER" Name="Core"/>
 					<Directory Id="LICENSESFOLDER" Name="Licenses"/>
 				</Directory>
