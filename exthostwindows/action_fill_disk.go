@@ -65,11 +65,12 @@ type fillDiskAction struct {
 }
 
 type FillDiskOpts struct {
-	Duration time.Duration
-	FillMode FillMode
-	Method   FillMethod
-	Path     string
-	ByteSize uint64
+	Duration  time.Duration
+	FillMode  FillMode
+	Method    FillMethod
+	Path      string
+	ByteSize  uint64
+	BlockSize uint
 }
 
 func BytesToMegabytes(bytes uint64) uint64 {
@@ -86,7 +87,16 @@ func (o *FillDiskOpts) Args() []string {
 
 	if o.Method == OverTime {
 		args = []string{"dd", fmt.Sprintf("of=%s", o.Path)}
-		args = append(args, "iflag=fullblock", "bs=1M", fmt.Sprintf("count=%d", BytesToMegabytes(o.ByteSize)))
+
+		allocationInMB := BytesToMegabytes(o.ByteSize)
+
+		if uint64(o.BlockSize) > allocationInMB {
+			o.BlockSize = uint(allocationInMB)
+		}
+
+		numberOfBlocks := o.ByteSize / uint64(o.BlockSize)
+
+		args = append(args, "iflag=fullblock", fmt.Sprintf("bs=%dM", o.BlockSize), fmt.Sprintf("count=%d", BytesToMegabytes(numberOfBlocks)))
 	}
 
 	return args
@@ -171,12 +181,15 @@ func fillDisk() fillDiskOptsProvider {
 			return nil, err
 		}
 
+		blockSize := extutil.ToUInt(request.Config["blocksize"])
+
 		return &FillDiskOpts{
-			Duration: duration,
-			ByteSize: amountToAllocate,
-			Method:   method,
-			FillMode: mode,
-			Path:     filepath.Join(path, "steadybit-disk-fill.txt"),
+			Duration:  duration,
+			ByteSize:  amountToAllocate,
+			Method:    method,
+			FillMode:  mode,
+			Path:      filepath.Join(path, "steadybit-disk-fill.txt"),
+			BlockSize: blockSize,
 		}, nil
 	}
 }
@@ -416,7 +429,7 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 			}
 
 			if err := ddCmd.Wait(); err != nil {
-				log.Err(err).Msg("dd failed executing")
+				log.Err(err).Msg("dd failed executing: might have been stopped forcefully")
 			}
 
 			if err := devzeroCmd.Process.Kill(); err != nil {

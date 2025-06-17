@@ -283,21 +283,11 @@ func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*
 
 func (a *cpuStressAction) Stop(_ context.Context, state *StressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := utils.IsProcessRunning(steadybitStressCpuExecutableName)
+
+	err := utils.StopProcess(steadybitStressCpuExecutableName)
 
 	if err != nil {
 		return nil, err
-	}
-
-	if isRunning {
-		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", steadybitStressCpuExecutableName, "-Force")
-		out, err := cmd.CombinedOutput()
-
-		if err != nil {
-			return nil, err
-		}
-
-		log.Info().Msgf("%s", out)
 	}
 
 	messages = append(messages, action_kit_api.Message{
