@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func IsProcessRunning(processName string) (bool, error) {
@@ -21,6 +23,28 @@ func IsProcessRunning(processName string) (bool, error) {
 	}
 
 	return len(strings.TrimSpace(string(output))) > 0, nil
+}
+
+func StopProcess(processName string) error {
+	isRunning, err := IsProcessRunning(processName)
+
+	if err != nil {
+		return err
+	}
+
+	if isRunning {
+		cmd := PowershellCommand("Stop-Process", "-Name", processName, "-Force")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			if !strings.Contains(string(out), "Cannot find a process with the name") {
+				return err
+			}
+		}
+
+		log.Info().Msgf("%s", out)
+	}
+
+	return nil
 }
 
 func IsExecutableOperational(executableName string, args ...string) error {

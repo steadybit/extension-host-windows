@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,12 +65,15 @@ type fillDiskAction struct {
 }
 
 type FillDiskOpts struct {
-	Duration       time.Duration
-	FillMode       FillMode
-	Method         FillMethod
-	Path           string
-	ByteSize       uint64
-	MBorPercentage uint
+	Duration time.Duration
+	FillMode FillMode
+	Method   FillMethod
+	Path     string
+	ByteSize uint64
+}
+
+func BytesToMegabytes(bytes uint64) uint64 {
+	return bytes / 1000 / 1000
 }
 
 func (o *FillDiskOpts) Args() []string {
@@ -81,8 +85,8 @@ func (o *FillDiskOpts) Args() []string {
 	}
 
 	if o.Method == OverTime {
-		args = []string{fmt.Sprintf("of=%s", o.Path)}
-		args = append(args, "iflag=blocksize", "bs=1M", fmt.Sprintf("count=%d", o.MBorPercentage))
+		args = []string{"dd", fmt.Sprintf("of=%s", o.Path)}
+		args = append(args, "iflag=fullblock", "bs=1M", fmt.Sprintf("count=%d", BytesToMegabytes(o.ByteSize)))
 	}
 
 	return args
@@ -168,12 +172,11 @@ func fillDisk() fillDiskOptsProvider {
 		}
 
 		return &FillDiskOpts{
-			Duration:       duration,
-			ByteSize:       amountToAllocate,
-			Method:         method,
-			FillMode:       mode,
-			Path:           filepath.Join(path, "steadybit-disk-fill.txt"),
-			MBorPercentage: size,
+			Duration: duration,
+			ByteSize: amountToAllocate,
+			Method:   method,
+			FillMode: mode,
+			Path:     filepath.Join(path, "steadybit-disk-fill.txt"),
 		}, nil
 	}
 }
@@ -374,19 +377,55 @@ func (a *fillDiskAction) Prepare(ctx context.Context, state *FillDiskActionState
 }
 
 func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) (*action_kit_api.StartResult, error) {
-	command := exec.CommandContext(context.Background(), "fsutil", state.StressOpts.Args()...)
+	if state.StressOpts.Method == AtOnce {
+		command := exec.CommandContext(context.Background(), "fsutil", state.StressOpts.Args()...)
+		go func() {
+			log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
+			output, err := command.CombinedOutput()
 
-	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
+			if err != nil {
+				log.Error().Msgf("Failed to start disk fill attack: %s.", err)
+			}
 
-	go func() {
-		output, err := command.CombinedOutput()
+			log.Info().Msgf("%s", output)
+		}()
+	} else {
+		bgCtx := context.Background()
+		devzeroCmd := exec.CommandContext(bgCtx, "devzero")
+		ddCmd := exec.CommandContext(bgCtx, "coreutils", state.StressOpts.Args()...)
 
-		if err != nil {
-			log.Error().Msgf("Failed to start disk fill attack: %s.", err)
-		}
+		log.Info().Msgf("Running command: %s, %s.", ddCmd.Path, ddCmd.Args)
 
-		log.Info().Msgf("%s", output)
-	}()
+		go func() {
+			pipeReader, pipeWriter := io.Pipe()
+			defer pipeReader.Close()
+			defer pipeWriter.Close()
+
+			devzeroCmd.Stdout = pipeWriter
+			ddCmd.Stdin = pipeReader
+
+			ddCmd.Stdout = os.Stdout
+			ddCmd.Stderr = os.Stderr
+
+			if err := devzeroCmd.Start(); err != nil {
+				log.Err(err).Msgf("failed to start devzero")
+			}
+
+			if err := ddCmd.Start(); err != nil {
+				log.Err(err).Msgf("failed to start dd")
+			}
+
+			if err := ddCmd.Wait(); err != nil {
+				log.Err(err).Msg("dd failed executing")
+			}
+
+			if err := devzeroCmd.Process.Kill(); err != nil {
+				log.Err(err).Msg("failed to stop devzero")
+			}
+
+			devzeroCmd.Wait()
+		}()
+	}
 
 	return &action_kit_api.StartResult{
 		Messages: extutil.Ptr([]action_kit_api.Message{
@@ -402,6 +441,18 @@ func (a *fillDiskAction) Stop(_ context.Context, state *FillDiskActionState) (*a
 	messages := make([]action_kit_api.Message, 0)
 
 	err := os.Remove(state.StressOpts.Path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = utils.StopProcess("coreutils")
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = utils.StopProcess("devzero")
 
 	if err != nil {
 		return nil, err
