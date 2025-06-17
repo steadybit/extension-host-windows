@@ -202,7 +202,7 @@ func calculateAllocation(fillMode FillMode, driveLetter string, percentageOrMega
 	}
 
 	if fillMode == MBLeft {
-		var wantToAllocate uint64 = percentageOrMegabytes * 1000 * 1000
+		wantToAllocate := percentageOrMegabytes * 1000 * 1000
 		if availableSpace < wantToAllocate {
 			return 0, fmt.Errorf("not enough space on the drive")
 		}
@@ -211,7 +211,7 @@ func calculateAllocation(fillMode FillMode, driveLetter string, percentageOrMega
 	}
 
 	if fillMode == MBToFill {
-		var wantToAllocate uint64 = percentageOrMegabytes * 1000 * 1000
+		wantToAllocate := percentageOrMegabytes * 1000 * 1000
 		if availableSpace < wantToAllocate {
 			return 0, fmt.Errorf("not enough space on the drive")
 		}
