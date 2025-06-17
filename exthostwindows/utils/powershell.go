@@ -13,12 +13,13 @@ import (
 )
 
 func IsProcessRunning(processName string) (bool, error) {
-	cmd := exec.Command("powershell", "-Command", "Get-Process", "-Name", processName)
-	output, err := cmd.Output()
+	cmd := PowershellCommand("Get-Process", "-Name", processName)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		if !strings.Contains(string(output), "Cannot find a process with the name") {
+		if strings.Contains(string(output), "Cannot find a process with the name") {
 			return false, nil
 		}
+
 		return false, err
 	}
 
@@ -36,7 +37,8 @@ func StopProcess(processName string) error {
 		cmd := PowershellCommand("Stop-Process", "-Name", processName, "-Force")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			if !strings.Contains(string(out), "Cannot find a process with the name") {
+			if strings.Contains(string(out), "Cannot find a process with the name") {
+				log.Err(err).Msg("Stop-Process failed")
 				return err
 			}
 		}
@@ -66,7 +68,8 @@ func IsExecutableOperational(executableName string, args ...string) error {
 }
 
 func PowershellCommand(args ...string) *exec.Cmd {
-	return exec.Command("powershell", "-Command", strings.Join(args, " "))
+	args = append([]string{"-Command"}, args...)
+	return exec.Command("powershell", args...)
 }
 
 func GetAvailableDriveLetters() ([]string, error) {
