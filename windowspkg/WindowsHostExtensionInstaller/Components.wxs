@@ -15,6 +15,12 @@
 				<Environment Id="FillMemPath" Name="PATH" Value="[MEMFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
 			</Component>
 		</ComponentGroup>
+		<ComponentGroup Id="DISK" Directory="DISKFOLDER">
+			<Component Guid="8fc3188e-cf9f-4acb-b58a-ad34d56835f7">
+				<File Source="./Artifacts/devzero.exe"/>
+				<Environment Id="DiskFolderPath" Name="PATH" Value="[DISKFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
+			</Component>
+		</ComponentGroup>
 		<ComponentGroup Id="CPUSTRESS" Directory="CPUFOLDER">
 			<Component Guid="3b8aabfd-1fb8-4498-ade1-023e164d5e29">
 				<File Source="./Artifacts/steadybit-stress-cpu.exe"	/>

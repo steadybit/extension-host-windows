@@ -264,13 +264,7 @@ func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*a
 	isRunning, err := utils.IsProcessRunning("memfill")
 
 	if err != nil {
-		return &action_kit_api.StatusResult{
-			Completed: true,
-			Error: &action_kit_api.ActionKitError{
-				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve 'memfill' process status: %s", err),
-			},
-		}, nil
+		return nil, err
 	}
 
 	if isRunning {
@@ -291,23 +285,11 @@ func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*a
 
 func (a *fillMemAction) Stop(_ context.Context, state *FillMemActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := utils.IsProcessRunning("memfill")
+
+	err := utils.StopProcess("memfill")
 
 	if err != nil {
 		return nil, err
-	}
-
-	if isRunning {
-		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "memfill", "-Force")
-		out, err := cmd.CombinedOutput()
-
-		if err != nil {
-			if !strings.Contains(string(out), "Cannot find a process with the name") {
-				return nil, err
-			}
-		}
-
-		log.Info().Msgf("%s", out)
 	}
 
 	messages = append(messages, action_kit_api.Message{

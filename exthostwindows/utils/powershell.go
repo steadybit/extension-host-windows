@@ -1,11 +1,15 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func IsProcessRunning(processName string) (bool, error) {
@@ -19,6 +23,28 @@ func IsProcessRunning(processName string) (bool, error) {
 	}
 
 	return len(strings.TrimSpace(string(output))) > 0, nil
+}
+
+func StopProcess(processName string) error {
+	isRunning, err := IsProcessRunning(processName)
+
+	if err != nil {
+		return err
+	}
+
+	if isRunning {
+		cmd := PowershellCommand("Stop-Process", "-Name", processName, "-Force")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			if !strings.Contains(string(out), "Cannot find a process with the name") {
+				return err
+			}
+		}
+
+		log.Info().Msgf("%s", out)
+	}
+
+	return nil
 }
 
 func IsExecutableOperational(executableName string, args ...string) error {
@@ -41,4 +67,47 @@ func IsExecutableOperational(executableName string, args ...string) error {
 
 func PowershellCommand(args ...string) *exec.Cmd {
 	return exec.Command("powershell", "-Command", strings.Join(args, " "))
+}
+
+func GetAvailableDriveLetters() ([]string, error) {
+	cmd := PowershellCommand("Get-Volume | ForEach-Object { $_.DriveLetter }")
+	output, err := cmd.Output()
+	if err != nil {
+		return []string{}, err
+	}
+
+	reader := strings.NewReader(string(output))
+	scanner := bufio.NewScanner(reader)
+	driveLetters := make([]string, 0)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		letter := strings.TrimSpace(line)
+		driveLetters = append(driveLetters, letter)
+	}
+	return driveLetters, nil
+}
+
+type DriveSpace string
+
+const (
+	Available DriveSpace = "SizeRemaining"
+	Total     DriveSpace = "Size"
+)
+
+func GetDriveSpace(driveLetter string, kind DriveSpace) (uint64, error) {
+	cmd := PowershellCommand(fmt.Sprintf("(Get-Volume -DriveLetter %s).%s", driveLetter, kind))
+	output, err := cmd.Output()
+
+	if err != nil {
+		return 0, err
+	}
+
+	availableSpace, err := strconv.ParseUint(strings.TrimSpace(string(output)), 10, 0)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return availableSpace, nil
 }
