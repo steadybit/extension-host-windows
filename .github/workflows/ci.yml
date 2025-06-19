@@ -130,7 +130,7 @@ jobs:
         shell: bash
         run: |
           ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          ARTIFACT_NAME=$(echo "$ARTIFACT_NAME" | sed 's/,/-/g')
+          ARTIFACT_NAME=$(echo "$ARTIFACT_NAME" | sed 's/\//-/g')
           echo "SANITIZED_ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload Artifacts
