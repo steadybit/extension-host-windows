@@ -31,32 +31,40 @@ const (
 	OverTime   FillMethod = "OVER_TIME"
 )
 
-func stringToFillMode(modeString string) (FillMode, error) {
-	if modeString == string(Percentage) {
-		return Percentage, nil
-	}
-
-	if modeString == string(MBLeft) {
-		return MBLeft, nil
-	}
-
-	if modeString == string(MBToFill) {
-		return MBToFill, nil
-	}
-
-	return "", fmt.Errorf("mode must be one of the following: %s, %s", ModeAbsolute, ModeUsage)
+var FillDiskModes = struct {
+	Percentage FillMode
+	MBToFill   FillMode
+	MBLeft     FillMode
+}{
+	Percentage: Percentage,
+	MBToFill:   MBToFill,
+	MBLeft:     MBLeft,
 }
 
-func stringToFillMethod(stringUnit string) (FillMethod, error) {
-	if stringUnit == string(AtOnce) {
-		return AtOnce, nil
-	}
+var FillDiskMethods = struct {
+	AtOnce   FillMethod
+	OverTime FillMethod
+}{
+	AtOnce:   AtOnce,
+	OverTime: OverTime,
+}
 
-	if stringUnit == string(OverTime) {
-		return OverTime, nil
+func (fm FillMode) IsValid() bool {
+	switch fm {
+	case FillDiskModes.MBLeft, FillDiskModes.Percentage:
+		return true
+	default:
+		return false
 	}
+}
 
-	return "", fmt.Errorf("mode must be one of the following: %s, %s", UnitMegabyte, UnitPercent)
+func (fm FillMethod) IsValid() bool {
+	switch fm {
+	case FillDiskMethods.AtOnce, FillDiskMethods.OverTime:
+		return true
+	default:
+		return false
+	}
 }
 
 type fillDiskAction struct {
@@ -71,6 +79,7 @@ type FillDiskOpts struct {
 	Path      string
 	ByteSize  uint64
 	BlockSize uint
+	FilePath  string
 }
 
 func BytesToMegabytes(bytes uint64) uint64 {
@@ -80,13 +89,15 @@ func BytesToMegabytes(bytes uint64) uint64 {
 func (o *FillDiskOpts) Args() []string {
 	args := []string{}
 
+	o.FilePath = filepath.Join(o.Path, fmt.Sprintf("steadybit-disk-fill-%s", uuid.NewString()))
+
 	if o.Method == AtOnce {
-		args = []string{"file", "createNew", o.Path}
+		args = []string{"file", "createNew", o.FilePath}
 		args = append(args, fmt.Sprintf("%d", o.ByteSize))
 	}
 
 	if o.Method == OverTime {
-		args = []string{"dd", fmt.Sprintf("of=%s", o.Path)}
+		args = []string{"dd", fmt.Sprintf("of=%s", o.FilePath)}
 
 		allocationInMB := BytesToMegabytes(o.ByteSize)
 
@@ -133,20 +144,16 @@ func fillDisk() fillDiskOptsProvider {
 			return nil, errors.New("duration must be greater / equal than 1s")
 		}
 
-		modeString := extutil.ToString(request.Config["mode"])
+		mode := FillMode(extutil.ToString(request.Config["mode"]))
 
-		mode, err := stringToFillMode(modeString)
-
-		if err != nil {
-			return nil, err
+		if !mode.IsValid() {
+			return nil, fmt.Errorf("mode must be one of the following: %s, %s, %s", FillDiskModes.MBToFill, FillDiskModes.MBLeft, FillDiskModes.Percentage)
 		}
 
-		methodString := extutil.ToString(request.Config["method"])
+		method := FillMethod(extutil.ToString(request.Config["method"]))
 
-		method, err := stringToFillMethod(methodString)
-
-		if err != nil {
-			return nil, err
+		if !method.IsValid() {
+			return nil, fmt.Errorf("unit must be one of the following: %s, %s", FillDiskMethods.AtOnce, FillDiskMethods.OverTime)
 		}
 
 		path := extutil.ToString(request.Config["path"])
@@ -183,12 +190,16 @@ func fillDisk() fillDiskOptsProvider {
 
 		blockSize := extutil.ToUInt(request.Config["blocksize"])
 
+		if blockSize <= 1 || blockSize > 1024 {
+			return nil, fmt.Errorf("blocksize must be at least 1 and lesser or equal to 1024")
+		}
+
 		return &FillDiskOpts{
 			Duration:  duration,
 			ByteSize:  amountToAllocate,
 			Method:    method,
 			FillMode:  mode,
-			Path:      filepath.Join(path, "steadybit-disk-fill.txt"),
+			Path:      path,
 			BlockSize: blockSize,
 		}, nil
 	}
@@ -453,7 +464,7 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 func (a *fillDiskAction) Stop(_ context.Context, state *FillDiskActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
 
-	err := os.Remove(state.StressOpts.Path)
+	err := os.Remove(state.StressOpts.FilePath)
 
 	if err != nil {
 		return nil, err
