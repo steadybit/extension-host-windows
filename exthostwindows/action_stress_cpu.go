@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -21,7 +20,35 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 )
 
-var validProcessPriorities [4]string = [4]string{"Normal", "AboveNormal", "High", "RealTime"}
+type ProcessPriority string
+
+const (
+	Normal      ProcessPriority = "Normal"
+	AboveNormal ProcessPriority = "AboveNormal"
+	High        ProcessPriority = "High"
+	RealTime    ProcessPriority = "RealTime"
+)
+
+var ProcessPriorities = struct {
+	Normal      ProcessPriority
+	AboveNormal ProcessPriority
+	High        ProcessPriority
+	RealTime    ProcessPriority
+}{
+	Normal:      Normal,
+	AboveNormal: AboveNormal,
+	High:        High,
+	RealTime:    RealTime,
+}
+
+func (p ProcessPriority) IsValid() bool {
+	switch p {
+	case Normal, AboveNormal, High, RealTime:
+		return true
+	default:
+		return false
+	}
+}
 
 const steadybitStressCpuExecutableName = "steadybit-stress-cpu"
 
@@ -33,48 +60,48 @@ type cpuStressAction struct {
 type CpuStressOpts struct {
 	Cores    int
 	CpuLoad  int
-	Priority string
+	Priority ProcessPriority
 	Duration time.Duration
 }
 
 func (o *CpuStressOpts) Args() []string {
 	args := []string{"--duration", strconv.Itoa(int(o.Duration.Seconds()))}
 	args = append(args, "--cores", strconv.Itoa(int(o.Cores)))
-	args = append(args, "--priority", o.Priority)
+	args = append(args, "--priority", string(o.Priority))
 	args = append(args, "--percentage", strconv.Itoa(o.CpuLoad))
 
 	return args
 }
 
-type StressActionState struct {
+type CPUStressActionState struct {
 	StressOpts  CpuStressOpts
 	ExecutionId uuid.UUID
 }
 
 var (
-	_ action_kit_sdk.Action[StressActionState]           = (*cpuStressAction)(nil)
-	_ action_kit_sdk.ActionWithStatus[StressActionState] = (*cpuStressAction)(nil)
-	_ action_kit_sdk.ActionWithStop[StressActionState]   = (*cpuStressAction)(nil) // Optional, needed when the action needs a stop method
+	_ action_kit_sdk.Action[CPUStressActionState]           = (*cpuStressAction)(nil)
+	_ action_kit_sdk.ActionWithStatus[CPUStressActionState] = (*cpuStressAction)(nil)
+	_ action_kit_sdk.ActionWithStop[CPUStressActionState]   = (*cpuStressAction)(nil) // Optional, needed when the action needs a stop method
 )
 
 type stressOptsProvider func(request action_kit_api.PrepareActionRequestBody) (*CpuStressOpts, error)
 
-func NewStressCpuAction() action_kit_sdk.Action[StressActionState] {
+func NewStressCpuAction() action_kit_sdk.Action[CPUStressActionState] {
 	return &cpuStressAction{
 		description:  getStressCpuDescription(),
 		optsProvider: stressCpu(),
 	}
 }
 
-func (a *cpuStressAction) NewEmptyState() StressActionState {
-	return StressActionState{}
+func (a *cpuStressAction) NewEmptyState() CPUStressActionState {
+	return CPUStressActionState{}
 }
 
 func stressCpu() stressOptsProvider {
 	return func(request action_kit_api.PrepareActionRequestBody) (*CpuStressOpts, error) {
 		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
 
-		if duration < 1*time.Second {
+		if duration < time.Second {
 			return nil, errors.New("duration must be greater / equal than 1s")
 		}
 
@@ -85,7 +112,7 @@ func stressCpu() stressOptsProvider {
 			return nil, fmt.Errorf("number of cores must not be more than maximum available number of cores (%d)", availableCores)
 		}
 
-		if cores == 0 {
+		if cores <= 0 {
 			cores = availableCores
 		}
 
@@ -95,10 +122,10 @@ func stressCpu() stressOptsProvider {
 			return nil, extension_kit.ToError("cpu load must be in an inclusive range from 1%% to 100%%", nil)
 		}
 
-		priority := extutil.ToString(request.Config["priority"])
+		priority := ProcessPriority(extutil.ToString(request.Config["priority"]))
 
-		if !slices.Contains(validProcessPriorities[:], priority) {
-			return nil, extension_kit.ToError("priority must be one of the following: 'Normal', 'High', 'RealTime'.", nil)
+		if !priority.IsValid() {
+			return nil, extension_kit.ToError("priority must be one of the following: 'Normal', 'Above Normal', 'High', 'RealTime'.", nil)
 		}
 
 		return &CpuStressOpts{
@@ -174,19 +201,19 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 				Options: &[]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "Normal",
-						Value: validProcessPriorities[0],
+						Value: string(ProcessPriorities.Normal),
 					},
 					action_kit_api.ExplicitParameterOption{
 						Label: "Above Normal",
-						Value: validProcessPriorities[1],
+						Value: string(ProcessPriorities.AboveNormal),
 					},
 					action_kit_api.ExplicitParameterOption{
 						Label: "High",
-						Value: validProcessPriorities[2],
+						Value: string(ProcessPriorities.High),
 					},
 					action_kit_api.ExplicitParameterOption{
 						Label: "Real Time",
-						Value: validProcessPriorities[3],
+						Value: string(ProcessPriorities.RealTime),
 					},
 				},
 			},
@@ -214,14 +241,8 @@ func (a *cpuStressAction) Describe() action_kit_api.ActionDescription {
 // It must not cause any harmful effects.
 // The passed in state is included in the subsequent calls to start/status/stop.
 // So the state should contain all information needed to execute the action and even more important: to be able to stop it.
-func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
+func (a *cpuStressAction) Prepare(ctx context.Context, state *CPUStressActionState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	if _, err := CheckTargetHostname(request.Target.Attributes); err != nil {
-		return nil, err
-	}
-
-	err := utils.IsExecutableOperational(steadybitStressCpuExecutableName, "--version")
-
-	if err != nil {
 		return nil, err
 	}
 
@@ -235,7 +256,13 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *StressActionState,
 	return nil, nil
 }
 
-func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (*action_kit_api.StartResult, error) {
+func (a *cpuStressAction) Start(ctx context.Context, state *CPUStressActionState) (*action_kit_api.StartResult, error) {
+	err := utils.IsExecutableOperational(steadybitStressCpuExecutableName, "--version")
+
+	if err != nil {
+		return nil, err
+	}
+
 	command := exec.CommandContext(context.Background(), steadybitStressCpuExecutableName, state.StressOpts.Args()...)
 
 	go func() {
@@ -258,7 +285,7 @@ func (a *cpuStressAction) Start(ctx context.Context, state *StressActionState) (
 	}, nil
 }
 
-func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*action_kit_api.StatusResult, error) {
+func (a *cpuStressAction) Status(_ context.Context, state *CPUStressActionState) (*action_kit_api.StatusResult, error) {
 	isRunning, err := utils.IsProcessRunning(steadybitStressCpuExecutableName)
 
 	if err != nil {
@@ -281,7 +308,7 @@ func (a *cpuStressAction) Status(_ context.Context, state *StressActionState) (*
 
 }
 
-func (a *cpuStressAction) Stop(_ context.Context, state *StressActionState) (*action_kit_api.StopResult, error) {
+func (a *cpuStressAction) Stop(_ context.Context, state *CPUStressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
 
 	err := utils.StopProcess(steadybitStressCpuExecutableName)

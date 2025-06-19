@@ -56,6 +56,8 @@ jobs:
           go mod download
           make audit
         shell: powershell
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       - name: SonarCloud Scan
         if: ${{ env.sonar_available == 'true' }}
@@ -119,6 +121,8 @@ jobs:
       - name: Build extension installer
         run: make installer
         shell: powershell
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       - name: Upload Artifacts
         id: artifact-upload
