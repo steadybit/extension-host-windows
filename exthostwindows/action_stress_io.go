@@ -23,22 +23,31 @@ import (
 	"github.com/steadybit/extension-kit/extutil"
 )
 
-type StressLayer int
+type IOStressLayer string
 
 const (
-	FileSystem StressLayer = iota
-	NamedPartition
-	PhysicalDisk
+	FileSystem     IOStressLayer = "File System"
+	NamedPartition IOStressLayer = "Named Partition"
+	PhysicalDisk   IOStressLayer = "Physical Disk"
 )
 
-var ioStressLayer = map[StressLayer]string{
-	FileSystem:     "File System",
-	NamedPartition: "Named Partition",
-	PhysicalDisk:   "Physical Disk",
+var IOStressLayers = struct {
+	FileSystem     IOStressLayer
+	NamedPartition IOStressLayer
+	PhysicalDisk   IOStressLayer
+}{
+	FileSystem:     FileSystem,
+	NamedPartition: NamedPartition,
+	PhysicalDisk:   PhysicalDisk,
 }
 
-func (sl StressLayer) String() string {
-	return ioStressLayer[sl]
+func (sl IOStressLayer) IsValid() bool {
+	switch sl {
+	case FileSystem, NamedPartition, PhysicalDisk:
+		return true
+	default:
+		return false
+	}
 }
 
 type ioStressAction struct {
@@ -47,7 +56,7 @@ type ioStressAction struct {
 }
 
 type IoStressOpts struct {
-	StressLayer        StressLayer
+	StressLayer        IOStressLayer
 	StressLayerInput   string
 	ThreadCount        uint
 	Duration           time.Duration
@@ -100,29 +109,25 @@ func stressIo() ioStressOptsProvider {
 	return func(request action_kit_api.PrepareActionRequestBody) (*IoStressOpts, error) {
 		duration := time.Duration(extutil.ToInt64(request.Config["duration"])) * time.Millisecond
 
-		if duration < 1*time.Second {
+		if duration < time.Second {
 			return nil, errors.New("duration must be greater / equal than 1s")
 		}
 
-		stressLayer := extutil.ToString(request.Config["stressLayer"])
+		stressLayer := IOStressLayer(extutil.ToString(request.Config["stressLayer"]))
 
-		if stressLayer != FileSystem.String() && stressLayer != NamedPartition.String() && stressLayer != PhysicalDisk.String() {
-			return nil, fmt.Errorf("stress layer must be one of the following: %s, %s, %s", FileSystem.String(), NamedPartition.String(), PhysicalDisk.String())
+		if !stressLayer.IsValid() {
+			return nil, fmt.Errorf("stress layer must be one of the following: %s, %s, %s, current: %s", IOStressLayers.FileSystem, IOStressLayers.NamedPartition, IOStressLayers.PhysicalDisk, stressLayer)
 		}
 
 		stressLayerInput := extutil.ToString(request.Config["stressLayerInput"])
 
-		var stressLayerEnum StressLayer
-
-		if stressLayer == FileSystem.String() {
-			stressLayerEnum = FileSystem
+		if stressLayer == IOStressLayers.FileSystem {
 			if _, err := os.Stat(stressLayerInput); err != nil {
 				return nil, err
 			}
 		}
 
-		if stressLayer == NamedPartition.String() {
-			stressLayerEnum = NamedPartition
+		if stressLayer == IOStressLayers.NamedPartition {
 			stressLayerInput = string(bytes.ToUpper([]byte(stressLayerInput)))
 
 			if len(stressLayerInput) != 1 {
@@ -131,13 +136,12 @@ func stressIo() ioStressOptsProvider {
 
 			character := rune(stressLayerInput[0])
 
-			if !unicode.IsLetter(character) && (character >= 'A' && character <= 'Z') {
+			if !unicode.IsLetter(character) || !(character >= 'A' && character <= 'Z') {
 				return nil, fmt.Errorf("disk letter must be a letter from A-Z")
 			}
 		}
 
-		if stressLayer == PhysicalDisk.String() {
-			stressLayerEnum = PhysicalDisk
+		if stressLayer == IOStressLayers.PhysicalDisk {
 			deviceId, err := strconv.ParseUint(stressLayerInput, 10, 0)
 			if err != nil {
 				return nil, err
@@ -154,24 +158,24 @@ func stressIo() ioStressOptsProvider {
 			}
 		}
 
-		threadCount := extutil.ToInt(request.Config["threadCount"])
+		threadCount := extutil.ToUInt(request.Config["threadCount"])
 		availableThreadCount := runtime.NumCPU()
 
-		if threadCount == 0 {
-			threadCount = availableThreadCount
+		if threadCount > uint(availableThreadCount) {
+			return nil, fmt.Errorf("number of threads must not be more than maximum available number of threads (%d)", availableThreadCount)
 		}
 
-		if threadCount > availableThreadCount {
-			return nil, fmt.Errorf("number of cores must not be more than maximum available number of cores (%d)", availableThreadCount)
+		if threadCount <= 0 {
+			threadCount = uint(availableThreadCount)
 		}
 
 		disableSwHwCaching := extutil.ToBool(request.Config["disableSwHwCaching"])
 
 		return &IoStressOpts{
 			Duration:           duration,
-			StressLayer:        stressLayerEnum,
+			StressLayer:        stressLayer,
 			StressLayerInput:   stressLayerInput,
-			ThreadCount:        uint(threadCount),
+			ThreadCount:        threadCount,
 			DisableSwHwCaching: disableSwHwCaching,
 		}, nil
 	}
@@ -198,21 +202,21 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 				Label:        "IO Stress Layer",
 				Description:  extutil.Ptr("On which layer IO is stressed?"),
 				Type:         action_kit_api.ActionParameterTypeString,
-				DefaultValue: extutil.Ptr(NamedPartition.String()),
+				DefaultValue: extutil.Ptr(string(IOStressLayers.NamedPartition)),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),
 				Options: &[]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "File System - requires file path in the next field",
-						Value: FileSystem.String(),
+						Value: string(IOStressLayers.FileSystem),
 					},
 					action_kit_api.ExplicitParameterOption{
 						Label: "Named Partition - requires drive letter in the next field",
-						Value: NamedPartition.String(),
+						Value: string(IOStressLayers.NamedPartition),
 					},
 					action_kit_api.ExplicitParameterOption{
 						Label: "Physical Disk - requires disk id in the next field",
-						Value: PhysicalDisk.String(),
+						Value: string(IOStressLayers.PhysicalDisk),
 					},
 				},
 			},
@@ -263,12 +267,6 @@ func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState
 		return nil, err
 	}
 
-	err := utils.IsExecutableOperational("diskspd", "-?")
-
-	if err != nil {
-		return nil, err
-	}
-
 	opts, err := a.optsProvider(request)
 	if err != nil {
 		return nil, err
@@ -280,6 +278,12 @@ func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState
 }
 
 func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) (*action_kit_api.StartResult, error) {
+	err := utils.IsExecutableOperational("diskspd", "-?")
+
+	if err != nil {
+		return nil, err
+	}
+
 	command := exec.CommandContext(context.Background(), "diskspd", state.StressOpts.Args()...)
 
 	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
@@ -308,13 +312,7 @@ func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (
 	isRunning, err := utils.IsProcessRunning("diskspd")
 
 	if err != nil {
-		return &action_kit_api.StatusResult{
-			Completed: true,
-			Error: &action_kit_api.ActionKitError{
-				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve 'diskspd' process status: %s", err),
-			},
-		}, nil
+		return nil, err
 	}
 
 	if isRunning {
@@ -335,21 +333,11 @@ func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (
 
 func (a *ioStressAction) Stop(_ context.Context, state *IoStressActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := utils.IsProcessRunning("diskspd")
+
+	err := utils.StopProcess("diskspd")
 
 	if err != nil {
 		return nil, err
-	}
-
-	if isRunning {
-		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "diskspd", "-Force")
-		out, err := cmd.CombinedOutput()
-
-		if err != nil {
-			return nil, err
-		}
-
-		log.Info().Msgf("%s", out)
 	}
 
 	messages = append(messages, action_kit_api.Message{

@@ -27,28 +27,38 @@ const (
 	UnitMegabyte Unit = "MiB"
 )
 
-func stringToMode(modeString string) (Mode, error) {
-	if modeString == string(ModeAbsolute) {
-		return ModeAbsolute, nil
-	}
-
-	if modeString == string(ModeUsage) {
-		return ModeUsage, nil
-	}
-
-	return "", fmt.Errorf("mode must be one of the following: %s, %s", ModeAbsolute, ModeUsage)
+var FillMemoryModes = struct {
+	Usage    Mode
+	Absolute Mode
+}{
+	Usage:    ModeUsage,
+	Absolute: ModeAbsolute,
 }
 
-func stringToUnit(stringUnit string) (Unit, error) {
-	if stringUnit == string(UnitMegabyte) {
-		return UnitMegabyte, nil
-	}
+var FillMemoryUnits = struct {
+	Percent  Unit
+	Megabyte Unit
+}{
+	Percent:  UnitPercent,
+	Megabyte: UnitMegabyte,
+}
 
-	if stringUnit == string(UnitPercent) {
-		return UnitPercent, nil
+func (m Mode) IsValid() bool {
+	switch m {
+	case FillMemoryModes.Absolute, FillMemoryModes.Usage:
+		return true
+	default:
+		return false
 	}
+}
 
-	return "", fmt.Errorf("mode must be one of the following: %s, %s", UnitMegabyte, UnitPercent)
+func (u Unit) IsValid() bool {
+	switch u {
+	case FillMemoryUnits.Megabyte, FillMemoryUnits.Percent:
+		return true
+	default:
+		return false
+	}
 }
 
 type fillMemAction struct {
@@ -103,23 +113,23 @@ func fillMem() fillMemOptsProvider {
 			return nil, errors.New("duration must be greater / equal than 1s")
 		}
 
-		modeString := extutil.ToString(request.Config["mode"])
+		mode := Mode(extutil.ToString(request.Config["mode"]))
 
-		mode, err := stringToMode(modeString)
-
-		if err != nil {
-			return nil, err
+		if !mode.IsValid() {
+			return nil, fmt.Errorf("mode must be one of the following: %s, %s", FillMemoryModes.Absolute, FillMemoryModes.Usage)
 		}
 
-		unitString := extutil.ToString(request.Config["unit"])
+		unit := Unit(extutil.ToString(request.Config["unit"]))
 
-		unit, err := stringToUnit(unitString)
-
-		if err != nil {
-			return nil, err
+		if !unit.IsValid() {
+			return nil, fmt.Errorf("unit must be one of the following: %s, %s", FillMemoryUnits.Megabyte, FillMemoryUnits.Percent)
 		}
 
 		size := extutil.ToUInt(request.Config["size"])
+
+		if size <= 0 {
+			return nil, fmt.Errorf("size must be more than 0")
+		}
 
 		return &FillMemOpts{
 			Duration: duration,
@@ -219,12 +229,6 @@ func (a *fillMemAction) Prepare(ctx context.Context, state *FillMemActionState, 
 		return nil, err
 	}
 
-	err := utils.IsExecutableOperational("memfill", "--help")
-
-	if err != nil {
-		return nil, err
-	}
-
 	opts, err := a.optsProvider(request)
 	if err != nil {
 		return nil, err
@@ -236,6 +240,12 @@ func (a *fillMemAction) Prepare(ctx context.Context, state *FillMemActionState, 
 }
 
 func (a *fillMemAction) Start(ctx context.Context, state *FillMemActionState) (*action_kit_api.StartResult, error) {
+	err := utils.IsExecutableOperational("memfill", "--help")
+
+	if err != nil {
+		return nil, err
+	}
+
 	command := exec.CommandContext(context.Background(), "memfill", state.StressOpts.Args()...)
 
 	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
@@ -264,13 +274,7 @@ func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*a
 	isRunning, err := utils.IsProcessRunning("memfill")
 
 	if err != nil {
-		return &action_kit_api.StatusResult{
-			Completed: true,
-			Error: &action_kit_api.ActionKitError{
-				Status: extutil.Ptr(action_kit_api.Failed),
-				Title:  fmt.Sprintf("unable to retrieve 'memfill' process status: %s", err),
-			},
-		}, nil
+		return nil, err
 	}
 
 	if isRunning {
@@ -291,23 +295,11 @@ func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*a
 
 func (a *fillMemAction) Stop(_ context.Context, state *FillMemActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
-	isRunning, err := utils.IsProcessRunning("memfill")
+
+	err := utils.StopProcess("memfill")
 
 	if err != nil {
 		return nil, err
-	}
-
-	if isRunning {
-		cmd := exec.Command("powershell", "-Command", "Stop-Process", "-Name", "memfill", "-Force")
-		out, err := cmd.CombinedOutput()
-
-		if err != nil {
-			if !strings.Contains(string(out), "Cannot find a process with the name") {
-				return nil, err
-			}
-		}
-
-		log.Info().Msgf("%s", out)
 	}
 
 	messages = append(messages, action_kit_api.Message{
