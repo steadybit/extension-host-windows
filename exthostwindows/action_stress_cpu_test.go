@@ -14,7 +14,7 @@ import (
 )
 
 func getExecutionIdByTestId() func(testId uint) uuid.UUID {
-	var cache map[uint]uuid.UUID = make(map[uint]uuid.UUID)
+	cache := make(map[uint]uuid.UUID)
 
 	return func(testId uint) uuid.UUID {
 		val, ok := cache[testId]
