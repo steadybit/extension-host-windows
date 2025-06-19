@@ -51,7 +51,7 @@ var FillDiskMethods = struct {
 
 func (fm FillMode) IsValid() bool {
 	switch fm {
-	case FillDiskModes.MBLeft, FillDiskModes.Percentage:
+	case FillDiskModes.MBLeft, FillDiskModes.Percentage, FillDiskModes.MBToFill:
 		return true
 	default:
 		return false
@@ -88,8 +88,6 @@ func BytesToMegabytes(bytes uint64) uint64 {
 
 func (o *FillDiskOpts) Args() []string {
 	args := []string{}
-
-	o.FilePath = filepath.Join(o.Path, fmt.Sprintf("steadybit-disk-fill-%s", uuid.NewString()))
 
 	if o.Method == AtOnce {
 		args = []string{"file", "createNew", o.FilePath}
@@ -201,6 +199,7 @@ func fillDisk() fillDiskOptsProvider {
 			FillMode:  mode,
 			Path:      path,
 			BlockSize: blockSize,
+			FilePath:  filepath.Join(path, fmt.Sprintf("steadybit-disk-fill-%s", uuid.NewString())),
 		}, nil
 	}
 }
