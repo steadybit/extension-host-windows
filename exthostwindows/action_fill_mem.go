@@ -229,12 +229,6 @@ func (a *fillMemAction) Prepare(ctx context.Context, state *FillMemActionState, 
 		return nil, err
 	}
 
-	err := utils.IsExecutableOperational("memfill", "--help")
-
-	if err != nil {
-		return nil, err
-	}
-
 	opts, err := a.optsProvider(request)
 	if err != nil {
 		return nil, err
@@ -246,6 +240,12 @@ func (a *fillMemAction) Prepare(ctx context.Context, state *FillMemActionState, 
 }
 
 func (a *fillMemAction) Start(ctx context.Context, state *FillMemActionState) (*action_kit_api.StartResult, error) {
+	err := utils.IsExecutableOperational("memfill", "--help")
+
+	if err != nil {
+		return nil, err
+	}
+
 	command := exec.CommandContext(context.Background(), "memfill", state.StressOpts.Args()...)
 
 	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)

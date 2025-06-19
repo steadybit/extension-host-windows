@@ -246,12 +246,6 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *CPUStressActionSta
 		return nil, err
 	}
 
-	err := utils.IsExecutableOperational(steadybitStressCpuExecutableName, "--version")
-
-	if err != nil {
-		return nil, err
-	}
-
 	opts, err := a.optsProvider(request)
 	if err != nil {
 		return nil, err
@@ -263,6 +257,12 @@ func (a *cpuStressAction) Prepare(ctx context.Context, state *CPUStressActionSta
 }
 
 func (a *cpuStressAction) Start(ctx context.Context, state *CPUStressActionState) (*action_kit_api.StartResult, error) {
+	err := utils.IsExecutableOperational(steadybitStressCpuExecutableName, "--version")
+
+	if err != nil {
+		return nil, err
+	}
+
 	command := exec.CommandContext(context.Background(), steadybitStressCpuExecutableName, state.StressOpts.Args()...)
 
 	go func() {

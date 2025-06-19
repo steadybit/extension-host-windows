@@ -267,12 +267,6 @@ func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState
 		return nil, err
 	}
 
-	err := utils.IsExecutableOperational("diskspd", "-?")
-
-	if err != nil {
-		return nil, err
-	}
-
 	opts, err := a.optsProvider(request)
 	if err != nil {
 		return nil, err
@@ -284,6 +278,12 @@ func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState
 }
 
 func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) (*action_kit_api.StartResult, error) {
+	err := utils.IsExecutableOperational("diskspd", "-?")
+
+	if err != nil {
+		return nil, err
+	}
+
 	command := exec.CommandContext(context.Background(), "diskspd", state.StressOpts.Args()...)
 
 	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)

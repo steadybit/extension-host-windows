@@ -373,34 +373,17 @@ func (a *fillDiskAction) Prepare(ctx context.Context, state *FillDiskActionState
 	}
 	state.StressOpts = *opts
 
-	if state.StressOpts.Method == AtOnce {
-		err := utils.IsExecutableOperational("fsutil")
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if state.StressOpts.Method == OverTime {
-		err = utils.IsExecutableOperational("coreutils", "dd", "--help")
-
-		if err != nil {
-			return nil, err
-		}
-
-		err = utils.IsExecutableOperational("devzero", "--help")
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	state.ExecutionId = request.ExecutionId
 	return nil, nil
 }
 
 func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) (*action_kit_api.StartResult, error) {
 	if state.StressOpts.Method == AtOnce {
+		err := utils.IsExecutableOperational("fsutil")
+
+		if err != nil {
+			return nil, err
+		}
 		command := exec.CommandContext(context.Background(), "fsutil", state.StressOpts.Args()...)
 		go func() {
 			log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
@@ -413,6 +396,18 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 			log.Info().Msgf("%s", output)
 		}()
 	} else {
+		err := utils.IsExecutableOperational("coreutils", "dd", "--help")
+
+		if err != nil {
+			return nil, err
+		}
+
+		err = utils.IsExecutableOperational("devzero", "--help")
+
+		if err != nil {
+			return nil, err
+		}
+
 		bgCtx := context.Background()
 		devzeroCmd := exec.CommandContext(bgCtx, "devzero")
 		ddCmd := exec.CommandContext(bgCtx, "coreutils", state.StressOpts.Args()...)
