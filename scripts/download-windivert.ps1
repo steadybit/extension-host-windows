@@ -4,7 +4,7 @@ param(
   [string]$ReleaseVersion = "latest",
   [switch]$IncludePrereleases = $true,
   [switch]$ForceDownload = $false,
-  [string]$GithubToken = $env:GITHUB_TOKEN
+  [string]$GithubToken = $env:PAT_TOKEN
 )
 
 $ProgressPreference = 'SilentlyContinue'
