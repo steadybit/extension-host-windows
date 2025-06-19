@@ -3,7 +3,8 @@ param(
   [string]$DownloadDir = "dist",
   [string]$ReleaseVersion = "latest",
   [switch]$IncludePrereleases = $true,
-  [switch]$ForceDownload = $false
+  [switch]$ForceDownload = $false,
+  [string]$GithubToken = $env:GITHUB_TOKEN
 )
 
 $ProgressPreference = 'SilentlyContinue'
@@ -19,18 +20,23 @@ if ($IncludePrereleases) {
 }
 
 try {
+  $headers = @{}
+  if ($GitHubToken) {
+    $headers["Authorization"] = "token $GitHubToken"
+    Write-Host "Using GitHub token for authentication."
+  }
   # Get specific version or all releases (including prereleases)
   if ($ReleaseVersion -ne "latest") {
     # Fetch specific release by tag
     try {
-      $release = Invoke-RestMethod -Uri "https://api.github.com/repos/steadybit/WinDivert/releases/tags/$ReleaseVersion"
+      $release = Invoke-RestMethod -Uri "https://api.github.com/repos/steadybit/WinDivert/releases/tags/$ReleaseVersion" -Headers $headers
     } catch {
       Write-Host "Error: Release version '$ReleaseVersion' not found"
       exit 1
     }
   } else {
     # Get all releases and filter based on parameters
-    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/steadybit/WinDivert/releases"
+    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/steadybit/WinDivert/releases" -Headers $headers
 
     # Filter based on prerelease parameter
     if (-not $IncludePrereleases) {
@@ -76,7 +82,13 @@ try {
 
     # Download the zip file to the dedicated temp location
     Write-Host "Downloading $($windowsBuildAsset.name) to $assetZipPath"
-    Invoke-WebRequest -Uri $windowsBuildAsset.browser_download_url -OutFile $assetZipPath
+    Write-Host "URL: $($windowsBuildAsset.browser_download_url)"
+    Write-Host "Headers: $($headers["Authorization"])"
+
+    $assetApiUrl = "https://api.github.com/repos/steadybit/WinDivert/releases/assets/$($windowsBuildAsset.id)"
+    $assetHeaders = $headers.Clone()
+    $assetHeaders["Accept"] = "application/octet-stream"
+    Invoke-WebRequest -Uri $assetApiUrl -OutFile $assetZipPath -Headers $assetHeaders
   }
 
   # Extract the zip file to the destination directory
@@ -85,6 +97,7 @@ try {
 
   Write-Host "Successfully downloaded and extracted windows-build to $DownloadDir"
 } catch {
+  Write-Host "Error: $($_.Exception.Message)"
   Write-Host "Error: Failed to download or extract release: $_"
   exit 1
 }
