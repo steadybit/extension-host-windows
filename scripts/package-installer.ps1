@@ -3,8 +3,10 @@ if ($Env:SKIP_LICENSES_REPORT -eq "true"){
     return 1
 }
 
+$ProgressPreference = 'SilentlyContinue'
 $scriptPath = $PSScriptRoot
 $distPath = "$scriptPath\..\dist"
+$devzeroPath = "$scriptPath\..\devzero"
 $artifactPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller\Artifacts"
 $solutionPath = "$scriptPath\..\windowspkg\WindowsHostExtensionInstaller"
 $cpuStressPath = "$scriptPath\..\steadybit-stress-cpu"
@@ -32,12 +34,31 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 Write-Output "Extraction completed."
 
+Write-Output "Downloading latest release of memfill..."
+
+$memfillApiUrl = "https://api.github.com/repos/steadybit/memfill/releases/latest"
+$memfillRelease = Invoke-RestMethod -Uri $memfillApiUrl -Headers @{"User-Agent"="PowerShell"}
+$memfillAsset = $memfillRelease.assets | Where-Object { $_.name -like "*.exe" } | Select-Object -First 1
+
+if ($null -eq $memfillAsset) {
+    Write-Error "No .exe asset found in the latest memfill release." -ErrorAction Stop
+}
+
+$memfillExePath = "$artifactPath\memfill.exe"
+Invoke-WebRequest -Uri $memfillAsset.browser_download_url -OutFile $memfillExePath -Headers @{"User-Agent"="PowerShell"}
+
+Write-Output "memfill.exe added to artifacts."
+
 Copy-Item licenses\THIRD-PARTY-LICENSES.csv windowspkg\WindowsHostExtensionInstaller\Artifacts
 
 Write-Output "Running dotnet publish in: $cpuStressPath"
 Push-Location $cpuStressPath
 dotnet publish -c Release -r "win-x64"  -o $artifactPath /p:SelfContained=true /p:PublishSingleFile=true /p:PublishTrimmed=true
 Pop-Location
+
+Write-Output "Building devzero in: $devzeroPath"
+Push-Location $devzeroPath
+go build -o $artifactPath\devzero.exe main.go
 
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath

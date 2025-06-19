@@ -57,6 +57,9 @@ func main() {
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkPackageLossContainerAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewTimetravelAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewStressCpuAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewStressIoAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewFillMemAction())
+	action_kit_sdk.RegisterAction(exthostwindows.NewFillDiskAction())
 
 	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
 
