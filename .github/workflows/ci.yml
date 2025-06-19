@@ -94,6 +94,7 @@ jobs:
     needs: audit
     runs-on: windows-2022
     outputs:
+      artifact-name: ${{ steps.sanitize.outputs.SANITIZED_ARTIFACT_NAME }}
       artifact-id: ${{ steps.artifact-upload.outputs.artifact-id }}
     timeout-minutes: 60
     steps:
@@ -124,11 +125,19 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
+      - name: Sanitize artifact name
+        id: sanitize
+        shell: bash
+        run: |
+          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
+          ARTIFACT_NAME=$(echo "$ARTIFACT_NAME" | sed 's/,/-/g')
+          echo "SANITIZED_ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
       - name: Upload Artifacts
         id: artifact-upload
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.head_ref || github.ref_name }}
+          name: ${{ steps.sanitize.outputs.SANITIZED_ARTIFACT_NAME }}
           path: |
             dist/*.zip
             dist/*.msi
@@ -162,13 +171,13 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: "${{ github.head_ref || github.ref_name }}"
+          name: "${{ needs.build.outputs.artifact-name }}"
           path: artifact/
 
       - name: Zip artifact
         shell: bash
         run: |
-          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
+          ARTIFACT_NAME="${{ needs.build.outputs.artifact-name }}"
           zip -j "windows-host-extension-$ARTIFACT_NAME.zip" artifact/*.msi
           zip -j windows-host-extension-latest.zip artifact/*.msi
         
