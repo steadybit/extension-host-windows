@@ -396,7 +396,9 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 			log.Info().Msgf("%s", output)
 		}()
 	} else {
-		err := utils.IsExecutableOperational("coreutils", "dd", "--help")
+		executable := resolveExecutable("coreutils", "STEADYBIT_COREUTILS")
+
+		err := utils.IsExecutableOperational(executable, "dd", "--help")
 
 		if err != nil {
 			return nil, err
@@ -410,7 +412,7 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 
 		bgCtx := context.Background()
 		devzeroCmd := exec.CommandContext(bgCtx, "devzero")
-		ddCmd := exec.CommandContext(bgCtx, "coreutils", state.StressOpts.Args()...)
+		ddCmd := exec.CommandContext(bgCtx, executable, state.StressOpts.Args()...)
 
 		log.Info().Msgf("Running command: %s, %s.", ddCmd.Path, ddCmd.Args)
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	extension_kit "github.com/steadybit/extension-kit"
@@ -108,4 +109,26 @@ func RegisterQosPolicyCleanup() func() {
 	return func() {
 		stop <- struct{}{}
 	}
+}
+
+func resolveExecutable(executableName string, envKey string) string {
+	customExecutableLocation, customExecutableLocationExists := os.LookupEnv(envKey)
+
+	if customExecutableLocationExists {
+		fileInfo, err := os.Stat(customExecutableLocation)
+
+		if err != nil {
+			log.Warn().Msgf("unable to retrieve file info for %%%s%%, falling back to %%PATH%%...", envKey)
+			return executableName
+		}
+
+		if fileInfo.IsDir() {
+			log.Warn().Msgf("%%%s%% must point to the '%s' executable and not the directory, falling back to %%PATH%%...", envKey, executableName)
+			return executableName
+		}
+
+		return customExecutableLocation
+	}
+
+	return executableName
 }
