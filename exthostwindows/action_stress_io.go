@@ -278,13 +278,15 @@ func (a *ioStressAction) Prepare(ctx context.Context, state *IoStressActionState
 }
 
 func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) (*action_kit_api.StartResult, error) {
-	err := utils.IsExecutableOperational("diskspd", "-?")
+	executable := resolveExecutable("diskspd", "STEADYBIT_DISKSPD")
+
+	err := utils.IsExecutableOperational(executable, "-?")
 
 	if err != nil {
 		return nil, err
 	}
 
-	command := exec.CommandContext(context.Background(), "diskspd", state.StressOpts.Args()...)
+	command := exec.CommandContext(context.Background(), executable, state.StressOpts.Args()...)
 
 	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
 
