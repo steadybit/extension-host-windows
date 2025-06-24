@@ -59,6 +59,17 @@ Pop-Location
 Write-Output "Building devzero in: $devzeroPath"
 Push-Location $devzeroPath
 go build -o $artifactPath\devzero.exe main.go
+Pop-Location
+
+Write-Output "Downloading and building coreutils"
+powershell.exe $scriptPath\build-coreutils.ps1
+
+Push-Location $artifactPath
+Invoke-WebRequest -Uri https://github.com/microsoft/diskspd/releases/download/v2.2/DiskSpd.ZIP -OutFile DiskSpd.zip
+[System.IO.Compression.ZipFile]::ExtractToDirectory("$artifactPath\DiskSpd.zip", "$artifactPath\DiskSpd")
+Copy-Item "$artifactPath\DiskSpd\x86\diskspd.exe" $artifactPath
+
+Pop-Location
 
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath

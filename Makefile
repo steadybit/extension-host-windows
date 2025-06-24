@@ -21,6 +21,8 @@ else
 	powershell -Command "copy LICENSE licenses\LICENSE.txt"
 	powershell -Command "cat licenses\THIRD-PARTY.csv > licenses\THIRD-PARTY-LICENSES.csv"
 	powershell -Command "echo 'github.com/steadybit/WinDivert,https://github.com/steadybit/WinDivert/blob/main/LICENSE,LGPLv3' >> licenses\THIRD-PARTY-LICENSES.csv"
+	powershell -Command "echo 'github.com/uutils/coreutils,https://github.com/uutils/coreutils/blob/main/LICENSE,MIT' >> licenses\THIRD-PARTY-LICENSES.csv"
+	powershell -Command "echo 'github.com/microsoft/diskspd,https://github.com/microsoft/diskspd/blob/master/LICENSE,MIT' >> licenses\THIRD-PARTY-LICENSES.csv"
 endif
 
 # ==================================================================================== #
@@ -60,7 +62,7 @@ clean:
 ## build: build the extension
 .PHONY: build
 build:
-	go run github.com/goreleaser/goreleaser/v2@latest build --clean --snapshot --single-target -o extension.exe
+	goreleaser build --clean --snapshot --single-target -o extension.exe
 
 # ====================================================================================
 #
@@ -71,7 +73,7 @@ build:
 ## release: package the extension release only
 .PHONY: release
 release: clean licenses-report
-	go run github.com/goreleaser/goreleaser/v2@latest release --clean --snapshot
+	goreleaser release --clean --snapshot
 
 ## artifact: package a ZIP with the extension and all required files
 .PHONY: artifact

@@ -18,6 +18,8 @@
 		<ComponentGroup Id="DISK" Directory="DISKFOLDER">
 			<Component Guid="8fc3188e-cf9f-4acb-b58a-ad34d56835f7">
 				<File Source="./Artifacts/devzero.exe"/>
+				<File Source="./Artifacts/diskspd.exe"/>
+				<File Source="./Artifacts/coreutils.exe"/>
 				<Environment Id="DiskFolderPath" Name="PATH" Value="[DISKFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
 			</Component>
 		</ComponentGroup>
