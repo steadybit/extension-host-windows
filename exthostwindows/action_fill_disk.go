@@ -332,7 +332,7 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 				Advanced:     extutil.Ptr(true),
 				Options: extutil.Ptr([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
-						Label: "At once (fallocate)",
+						Label: "At once (fsutil)",
 						Value: string(AtOnce),
 					},
 					action_kit_api.ExplicitParameterOption{
