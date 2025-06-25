@@ -62,7 +62,7 @@ clean:
 ## build: build the extension
 .PHONY: build
 build:
-	goreleaser build --clean --snapshot --single-target -o extension.exe
+	go run github.com/goreleaser/goreleaser/v2@latest build --clean --snapshot --single-target -o extension.exe
 
 # ====================================================================================
 #
@@ -73,7 +73,7 @@ build:
 ## release: package the extension release only
 .PHONY: release
 release: clean licenses-report
-	goreleaser release --clean --snapshot
+	go run github.com/goreleaser/goreleaser/v2@latest release --clean --snapshot
 
 ## artifact: package a ZIP with the extension and all required files
 .PHONY: artifact
