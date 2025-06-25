@@ -1,3 +1,14 @@
+param(
+  [string]$GithubToken = $env:PAT_TOKEN
+)
+
+$headers = @{}
+if ($GithubToken) {
+$headers["Authorization"] = "token $GithubToken"
+Write-Host "Using GitHub token for authentication."
+}
+
+
 if ($Env:SKIP_LICENSES_REPORT -eq "true"){
     Write-Output "License report must be set to 'false' in order to package the installer."
     return 1
@@ -37,7 +48,7 @@ Write-Output "Extraction completed."
 Write-Output "Downloading latest release of memfill..."
 
 $memfillApiUrl = "https://api.github.com/repos/steadybit/memfill/releases/latest"
-$memfillRelease = Invoke-RestMethod -Uri $memfillApiUrl -Headers @{"User-Agent"="PowerShell"}
+$memfillRelease = Invoke-RestMethod -Uri $memfillApiUrl -Headers $headers
 $memfillAsset = $memfillRelease.assets | Where-Object { $_.name -like "*.exe" } | Select-Object -First 1
 
 if ($null -eq $memfillAsset) {
@@ -45,7 +56,7 @@ if ($null -eq $memfillAsset) {
 }
 
 $memfillExePath = "$artifactPath\memfill.exe"
-Invoke-WebRequest -Uri $memfillAsset.browser_download_url -OutFile $memfillExePath -Headers @{"User-Agent"="PowerShell"}
+Invoke-WebRequest -Uri $memfillAsset.browser_download_url -OutFile $memfillExePath -Headers $headers
 
 Write-Output "memfill.exe added to artifacts."
 
@@ -59,6 +70,22 @@ Pop-Location
 Write-Output "Building devzero in: $devzeroPath"
 Push-Location $devzeroPath
 go build -o $artifactPath\devzero.exe main.go
+Pop-Location
+
+Push-Location $artifactPath
+Write-Output "Downloading and extracting coreutils"
+Invoke-WebRequest -Uri https://github.com/uutils/coreutils/releases/download/0.1.0/coreutils-0.1.0-x86_64-pc-windows-msvc.zip  -OutFile CoreUtils.zip -Headers $headers
+[System.IO.Compression.ZipFile]::ExtractToDirectory("$artifactPath\CoreUtils.zip", "$artifactPath\CoreUtils")
+Copy-Item "$artifactPath\CoreUtils\coreutils-0.1.0-x86_64-pc-windows-msvc\coreutils.exe" $artifactPath
+Pop-Location
+
+Push-Location $artifactPath
+Write-Output "Downloading and extracting diskspd"
+Invoke-WebRequest -Uri https://github.com/microsoft/diskspd/releases/download/v2.2/DiskSpd.ZIP -OutFile DiskSpd.zip -Headers $headers
+[System.IO.Compression.ZipFile]::ExtractToDirectory("$artifactPath\DiskSpd.zip", "$artifactPath\DiskSpd")
+Copy-Item "$artifactPath\DiskSpd\x86\diskspd.exe" $artifactPath
+
+Pop-Location
 
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath

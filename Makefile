@@ -21,6 +21,8 @@ else
 	powershell -Command "copy LICENSE licenses\LICENSE.txt"
 	powershell -Command "cat licenses\THIRD-PARTY.csv > licenses\THIRD-PARTY-LICENSES.csv"
 	powershell -Command "echo 'github.com/steadybit/WinDivert,https://github.com/steadybit/WinDivert/blob/main/LICENSE,LGPLv3' >> licenses\THIRD-PARTY-LICENSES.csv"
+	powershell -Command "echo 'github.com/uutils/coreutils,https://github.com/uutils/coreutils/blob/main/LICENSE,MIT' >> licenses\THIRD-PARTY-LICENSES.csv"
+	powershell -Command "echo 'github.com/microsoft/diskspd,https://github.com/microsoft/diskspd/blob/master/LICENSE,MIT' >> licenses\THIRD-PARTY-LICENSES.csv"
 endif
 
 # ==================================================================================== #

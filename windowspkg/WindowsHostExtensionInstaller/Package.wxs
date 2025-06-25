@@ -2,8 +2,8 @@
 		 xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
 		 xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
 		 >
-  <Package Name="Steadybit Windows Host Extension" Manufacturer="Steadybit GmbH" Version="1.0.0.0" UpgradeCode="3e616adc-d783-486a-83ff-333d45c856f6">
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." AllowSameVersionUpgrades="no"/>
+  <Package ProductCode="*" Name="Steadybit Windows Host Extension" Manufacturer="Steadybit GmbH" Version="1.1.0.0" UpgradeCode="f12634c5-bb5e-4cb9-ac35-0cce1bcee031">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed. Uninstall the current version to install this older version. Setup will now exit." AllowSameVersionUpgrades="yes"/>
 		<Media Id="1" EmbedCab="yes" Cabinet="cab1"/>
 
     <Feature Id="Main">
