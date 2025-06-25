@@ -61,10 +61,15 @@ Push-Location $devzeroPath
 go build -o $artifactPath\devzero.exe main.go
 Pop-Location
 
-Write-Output "Downloading and building coreutils"
-powershell.exe $scriptPath\build-coreutils.ps1
+Push-Location $artifactPath
+Write-Output "Downloading and extracting coreutils"
+Invoke-WebRequest -Uri https://github.com/uutils/coreutils/releases/download/0.1.0/coreutils-0.1.0-x86_64-pc-windows-msvc.zip  -OutFile CoreUtils.zip
+[System.IO.Compression.ZipFile]::ExtractToDirectory("$artifactPath\CoreUtils.zip", "$artifactPath\CoreUtils")
+Copy-Item "$artifactPath\CoreUtils\coreutils-0.1.0-x86_64-pc-windows-msvc\coreutils.exe" $artifactPath
+Pop-Location
 
 Push-Location $artifactPath
+Write-Output "Downloading and extracting diskspd"
 Invoke-WebRequest -Uri https://github.com/microsoft/diskspd/releases/download/v2.2/DiskSpd.ZIP -OutFile DiskSpd.zip
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$artifactPath\DiskSpd.zip", "$artifactPath\DiskSpd")
 Copy-Item "$artifactPath\DiskSpd\x86\diskspd.exe" $artifactPath
