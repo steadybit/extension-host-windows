@@ -234,7 +234,7 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 				Description:  extutil.Ptr("Total number of threads used in the attack."),
 				Type:         action_kit_api.ActionParameterTypeInteger,
 				Required:     extutil.Ptr(true),
-				DefaultValue: extutil.Ptr("1"),
+				DefaultValue: extutil.Ptr("0"),
 			},
 			{
 				Name:         "duration",
