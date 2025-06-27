@@ -3,7 +3,6 @@ package exthostwindows
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ func TestActionStressIO_Prepare(t *testing.T) {
 		return "myhostname", nil
 	}
 	hostname := "myhostname"
-	cpuNum := runtime.NumCPU()
 
 	tests := []struct {
 		name        string
@@ -149,7 +147,7 @@ func TestActionStressIO_Prepare(t *testing.T) {
 					"duration":           "1000",
 					"stressLayer":        "Named Partition",
 					"stressLayerInput":   "C",
-					"threadCount":        cpuNum + 1,
+					"threadCount":        0,
 					"disableSwHwCaching": "true",
 				},
 				ExecutionId: uuid.New(),
@@ -160,7 +158,7 @@ func TestActionStressIO_Prepare(t *testing.T) {
 				}),
 			},
 
-			wantedError: fmt.Sprintf("number of threads must not be more than maximum available number of threads (%d)", cpuNum),
+			wantedError: "number of threads must be greater than 0",
 		},
 	}
 

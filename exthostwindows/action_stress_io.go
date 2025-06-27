@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -159,14 +158,9 @@ func stressIo() ioStressOptsProvider {
 		}
 
 		threadCount := extutil.ToUInt(request.Config["threadCount"])
-		availableThreadCount := runtime.NumCPU()
-
-		if threadCount > uint(availableThreadCount) {
-			return nil, fmt.Errorf("number of threads must not be more than maximum available number of threads (%d)", availableThreadCount)
-		}
 
 		if threadCount <= 0 {
-			threadCount = uint(availableThreadCount)
+			return nil, fmt.Errorf("number of threads must be greater than 0")
 		}
 
 		disableSwHwCaching := extutil.ToBool(request.Config["disableSwHwCaching"])
@@ -234,7 +228,7 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 				Description:  extutil.Ptr("Total number of threads used in the attack."),
 				Type:         action_kit_api.ActionParameterTypeInteger,
 				Required:     extutil.Ptr(true),
-				DefaultValue: extutil.Ptr("0"),
+				DefaultValue: extutil.Ptr("12"),
 			},
 			{
 				Name:         "duration",
