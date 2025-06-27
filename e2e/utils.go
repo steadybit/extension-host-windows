@@ -7,9 +7,8 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
-	"github.com/mholt/archiver/v3"
-	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 	"io"
 	"net"
 	"net/http"
@@ -22,6 +21,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/mholt/archives"
+	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
 )
 
 func findExtensionArtifact(dir string) (string, error) {
@@ -52,7 +54,42 @@ func extractArtifact(artifact string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = archiver.Unarchive(artifact, tmpDir)
+	var format archives.Zip
+
+	file, err := os.OpenFile(artifact, os.O_RDONLY, 0644)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+	err = format.Extract(context.Background(), file, func(ctx context.Context, f archives.FileInfo) error {
+		targetPath := filepath.Join(tmpDir, f.Name())
+
+		if f.IsDir() {
+			return os.MkdirAll(targetPath, f.Mode())
+		}
+
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			return err
+		}
+
+		source, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer source.Close()
+
+		target, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+		defer target.Close()
+
+		_, err = io.Copy(target, source)
+		return err
+	})
+
 	if err != nil {
 		return "", err
 	}
