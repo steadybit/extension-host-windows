@@ -7,7 +7,6 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -22,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mholt/archives"
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 )
 
 func findExtensionArtifact(dir string) (string, error) {
@@ -54,45 +53,13 @@ func extractArtifact(artifact string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var format archives.Zip
 
-	file, err := os.OpenFile(artifact, os.O_RDONLY, 0644)
-
+	cmd := utils.PowershellCommand("Expand-Archive", "-Path", artifact, "-DestinationPath", tmpDir, "-Force")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to extract archive: %w, output: %s", err, string(output))
 	}
 
-	defer file.Close()
-	err = format.Extract(context.Background(), file, func(ctx context.Context, f archives.FileInfo) error {
-		targetPath := filepath.Join(tmpDir, f.Name())
-
-		if f.IsDir() {
-			return os.MkdirAll(targetPath, f.Mode())
-		}
-
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
-			return err
-		}
-
-		source, err := f.Open()
-		if err != nil {
-			return err
-		}
-		defer source.Close()
-
-		target, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-		if err != nil {
-			return err
-		}
-		defer target.Close()
-
-		_, err = io.Copy(target, source)
-		return err
-	})
-
-	if err != nil {
-		return "", err
-	}
 	return tmpDir, nil
 }
 
