@@ -75,11 +75,12 @@ jobs:
   snyk-scan:
     name: Run Snyk Scan
     needs: audit
-    runs-on: windows-2022 
+    runs-on: windows-2022
     env:
       snyk_available: ${{ secrets.SNYK_TOKEN  != '' && 'true' || 'false' }}
       # Fix slow Go compile and cache restore
       # See https://github.com/actions/setup-go/pull/515
+      GOOS: windows
       GOCACHE: D:\gocache
       GOMODCACHE: D:\gomodcache
       GOTMPDIR: D:\gotmp
