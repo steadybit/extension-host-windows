@@ -10,7 +10,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/rs/zerolog v1.34.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.0
-	github.com/steadybit/action-kit/go/action_kit_commons v1.3.4
+	github.com/steadybit/action-kit/go/action_kit_commons v1.5.4
 	github.com/steadybit/action-kit/go/action_kit_sdk v1.2.0
 	github.com/steadybit/action-kit/go/action_kit_test v1.4.2
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.0
@@ -22,7 +22,7 @@ require (
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
-	golang.org/x/sys v0.33.0
+	golang.org/x/sys v0.34.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -37,6 +37,7 @@ require (
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
