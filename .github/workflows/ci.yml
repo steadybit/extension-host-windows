@@ -19,6 +19,13 @@ defaults:
   run:
     shell: pwsh
 
+env:
+  golang_version: '1.24'
+  # Fix slow Go compile and cache restore
+  # See https://github.com/actions/setup-go/pull/515
+  GOCACHE: D:\gocache
+  GOMODCACHE: D:\gomodcache
+  GOTMPDIR: D:\gotmp
 
 jobs:
   audit:
@@ -38,25 +45,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Go requires gotmp to be present
-      - run: mkdir D:\gotmp
-        shell: pwsh
-
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: ${{ env.golang_version }}
 
       - name: Set dependency versions
         id: versions
         run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
 
       - name: Audit
+        # Go requires gotmp to be present
         run: |
+          mkdir D:\gotmp
           go mod download
           make audit
-        shell: powershell
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+      - name: [Release] Snyk test
+        uses: ./.github/actions/snyk-windows
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=${{ github.ref_name }}
 
       - name: SonarCloud Scan
         if: ${{ env.sonar_available == 'true' }}
@@ -65,57 +78,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: "[release] SonarCloud Quality Gate check"
+      - name: "[Release] SonarCloud Quality Gate check"
         if: ${{ startsWith(github.ref, 'refs/tags/') && env.sonar_available == 'true' }}
         uses: sonarsource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  snyk-scan:
-    name: Run Snyk Scan
-    needs: audit
-    runs-on: windows-2022
-    env:
-      snyk_available: ${{ secrets.SNYK_TOKEN  != '' && 'true' || 'false' }}
-      # Fix slow Go compile and cache restore
-      # See https://github.com/actions/setup-go/pull/515
-      GOOS: windows
-      GOCACHE: D:\gocache
-      GOMODCACHE: D:\gomodcache
-      GOTMPDIR: D:\gotmp
-    steps:
-      - name: Checkout repository
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - run: mkdir D:\gotmp
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
-        shell: pwsh
-
-      - uses: actions/setup-go@v5
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
-        with:
-          go-version: "1.24"
-
-      - name: Download Snyk CLI
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
-        shell: pwsh
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/snyk/cli/releases/latest"
-          $snykUrl = ($latestRelease.assets | Where-Object { $_.name -eq "snyk-win.exe" }).browser_download_url
-          Invoke-WebRequest -Uri $snykUrl -OutFile "snyk-win.exe"
-
-      - name: "[release] Snyk test"
-        if: ${{ startsWith(github.ref, 'refs/tags/') && env.snyk_available == 'true' }}
-        shell: pwsh
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          .\snyk-win.exe test --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=${{ github.ref_name }}
 
   build:
     name: Build & Release
@@ -125,26 +93,17 @@ jobs:
       artifact-name: ${{ steps.sanitize.outputs.SANITIZED_ARTIFACT_NAME }}
       artifact-id: ${{ steps.artifact-upload.outputs.artifact-id }}
     timeout-minutes: 60
-    env:
-      # Fix slow Go compile and cache restore
-      # See https://github.com/actions/setup-go/pull/515
-      GOCACHE: D:\gocache
-      GOMODCACHE: D:\gomodcache
-      GOTMPDIR: D:\gotmp
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Go requires gotmp to be present
-      - run: mkdir D:\gotmp
-        shell: pwsh
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: ${{ env.golang_version }}
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
@@ -154,10 +113,21 @@ jobs:
         run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
 
       - name: Build extension installer
-        run: make installer
-        shell: powershell
+        # Go requires gotmp to be present
+        run: |
+          mkdir D:\gotmp
+          make installer
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+      - name: [Release] Snyk monitor release candidate
+        uses: ./.github/actions/snyk-windows
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+          args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=release-candidate
 
       - name: Sanitize artifact name
         id: sanitize
@@ -227,6 +197,22 @@ jobs:
           sha256sum "windows-host-extension-$ARTIFACT_NAME.zip" > "windows-host-extension-$ARTIFACT_NAME.sha256"
           aws s3 cp "windows-host-extension-$ARTIFACT_NAME.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-$ARTIFACT_NAME.sha256"
 
+  snyk-monitor:
+    name: "[Release] Snyk Monitor latest"
+    needs: [upload-to-s3]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    runs-on: windows-2022
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: steadybit/extension-kit/.github/workflows/reusable-snyk-scan.yml@main
+        with:
+          command: monitor
+          container_image: --severity-threshold=high --project-name=${{ github.repository }} --target-reference=latest
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   refresh-demo:
     name: Refresh Dev Demo

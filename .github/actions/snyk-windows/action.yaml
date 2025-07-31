@@ -1,0 +1,17 @@
+name: 'snyk-windows'
+description: 'setups snyk on windows'
+inputs:
+  command:
+    description: "Which Snyk command to run, defaults to test"
+    default: test
+  args:
+    description: "Additional arguments to pass to Snyk"
+runs:
+  using: "composite"
+  steps:
+    - name: Download Snyk CLI
+      shell: pwsh
+      run: gh release download -R snyk/cli  --pattern snyk-win.exe
+
+    - shell: pwsh
+      run: .\snyk-win.exe ${{ inputs.command }} ${{ inputs.args }}
