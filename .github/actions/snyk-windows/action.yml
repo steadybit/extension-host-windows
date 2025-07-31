@@ -11,5 +11,7 @@ runs:
   steps:
     - shell: pwsh
       run: gh release download -R snyk/cli  --pattern snyk-win.exe
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
     - shell: pwsh
       run: .\snyk-win.exe ${{ inputs.command }} ${{ inputs.args }}
