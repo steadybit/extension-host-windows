@@ -57,7 +57,7 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
-      - name: [Release] Snyk test
+      - name: "[Release] Snyk test"
         uses: ./.github/actions/snyk-windows
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
@@ -115,7 +115,7 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
-      - name: [Release] Snyk monitor release candidate
+      - name: "[Release] Snyk monitor release candidate"
         uses: ./.github/actions/snyk-windows
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
