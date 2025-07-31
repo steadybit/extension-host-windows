@@ -34,11 +34,6 @@ jobs:
     timeout-minutes: 60
     env:
       sonar_available: ${{ secrets.SONAR_TOKEN  != '' && 'true' || 'false' }}
-      # Fix slow Go compile and cache restore
-      # See https://github.com/actions/setup-go/pull/515
-      GOCACHE: D:\gocache
-      GOMODCACHE: D:\gomodcache
-      GOTMPDIR: D:\gotmp
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -56,7 +51,7 @@ jobs:
       - name: Audit
         # Go requires gotmp to be present
         run: |
-          mkdir D:\gotmp
+          mkdir ${{ env.GOTMPDIR }}
           go mod download
           make audit
         env:
@@ -115,7 +110,7 @@ jobs:
       - name: Build extension installer
         # Go requires gotmp to be present
         run: |
-          mkdir D:\gotmp
+          mkdir ${{ env.GOTMPDIR }}
           make installer
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
