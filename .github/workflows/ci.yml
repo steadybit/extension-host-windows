@@ -40,6 +40,7 @@ jobs:
         with:
           fetch-depth: 0
 
+      - run: mkdir ${{ env.GOTMPDIR }}
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.golang_version }}
@@ -51,7 +52,6 @@ jobs:
       - name: Audit
         # Go requires gotmp to be present
         run: |
-          mkdir ${{ env.GOTMPDIR }}
           go mod download
           make audit
         env:
@@ -95,6 +95,7 @@ jobs:
         with:
           fetch-depth: 0
 
+      - run: mkdir ${{ env.GOTMPDIR }}
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -109,9 +110,7 @@ jobs:
 
       - name: Build extension installer
         # Go requires gotmp to be present
-        run: |
-          mkdir ${{ env.GOTMPDIR }}
-          make installer
+        run: make installer
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
