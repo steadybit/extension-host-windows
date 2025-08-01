@@ -123,19 +123,11 @@ jobs:
           command: monitor
           args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=release-candidate
 
-      - name: Sanitize artifact name
-        id: sanitize
-        shell: bash
-        run: |
-          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          ARTIFACT_NAME=$(echo "$ARTIFACT_NAME" | sed 's/\//-/g')
-          echo "SANITIZED_ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
-
       - name: Upload Artifacts
         id: artifact-upload
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.sanitize.outputs.SANITIZED_ARTIFACT_NAME }}
+          name: binaries
           path: |
             dist/*.zip
             dist/*.msi
@@ -169,14 +161,14 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: "${{ needs.build.outputs.artifact-name }}"
+          name: binaries
           path: artifact/
 
       - name: Zip artifact
         shell: bash
         run: |
-          ARTIFACT_NAME="${{ needs.build.outputs.artifact-name }}"
-          zip -j "windows-host-extension-$ARTIFACT_NAME.zip" artifact/*.msi
+          SUFFIX="${{ github.head_ref || github.ref_name }}"
+          zip -j "windows-host-extension-$SUFFIX.zip" artifact/*.msi
           zip -j windows-host-extension-latest.zip artifact/*.msi
 
       - name: Upload to S3
@@ -186,10 +178,10 @@ jobs:
           sha256sum windows-host-extension-latest.zip > windows-host-extension-latest.sha256
           aws s3 cp windows-host-extension-latest.sha256 "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-latest.sha256"
 
-          ARTIFACT_NAME="${{ github.head_ref || github.ref_name }}"
-          aws s3 cp "windows-host-extension-$ARTIFACT_NAME.zip" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
-          sha256sum "windows-host-extension-$ARTIFACT_NAME.zip" > "windows-host-extension-$ARTIFACT_NAME.sha256"
-          aws s3 cp "windows-host-extension-$ARTIFACT_NAME.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-$ARTIFACT_NAME.sha256"
+          SUFFIX="${{ github.head_ref || github.ref_name }}"
+          aws s3 cp "windows-host-extension-$SUFFIX.zip" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
+          sha256sum "windows-host-extension-$SUFFIX.zip" > "windows-host-extension-$SUFFIX.sha256"
+          aws s3 cp "windows-host-extension-$SUFFIX.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-$ARTIFACT_NAME.sha256"
 
   snyk-monitor:
     name: "[Release] Snyk Monitor latest"
