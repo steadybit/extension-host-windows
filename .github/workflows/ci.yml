@@ -209,8 +209,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Trigger Update EC2 Windows Demo
-        env:
-          ARTIFACT_ID: ${{needs.build.outputs.artifact-id}}
         uses: the-actions-org/workflow-dispatch@v4
         with:
           workflow: Windows-demo-deploy
@@ -218,7 +216,7 @@ jobs:
           repo: steadybit/infrastructure-live
           inputs: >-
             {
-              "artifact_id": "${{ env.ARTIFACT_ID }}"
+              "extension_run_id": "${{ github.run_id }}"
             }
           token: ${{ secrets.PAT_TOKEN }}
 
@@ -230,8 +228,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Trigger Update Prod EC2 Windows Demo
-        env:
-          ARTIFACT_ID: ${{needs.build.outputs.artifact-id}}
         uses: the-actions-org/workflow-dispatch@v4
         with:
           workflow: Windows-prod-demo-deploy
@@ -239,6 +235,6 @@ jobs:
           repo: steadybit/infrastructure-live
           inputs: >-
             {
-              "prod_artifact_id": "${{ env.ARTIFACT_ID }}"
+              "extension_run_id": "${{ github.run_id }}"
             }
           token: ${{ secrets.PAT_TOKEN }}
