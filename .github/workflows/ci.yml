@@ -181,7 +181,7 @@ jobs:
           SUFFIX="${{ github.head_ref || github.ref_name }}"
           aws s3 cp "windows-host-extension-$SUFFIX.zip" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/"
           sha256sum "windows-host-extension-$SUFFIX.zip" > "windows-host-extension-$SUFFIX.sha256"
-          aws s3 cp "windows-host-extension-$SUFFIX.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-$ARTIFACT_NAME.sha256"
+          aws s3 cp "windows-host-extension-$SUFFIX.sha256" "s3://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-$SUFFIX.sha256"
 
   snyk-monitor:
     name: "[Release] Snyk Monitor latest"
