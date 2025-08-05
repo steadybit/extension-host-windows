@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -72,4 +73,60 @@ func Test_PSGetDriveSpace_Total(t *testing.T) {
 	totalSpace, err := GetDriveSpace(driveLetters[0], Total)
 	require.NoError(t, err)
 	require.Greater(t, totalSpace, space)
+}
+
+func Test_IsTestSigningEnabled_Enabled(t *testing.T) {
+	mockOutput := []byte(`
+	Windows Boot Manager
+	--------------------
+	identifier              {bootmgr}
+	device                  partition=\Device\HarddiskVolume1
+    testsigning             Yes
+    `)
+
+	result, err := CheckTestSigningAttribute(func() ([]byte, error) {
+		return mockOutput, nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result {
+		t.Fatal("expected true, got false")
+	}
+}
+
+func Test_IsTestSigningEnabled_Disabled(t *testing.T) {
+	mockOutput := []byte(`
+	Windows Boot Manager
+	--------------------
+	identifier              {bootmgr}
+	device                  partition=\Device\HarddiskVolume1
+    testsigning             No
+    `)
+
+	result, err := CheckTestSigningAttribute(func() ([]byte, error) {
+		return mockOutput, nil
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result {
+		t.Fatal("expected false, got true")
+	}
+}
+
+func Test_IsTestSigningEnabled_Error(t *testing.T) {
+	expectedErr := errors.New("command failed")
+	_, err := CheckTestSigningAttribute(func() ([]byte, error) {
+		return nil, expectedErr
+	})
+
+	if err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("expected %v, got %v", expectedErr, err)
+	}
 }

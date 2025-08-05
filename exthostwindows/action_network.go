@@ -7,10 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/steadybit/extension-host-windows/exthostwindows/network"
-	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"net"
 	"strings"
+
+	"github.com/rs/zerolog/log"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -122,6 +124,17 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 }
 
 func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*action_kit_api.StartResult, error) {
+	isTestSigningEnabled, err := utils.IsTestSigningEnabled()
+	if err != nil {
+		return nil, extensionKit.ToError("Error retrieving testsigning flag from the bcdedit.", err)
+	}
+
+	if !isTestSigningEnabled {
+		return nil, fmt.Errorf("testsigning is not enabled on the machine, please follow the guide to enable it: https://github.com/steadybit/extension-host-windows?tab=readme-ov-file#pre-release-versions")
+	}
+
+	log.Debug().Msgf("testsigning is enabled on the machine")
+
 	opts, err := a.optsDecoder(state.NetworkOpts)
 	if err != nil {
 		return nil, extensionKit.ToError("Failed to deserialize network settings.", err)
