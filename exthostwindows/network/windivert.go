@@ -369,9 +369,12 @@ func awaitWinDivertServiceStatus(state svc.State, timeout time.Duration) error {
 	for time.Now().Before(end) {
 		s, err := m.OpenService("windivert")
 		if err != nil {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
+			log.Debug().Msgf("failed opening the windivert service with error (retrying in 500ms): %v", err)
 			continue
 		}
+
+		log.Info().Msgf("successfully opened the windivert service.")
 		// deferred function is only created once
 		//goland:noinspection GoDeferInLoop
 		defer func(s *mgr.Service) {

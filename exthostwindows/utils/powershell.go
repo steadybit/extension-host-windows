@@ -114,3 +114,36 @@ func GetDriveSpace(driveLetter string, kind DriveSpace) (uint64, error) {
 
 	return availableSpace, nil
 }
+
+type CmdOutputProvider func() ([]byte, error)
+
+func IsTestSigningEnabled() (bool, error) {
+	cmd := PowershellCommand("bcdedit")
+	isEnabled, err := CheckTestSigningAttribute(cmd.Output)
+
+	if err != nil {
+		return false, err
+	}
+
+	return isEnabled, nil
+}
+
+func CheckTestSigningAttribute(provider CmdOutputProvider) (bool, error) {
+	output, err := provider()
+
+	if err != nil {
+		return false, err
+	}
+
+	reader := bytes.NewReader(output)
+	scanner := bufio.NewScanner(reader)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "testsigning") && strings.Contains(line, "Yes") {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}

@@ -119,7 +119,7 @@ func popActiveFw(id string, opts WinOpts) {
 func executeWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (string, error) {
 	out, err := utils.ExecutePowershellCommand(ctx, utils.SanitizePowershellArgs(cmds...), utils.PSStart)
 	if err == nil {
-		timeout := 10 * time.Second
+		timeout := 15 * time.Second
 		if mode == ModeAdd {
 			err = awaitWinDivertServiceStatus(svc.Running, timeout)
 			log.Debug().Msgf("WinDivert service is running")
