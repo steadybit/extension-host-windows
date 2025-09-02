@@ -209,7 +209,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Trigger Update EC2 Windows Demo
-        uses: the-actions-org/workflow-dispatch@v4
+        uses: the-actions-org/workflow-dispatch@3133c5d135c7dbe4be4f9793872b6ef331b53bc7
         with:
           workflow: Windows-demo-deploy
           ref: main
@@ -228,7 +228,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Trigger Update Prod EC2 Windows Demo
-        uses: the-actions-org/workflow-dispatch@v4
+        uses: the-actions-org/workflow-dispatch@3133c5d135c7dbe4be4f9793872b6ef331b53bc7
         with:
           workflow: Windows-prod-demo-deploy
           ref: main
