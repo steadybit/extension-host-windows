@@ -18,7 +18,7 @@ require (
 	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.0
 	github.com/steadybit/extension-kit v1.10.0
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
