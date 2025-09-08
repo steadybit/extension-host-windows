@@ -28,7 +28,7 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: "arn:aws:iam::244471902119:role/allow-auto-deploy-from-other-accounts"
           role-duration-seconds: 1000
