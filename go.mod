@@ -22,7 +22,7 @@ require (
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
-	golang.org/x/sys v0.35.0
+	golang.org/x/sys v0.36.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
