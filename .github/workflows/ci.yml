@@ -20,7 +20,7 @@ defaults:
     shell: pwsh
 
 env:
-  golang_version: '1.24'
+  golang_version: '1.25'
   # Fix slow Go compile and cache restore
   # See https://github.com/actions/setup-go/pull/515
   GOCACHE: D:\gocache
