@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       - run: mkdir ${{ env.GOTMPDIR }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.golang_version }}
 
@@ -97,7 +97,7 @@ jobs:
 
       - run: mkdir ${{ env.GOTMPDIR }}
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ env.golang_version }}
 
