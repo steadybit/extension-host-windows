@@ -6,12 +6,13 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type LocalExtensionFactory struct {
@@ -26,15 +27,16 @@ type LocalExtensionFactory struct {
 func (f *LocalExtensionFactory) Create(ctx context.Context, e Environment) error {
 	start := time.Now()
 	out, err := e.ExecuteProcess(ctx, "make", "artifact")
-	if err != nil {
-		return err
-	}
 
 	lines := strings.Split(out, "\n")
 	for _, line := range lines {
 		if line != "" {
 			fmt.Println("🏠", line)
 		}
+	}
+
+	if err != nil {
+		return err
 	}
 
 	artifact, err := findExtensionArtifact(distPath)

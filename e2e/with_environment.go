@@ -4,13 +4,14 @@
 package e2e
 
 import (
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/require"
 	"os"
 	"os/exec"
 	"sync"
 	"testing"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/require"
 )
 
 type WithTestCase struct {
@@ -27,7 +28,7 @@ func WithEnvironment(t *testing.T, environment Environment, extFactory Extension
 	go func() {
 		err := extFactory.Create(ctx, environment)
 		if err != nil {
-			log.Fatal().Msgf("failed to create extension executable: %v", err)
+			log.Fatal().Err(err).Msgf("failed to create extension executable.")
 		}
 		wg.Done()
 	}()
