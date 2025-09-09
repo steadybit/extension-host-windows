@@ -31,7 +31,8 @@ During installation, a Windows Service named `SteadybitWindowsExtensionHost` is 
 
 #### Pre-Release Versions
 
-Pre-Release versions of the extension contain a test-signed Windows network driver. The driver is used to execute network attacks and essential to the extension.
+Pre-Release versions of the extension may contain a test-signed Windows network driver.
+The driver is used to execute network attacks and essential to the extension.
 
 By default, Windows does not load test-signed kernel-mode drivers. To allow this several things must be done:
 - Turn off secure boot (if you use bitlocker volume encryption don't forget to retrieve recovery key beforehand)
