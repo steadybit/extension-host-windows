@@ -14,4 +14,7 @@ runs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
     - shell: pwsh
-      run: .\snyk-win.exe ${{ inputs.command }} ${{ inputs.args }}
+      env:
+        INPUTS_COMMAND: ${{ inputs.command }}
+        INPUTS_ARGS: ${{ inputs.args }}
+      run: .\snyk-win.exe $INPUTS_COMMAND $INPUTS_ARGS
