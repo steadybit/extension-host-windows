@@ -126,10 +126,8 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*action_kit_api.StartResult, error) {
 
 	if isTestSigningEnabled, err := utils.IsTestSigningEnabled(); err != nil {
-		return nil, extensionKit.ToError("Error retrieving testsigning flag from the bcdedit.", err)
-	} else if !isTestSigningEnabled {
-		log.Warn().Msg("testsigning is not enabled on the machine, please follow the guide to enable it: https://github.com/steadybit/extension-host-windows?tab=readme-ov-file#pre-release-versions")
-	} else {
+		log.Warn().Err(err).Msg("failed retrieving testsigning flag from the bcdedit.")
+	} else if isTestSigningEnabled {
 		log.Debug().Msg("testsigning is enabled on the machine")
 	}
 
