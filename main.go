@@ -5,8 +5,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -22,7 +20,6 @@ import (
 	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extsignals"
 	_ "go.uber.org/automaxprocs" // Importing automaxprocs automatically adjusts GOMAXPROCS.
-	"golang.org/x/sys/windows/registry"
 )
 
 func main() {
@@ -30,9 +27,14 @@ func main() {
 
 	// Register a QoS policy cleanup routine as additional safeguard.
 	stopQosCleanup := exthostwindows.RegisterQosPolicyCleanup()
+	extensionRegistry := exthostwindows.NewExtensionRegistry("Extension Host Windows", 0, []string{"ACTION", "DISCOVERY"})
 
 	// Register Windows Service early during startup to log messages as Windows application events
 	exthostwindows.ActivateWindowsServiceHandler(func() {
+		err := extensionRegistry.RemoveLocalDiscovery()
+		if err != nil {
+			log.Error().Err(err).Msg("unable to remove local discovery from the Windows registry")
+		}
 		stopQosCleanup()
 		exthttp.StopListen()
 	})
@@ -42,6 +44,8 @@ func main() {
 
 	config.ParseConfiguration()
 	config.ValidateConfiguration()
+
+	extensionRegistry.Port(config.Config.Port) // update port once configuration is parsed
 
 	exthealth.SetReady(false)
 	exthealth.StartProbes(int(config.Config.HealthPort))
@@ -67,7 +71,10 @@ func main() {
 
 	action_kit_sdk.RegisterCoverageEndpoints()
 
-	setupLocalDiscovery(config.Config.Port)
+	err := extensionRegistry.SetupLocalDiscovery()
+	if err != nil {
+		log.Error().Err(err).Msg("unable to setup local discovery in the Windows registry, automatic local discovery is disabled")
+	}
 
 	exthealth.SetReady(true)
 
@@ -85,27 +92,5 @@ func getExtensionList() ExtensionListResponse {
 	return ExtensionListResponse{
 		ActionList:    action_kit_sdk.GetActionList(),
 		DiscoveryList: discovery_kit_sdk.GetDiscoveryList(),
-	}
-}
-
-func setupLocalDiscovery(port uint16) {
-	key, _, err := registry.CreateKey(registry.LOCAL_MACHINE, `Software\Steadybit GmbH\Extensions\Extension Host Windows`, registry.WRITE)
-
-	if err != nil {
-		log.Error().Err(err).Msg("unable to create/open extensions registry key, automatic discovery in the local network will not work.")
-	}
-
-	defer key.Close()
-
-	err = key.SetStringValue("location", fmt.Sprintf("http://localhost:%d", port))
-
-	if err != nil {
-		log.Error().Err(err).Msg("unable to set location value in the registry, automatic discovery in the local network will not work.")
-	}
-
-	err = key.SetStringsValue("types", []string{"ACTION", "DISCOVERY"})
-
-	if err != nil {
-		log.Error().Err(err).Msg("unable to set type value in the registry, automatic discovery in the local network will not work.")
 	}
 }
