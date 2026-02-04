@@ -102,6 +102,8 @@ func (s *extensionService) Execute(_ []string, changeRequests <-chan svc.ChangeR
 	for {
 		changeRequest := <-changeRequests
 		switch changeRequest.Cmd {
+		case svc.Interrogate:
+			statuses <- changeRequest.CurrentStatus
 		case svc.Stop, svc.Shutdown:
 			s.stopHandler()
 			statuses <- svc.Status{State: svc.Stopped, Accepts: cmdsAccepted}
