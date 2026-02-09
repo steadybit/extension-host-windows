@@ -12,7 +12,7 @@ require (
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.4
 	github.com/steadybit/action-kit/go/action_kit_commons v1.5.13
 	github.com/steadybit/action-kit/go/action_kit_sdk v1.3.1
-	github.com/steadybit/action-kit/go/action_kit_test v1.4.4
+	github.com/steadybit/action-kit/go/action_kit_test v1.4.5
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.3.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.2
@@ -49,9 +49,9 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	github.com/zmwangx/debounce v1.0.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
