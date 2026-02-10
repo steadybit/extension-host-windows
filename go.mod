@@ -1,6 +1,6 @@
 module github.com/steadybit/extension-host-windows
 
-go 1.25.5
+go 1.25.7
 
 require (
 	github.com/elastic/go-sysinfo v1.15.4
