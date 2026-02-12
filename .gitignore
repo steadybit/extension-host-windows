@@ -423,3 +423,5 @@ src/test/burn/TestData/Manual/BundleB/PackagePayloads
 
 #ignore the Sandbox
 src/test/sandbox/
+
+.env
