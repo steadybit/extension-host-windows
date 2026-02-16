@@ -67,7 +67,7 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 			},
 			{
 				Name:         "hostname",
-				Label:        "Hostname",
+				Label:        "Hostnames",
 				Description:  extutil.Ptr("Restrict to/from which hosts the traffic is affected."),
 				Type:         action_kit_api.ActionParameterTypeStringArray,
 				DefaultValue: extutil.Ptr(""),
@@ -75,7 +75,7 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 			},
 			{
 				Name:         "ip",
-				Label:        "IP Address/CIDR",
+				Label:        "IPs/CIDRs",
 				Description:  extutil.Ptr("Restrict to/from which IP addresses or blocks the traffic is affected."),
 				Type:         action_kit_api.ActionParameterTypeStringArray,
 				DefaultValue: extutil.Ptr(""),
@@ -83,7 +83,7 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 			},
 			{
 				Name:         "port",
-				Label:        "Port",
+				Label:        "Ports",
 				Description:  extutil.Ptr("Restrict to/from which port the traffic is affected."),
 				Type:         action_kit_api.ActionParameterTypeString,
 				DefaultValue: extutil.Ptr(""),
