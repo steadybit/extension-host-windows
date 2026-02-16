@@ -263,19 +263,16 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr(WindowsHostTechnology),
-		Category:   extutil.Ptr("Resource"),
-
-		Kind: action_kit_api.Attack,
-
+		Technology:  extutil.Ptr(WindowsHostTechnology),
+		Category:    extutil.Ptr("Resource"),
+		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
-
 		Parameters: []action_kit_api.ActionParameter{
 			{
 				Name:         "duration",
 				Label:        "Duration",
 				Description:  extutil.Ptr("How long should the disk be filled?"),
-				Type:         action_kit_api.Duration,
+				Type:         action_kit_api.ActionParameterTypeDuration,
 				DefaultValue: extutil.Ptr("30s"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(1),
@@ -283,14 +280,14 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "mode",
 				Label:        "Mode",
-				Description:  extutil.Ptr("Decide how to specify the amount to fill the disk:\n\noverall percentage of filled disk space in percent,\n\nMegabytes to write,\n\nMegabytes to leave free on disk"),
+				Description:  extutil.Ptr("Specify how to calculate the amount of disk space to fill."),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(2),
-				DefaultValue: extutil.Ptr("PERCENTAGE"),
-				Type:         action_kit_api.String,
+				DefaultValue: extutil.Ptr(string(MBToFill)),
+				Type:         action_kit_api.ActionParameterTypeString,
 				Options: extutil.Ptr([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
-						Label: "Overall percentage of filled disk space in percent",
+						Label: "Fill up to specified usage (in %)",
 						Value: string(Percentage),
 					},
 					action_kit_api.ExplicitParameterOption{
@@ -306,9 +303,9 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "size",
 				Label:        "Fill Value (depending on Mode)",
-				Description:  extutil.Ptr("Depending on the mode, specify the percentage of filled disk space or the number of Megabytes to be written or left free."),
-				Type:         action_kit_api.Integer,
-				DefaultValue: extutil.Ptr("80"),
+				Description:  extutil.Ptr("Depending on the mode, specify the percentage or megabytes to use."),
+				Type:         action_kit_api.ActionParameterTypeInteger,
+				DefaultValue: extutil.Ptr("500"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(3),
 			},
@@ -316,7 +313,7 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 				Name:         "path",
 				Label:        "File Destination",
 				Description:  extutil.Ptr("Where to temporarily write the file for filling the disk. It will be cleaned up afterwards."),
-				Type:         action_kit_api.String,
+				Type:         action_kit_api.ActionParameterTypeString,
 				DefaultValue: extutil.Ptr("C:\\"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(4),
@@ -328,7 +325,7 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(5),
 				DefaultValue: extutil.Ptr("AT_ONCE"),
-				Type:         action_kit_api.String,
+				Type:         action_kit_api.ActionParameterTypeString,
 				Advanced:     extutil.Ptr(true),
 				Options: extutil.Ptr([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
@@ -345,7 +342,7 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 				Name:         "blocksize",
 				Label:        "Block Size (in MBytes) of the File to Write for method `OverTime`",
 				Description:  extutil.Ptr("Define the block size for writing the file with the dd command. If the block size is larger than the fill value, the fill value will be used as block size."),
-				Type:         action_kit_api.Integer,
+				Type:         action_kit_api.ActionParameterTypeInteger,
 				DefaultValue: extutil.Ptr("5"),
 				Required:     extutil.Ptr(true),
 				Order:        extutil.Ptr(6),
@@ -362,7 +359,7 @@ func (a *fillDiskAction) Describe() action_kit_api.ActionDescription {
 	return a.description
 }
 
-func (a *fillDiskAction) Prepare(ctx context.Context, state *FillDiskActionState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
+func (a *fillDiskAction) Prepare(_ context.Context, state *FillDiskActionState, request action_kit_api.PrepareActionRequestBody) (*action_kit_api.PrepareResult, error) {
 	if _, err := CheckTargetHostname(request.Target.Attributes); err != nil {
 		return nil, err
 	}
@@ -377,7 +374,7 @@ func (a *fillDiskAction) Prepare(ctx context.Context, state *FillDiskActionState
 	return nil, nil
 }
 
-func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) (*action_kit_api.StartResult, error) {
+func (a *fillDiskAction) Start(_ context.Context, state *FillDiskActionState) (*action_kit_api.StartResult, error) {
 	if state.StressOpts.Method == AtOnce {
 		err := utils.IsExecutableOperational("fsutil")
 
@@ -418,8 +415,10 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 
 		go func() {
 			pipeReader, pipeWriter := io.Pipe()
-			defer pipeReader.Close()
-			defer pipeWriter.Close()
+			defer func() {
+				_ = pipeReader.Close()
+				_ = pipeWriter.Close()
+			}()
 
 			devzeroCmd.Stdout = pipeWriter
 			ddCmd.Stdin = pipeReader
