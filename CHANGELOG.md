@@ -1,5 +1,9 @@
 # Changelog
 
+## (next)
+
+- Support if-none-match for the extension list endpoint
+
 ## v0.2.6
 
  - fix: correctly handle svc.Interrogate

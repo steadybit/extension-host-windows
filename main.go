@@ -5,6 +5,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -20,6 +22,8 @@ import (
 	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extsignals"
 )
+
+var startedAt = time.Now().Format(time.RFC3339)
 
 func main() {
 	extlogging.InitZeroLog()
@@ -49,7 +53,6 @@ func main() {
 	exthealth.SetReady(false)
 	exthealth.StartProbes(int(config.Config.HealthPort))
 
-	exthttp.RegisterHttpHandler("/", exthttp.GetterAsHandler(getExtensionList))
 	action_kit_sdk.RegisterAction(exthostwindows.NewShutdownAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewStopProcessAction())
 	action_kit_sdk.RegisterAction(exthostwindows.NewNetworkBlockDnsContainerAction())
@@ -65,6 +68,8 @@ func main() {
 	action_kit_sdk.RegisterAction(exthostwindows.NewFillDiskAction())
 
 	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
+
+	exthttp.RegisterHttpHandler("/", exthttp.IfNoneMatchHandler(func() string { return startedAt }, exthttp.GetterAsHandler(getExtensionList)))
 
 	extsignals.ActivateSignalHandlers()
 
