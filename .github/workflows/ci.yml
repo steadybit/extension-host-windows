@@ -102,7 +102,7 @@ jobs:
           go-version: ${{ env.golang_version }}
 
       - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Set dependency versions
         id: versions
