@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+// SPDX-FileCopyrightText: 2026 Steadybit GmbH
 
 package stopprocess
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
+
 	"github.com/mitchellh/go-ps"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-kit/extutil"
-	"os/exec"
-	"strings"
 )
 
 func StopProcesses(pids []int, force bool) error {
@@ -42,14 +43,14 @@ func stopProcessWindows(pid int, force bool) error {
 		return fmt.Errorf("fail to find taskkill.exe: %w", err)
 	}
 	if force {
-		err := exec.Command(taskkill, "/F", "/pid", fmt.Sprintf("%d", pid)).Run()
+		err := exec.Command(taskkill, "/F", "/T", "/pid", fmt.Sprintf("%d", pid)).Run()
 		if err != nil {
 			return fmt.Errorf("failed to force kill process via taskkill: %w", err)
 		}
 		return nil
 	}
 
-	err = exec.Command(taskkill, "/pid", fmt.Sprintf("%d", pid)).Run()
+	err = exec.Command(taskkill, "/T", "/pid", fmt.Sprintf("%d", pid)).Run()
 	if err != nil {
 		return fmt.Errorf("failed to kill process via taskkill: %w", err)
 	}
