@@ -54,7 +54,7 @@ func stopProcessWindows(pid int, force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to kill process via taskkill: %w", err)
 	}
-	return err
+	return nil
 }
 
 func FindProcessIds(processOrPid string) []int {
