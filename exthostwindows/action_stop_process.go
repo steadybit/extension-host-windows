@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,8 +33,9 @@ type StopProcessActionState struct {
 }
 
 var (
-	_ action_kit_sdk.Action[StopProcessActionState]         = (*stopProcessAction)(nil)
-	_ action_kit_sdk.ActionWithStop[StopProcessActionState] = (*stopProcessAction)(nil) // Optional, needed when the action needs a stop method
+	_ action_kit_sdk.Action[StopProcessActionState]           = (*stopProcessAction)(nil)
+	_ action_kit_sdk.ActionWithStatus[StopProcessActionState] = (*stopProcessAction)(nil)
+	_ action_kit_sdk.ActionWithStop[StopProcessActionState]   = (*stopProcessAction)(nil)
 )
 
 func NewStopProcessAction() action_kit_sdk.Action[StopProcessActionState] {
@@ -59,6 +61,9 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 		Category:    extutil.Ptr("State"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
+		Status: extutil.Ptr(action_kit_api.MutatingEndpointReferenceWithCallInterval{
+			CallInterval: extutil.Ptr("1s"),
+		}),
 		Parameters: []action_kit_api.ActionParameter{
 			durationParamter,
 			{
@@ -72,7 +77,7 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 			{
 				Name:         "graceful",
 				Label:        "Graceful",
-				Description:  extutil.Ptr("If true a process is killed forcibly."),
+				Description:  extutil.Ptr("If true a process is killed gracefully, if false forcibly."),
 				Type:         action_kit_api.ActionParameterTypeBoolean,
 				DefaultValue: extutil.Ptr("true"),
 				Required:     extutil.Ptr(true),
@@ -150,10 +155,31 @@ func (a *stopProcessAction) Start(_ context.Context, state *StopProcessActionSta
 	}, nil
 }
 
+func (a *stopProcessAction) Status(_ context.Context, state *StopProcessActionState) (*action_kit_api.StatusResult, error) {
+	stopper, ok := a.processStoppers.Load(state.ExecutionID)
+	if !ok {
+		return &action_kit_api.StatusResult{Completed: true}, nil
+	}
+
+	s := stopper.(*processStopper)
+
+	if errPtr := s.err.Load(); errPtr != nil {
+		return &action_kit_api.StatusResult{
+			Completed: true,
+			Error: &action_kit_api.ActionKitError{
+				Title:  (*errPtr).Error(),
+				Status: extutil.Ptr(action_kit_api.Failed),
+			},
+		}, nil
+	}
+
+	return &action_kit_api.StatusResult{Completed: false}, nil
+}
+
 func (a *stopProcessAction) Stop(_ context.Context, state *StopProcessActionState) (*action_kit_api.StopResult, error) {
 	stopper, ok := a.processStoppers.Load(state.ExecutionID)
 	if ok {
-		stopper.(*processStopper).stop()
+		stopper.(*processStopper).cancel()
 		a.processStoppers.Delete(state.ExecutionID)
 	} else {
 		log.Debug().Msg("Execution run data not found, stop was already called")
@@ -162,22 +188,31 @@ func (a *stopProcessAction) Stop(_ context.Context, state *StopProcessActionStat
 }
 
 type processStopper struct {
-	stop  func()
-	start func()
+	cancel func()
+	start  func()
+	err    atomic.Pointer[error]
 }
 
 func newProcessStopper(processFilter string, graceful bool, delay, duration time.Duration) *processStopper {
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	s := &processStopper{
+		cancel: cancel,
+	}
 
-	start := func() {
+	s.start = func() {
 		go func() {
+			defer cancel()
 			for {
 				select {
 				case <-time.After(delay):
 					pids := stopprocess.FindProcessIds(processFilter)
 					log.Debug().Msgf("Found %d processes to stop", len(pids))
 					err := stopprocess.StopProcesses(pids, !graceful)
-					log.Error().Err(err).Msg("Failed to stop processes")
+					if err != nil {
+						log.Error().Err(err).Msg("Failed to stop processes")
+						s.err.Store(&err)
+						return
+					}
 				case <-ctx.Done():
 					return
 				}
@@ -185,8 +220,5 @@ func newProcessStopper(processFilter string, graceful bool, delay, duration time
 		}()
 	}
 
-	return &processStopper{
-		stop:  cancel,
-		start: start,
-	}
+	return s
 }
