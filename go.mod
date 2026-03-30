@@ -10,7 +10,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/rs/zerolog v1.35.0
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.5
-	github.com/steadybit/action-kit/go/action_kit_commons v1.5.16-0.20260330193757-b77567804c15
+	github.com/steadybit/action-kit/go/action_kit_commons v1.6.0
 	github.com/steadybit/action-kit/go/action_kit_sdk v1.3.1
 	github.com/steadybit/action-kit/go/action_kit_test v1.4.7
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.1
@@ -37,12 +37,10 @@ require (
 	github.com/mailru/easyjson v0.9.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/moby/sys/capability v0.4.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/oapi-codegen/runtime v1.3.1 // indirect
-	github.com/oasdiff/yaml v0.0.2 // indirect
-	github.com/oasdiff/yaml3 v0.0.2 // indirect
-	github.com/opencontainers/runtime-spec v1.3.0 // indirect
+	github.com/oasdiff/yaml v0.0.4 // indirect
+	github.com/oasdiff/yaml3 v0.0.4 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
@@ -50,7 +48,6 @@ require (
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	github.com/zmwangx/debounce v1.0.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
