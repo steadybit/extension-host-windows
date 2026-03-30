@@ -72,13 +72,11 @@ func blockDns() networkOptsProvider {
 		}
 
 		filter := network.Filter{
-			Filter: akn.Filter{
-				Include: akn.NewNetWithPortRanges(akn.NetAny,
-					akn.PortRange{
-						From: dnsPort,
-						To:   dnsPort,
-					}),
-			},
+			Include: akn.NewNetWithPortRanges(akn.NetAny,
+				akn.PortRange{
+					From: dnsPort,
+					To:   dnsPort,
+				}),
 		}
 
 		filter.Direction = network.DirectionOutgoing

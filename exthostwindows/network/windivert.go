@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 )
@@ -54,7 +53,7 @@ func getStartEndIP(ipNet net.IPNet) (net.IP, net.IP, error) {
 		return startIp, endIp, nil
 	}
 
-	if family == network.FamilyV6 {
+	if family == FamilyV6 {
 		startIp := ipNet.IP.Mask(ipNet.Mask)
 
 		invertedMask := make(net.IP, len(startIp.To16()))
@@ -102,15 +101,15 @@ func buildWinDivertFilter(f Filter) (string, error) {
 		writeInterfaceFilter(&sb, f.InterfaceIndexes)
 	}
 
-	if len(f.Filter.Include) > 0 {
-		err := writeIncludeFilter(&sb, f.Filter, f.Direction)
+	if len(f.Include) > 0 {
+		err := writeIncludeFilter(&sb, f, f.Direction)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	if len(f.Filter.Exclude) > 0 {
-		err := writeExcludeFilter(&sb, f.Filter)
+	if len(f.Exclude) > 0 {
+		err := writeExcludeFilter(&sb, f)
 		if err != nil {
 			return "", err
 		}
@@ -138,7 +137,7 @@ func writeInterfaceFilter(sb *strings.Builder, ifIdxs []int) {
 	sb.WriteString(closeGroup)
 }
 
-func writeIncludeFilter(sb *strings.Builder, filter network.Filter, direction Direction) error {
+func writeIncludeFilter(sb *strings.Builder, filter Filter, direction Direction) error {
 	replaceMap := map[string]string{
 		"tcpDstPort": "tcp.DstPort",
 		"udpDstPort": "udp.DstPort",
@@ -240,7 +239,7 @@ func writeIncludeFilter(sb *strings.Builder, filter network.Filter, direction Di
 	return nil
 }
 
-func writeExcludeFilter(sb *strings.Builder, filter network.Filter) error {
+func writeExcludeFilter(sb *strings.Builder, filter Filter) error {
 	replaceMap := map[string]string{
 		"tcpDstPort": "tcp.DstPort",
 		"udpDstPort": "udp.DstPort",

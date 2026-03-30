@@ -218,10 +218,8 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}
 	}
 
 	return network.Filter{
-		Filter: akn.Filter{
-			Include: includes,
-			Exclude: excludes,
-		},
+		Include:          includes,
+		Exclude:          excludes,
 		InterfaceIndexes: interfaceIndexes,
 	}, messages, nil
 }

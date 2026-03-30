@@ -39,13 +39,11 @@ func TestWinDivertBuildFilterInclude(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionOutgoing,
-		Filter: akn.Filter{
-			Include: []akn.NetWithPortRange{
-				{
-					Net:       *net1,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Include: []akn.NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -61,13 +59,11 @@ func TestWinDivertBuildFilterIncludeInbound(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionIncoming,
-		Filter: akn.Filter{
-			Include: []akn.NetWithPortRange{
-				{
-					Net:       *net1,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Include: []akn.NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -83,13 +79,11 @@ func TestWinDivertBuildFilterIncludeInOut(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionAll,
-		Filter: akn.Filter{
-			Include: []akn.NetWithPortRange{
-				{
-					Net:       *net1,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Include: []akn.NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -105,13 +99,11 @@ func TestWinDivertBuildFilterIncludeIpv6(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionOutgoing,
-		Filter: akn.Filter{
-			Include: []akn.NetWithPortRange{
-				{
-					Net:       *net1,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Include: []akn.NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -129,20 +121,18 @@ func TestWinDivertBuildFilterExclude(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionOutgoing,
-		Filter: akn.Filter{
-			Include: []akn.NetWithPortRange{
-				{
-					Net:       *net1,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Include: []akn.NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
-			Exclude: []akn.NetWithPortRange{
-				{
-					Net:       *exemptNet,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		},
+		Exclude: []akn.NetWithPortRange{
+			{
+				Net:       *exemptNet,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -162,25 +152,23 @@ func TestWinDivertBuildFilterMultipleExcludes(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionOutgoing,
-		Filter: akn.Filter{
-			Include: []akn.NetWithPortRange{
-				{
-					Net:       *net1,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Include: []akn.NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
-			Exclude: []akn.NetWithPortRange{
-				{
-					Net:       *exemptNet,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
-				{
-					Net:       *exemptNet2,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		},
+		Exclude: []akn.NetWithPortRange{
+			{
+				Net:       *exemptNet,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
+			},
+			{
+				Net:       *exemptNet2,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -200,25 +188,23 @@ func TestWinDivertBuildFilterMultipleIncludes(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionOutgoing,
-		Filter: akn.Filter{
-			Include: []akn.NetWithPortRange{
-				{
-					Net:       *net1,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
-				{
-					Net:       *net2,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Include: []akn.NetWithPortRange{
+			{
+				Net:       *net1,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
-			Exclude: []akn.NetWithPortRange{
-				{
-					Net:       *exemptNet,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+			{
+				Net:       *net2,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
+			},
+		},
+		Exclude: []akn.NetWithPortRange{
+			{
+				Net:       *exemptNet,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -234,13 +220,11 @@ func TestWinDivertBuildFilterOnlyExclude(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionOutgoing,
-		Filter: akn.Filter{
-			Exclude: []akn.NetWithPortRange{
-				{
-					Net:       *excludeNet,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Exclude: []akn.NetWithPortRange{
+			{
+				Net:       *excludeNet,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 	}
@@ -265,13 +249,11 @@ func TestWinDivertBuildFilterInterfacesAndIncludeOutgoing(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionOutgoing,
-		Filter: akn.Filter{
-			Exclude: []akn.NetWithPortRange{
-				{
-					Net:       *excludeNet,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Exclude: []akn.NetWithPortRange{
+			{
+				Net:       *excludeNet,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 		InterfaceIndexes: []int{1, 2, 3},
@@ -288,13 +270,11 @@ func TestWinDivertBuildFilterInterfacesAndIncludeInbound(t *testing.T) {
 	require.NoError(t, err)
 	f := Filter{
 		Direction: DirectionIncoming,
-		Filter: akn.Filter{
-			Exclude: []akn.NetWithPortRange{
-				{
-					Net:       *excludeNet,
-					Comment:   "",
-					PortRange: akn.PortRange{From: 8000, To: 8002},
-				},
+		Exclude: []akn.NetWithPortRange{
+			{
+				Net:       *excludeNet,
+				Comment:   "",
+				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
 		InterfaceIndexes: []int{1, 2, 3},
