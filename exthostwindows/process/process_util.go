@@ -4,6 +4,7 @@
 package stopprocess
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -18,20 +19,20 @@ func StopProcesses(pids []int, force bool) error {
 		return nil
 	}
 
-	errors := make([]string, 0)
+	errs := make([]string, 0)
 	for _, pid := range pids {
 		if process, err := ps.FindProcess(pid); err == nil && process != nil {
 			log.Info().Int("pid", pid).Msg("Stopping process")
 			err := stopProcessWindows(pid, force)
 			if err != nil {
-				errors = append(errors, err.Error())
+				errs = append(errs, err.Error())
 			}
 		} else {
 			log.Info().Int("pid", pid).Msg("Process not found")
 		}
 	}
-	if len(errors) > 0 {
-		return fmt.Errorf("fail to stop processes : %s", strings.Join(errors, ", "))
+	if len(errs) > 0 {
+		return fmt.Errorf("fail to stop processes : %s", strings.Join(errs, ", "))
 	}
 	return nil
 }
@@ -45,6 +46,10 @@ func stopProcessWindows(pid int, force bool) error {
 	if force {
 		err := exec.Command(taskkill, "/F", "/T", "/pid", fmt.Sprintf("%d", pid)).Run()
 		if err != nil {
+			if isProcessNotFound(err) {
+				log.Debug().Int("pid", pid).Msg("process already exited")
+				return nil
+			}
 			return fmt.Errorf("failed to force kill process via taskkill: %w", err)
 		}
 		return nil
@@ -52,9 +57,18 @@ func stopProcessWindows(pid int, force bool) error {
 
 	err = exec.Command(taskkill, "/T", "/pid", fmt.Sprintf("%d", pid)).Run()
 	if err != nil {
+		if isProcessNotFound(err) {
+			log.Debug().Int("pid", pid).Msg("Process already exited")
+			return nil
+		}
 		return fmt.Errorf("failed to kill process via taskkill: %w", err)
 	}
 	return nil
+}
+
+func isProcessNotFound(err error) bool {
+	var exitErr *exec.ExitError
+	return errors.As(err, &exitErr) && exitErr.ExitCode() == 128
 }
 
 func FindProcessIds(processOrPid string) []int {
