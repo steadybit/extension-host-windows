@@ -24,7 +24,7 @@ type stopProcessAction struct {
 }
 
 type StopProcessActionState struct {
-	ExecutionID   uuid.UUID
+	ExecutionId   uuid.UUID
 	Delay         time.Duration
 	ProcessFilter string //pid or executable name
 	Graceful      bool
@@ -136,13 +136,14 @@ func (a *stopProcessAction) Prepare(_ context.Context, state *StopProcessActionS
 
 	graceful := extutil.ToBool(request.Config["graceful"])
 	state.Graceful = graceful
+	state.ExecutionId = request.ExecutionId
 	return nil, nil
 }
 
 func (a *stopProcessAction) Start(_ context.Context, state *StopProcessActionState) (*action_kit_api.StartResult, error) {
 	stopper := newProcessStopper(state.ProcessFilter, state.Graceful, state.Delay, state.Duration)
 
-	a.processStoppers.Store(state.ExecutionID, stopper)
+	a.processStoppers.Store(state.ExecutionId, stopper)
 
 	stopper.start()
 	return &action_kit_api.StartResult{
@@ -156,7 +157,7 @@ func (a *stopProcessAction) Start(_ context.Context, state *StopProcessActionSta
 }
 
 func (a *stopProcessAction) Status(_ context.Context, state *StopProcessActionState) (*action_kit_api.StatusResult, error) {
-	stopper, ok := a.processStoppers.Load(state.ExecutionID)
+	stopper, ok := a.processStoppers.Load(state.ExecutionId)
 	if !ok {
 		return &action_kit_api.StatusResult{Completed: true}, nil
 	}
@@ -177,10 +178,10 @@ func (a *stopProcessAction) Status(_ context.Context, state *StopProcessActionSt
 }
 
 func (a *stopProcessAction) Stop(_ context.Context, state *StopProcessActionState) (*action_kit_api.StopResult, error) {
-	stopper, ok := a.processStoppers.Load(state.ExecutionID)
+	stopper, ok := a.processStoppers.Load(state.ExecutionId)
 	if ok {
 		stopper.(*processStopper).cancel()
-		a.processStoppers.Delete(state.ExecutionID)
+		a.processStoppers.Delete(state.ExecutionId)
 	} else {
 		log.Debug().Msg("Execution run data not found, stop was already called")
 	}

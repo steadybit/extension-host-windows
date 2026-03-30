@@ -110,7 +110,7 @@ func TestActionStopProcess_Prepare(t *testing.T) {
 func TestActionStopProcess_StatusReportsError(t *testing.T) {
 	action := &stopProcessAction{}
 	executionID := uuid.New()
-	state := &StopProcessActionState{ExecutionID: executionID}
+	state := &StopProcessActionState{ExecutionId: executionID}
 
 	stopper := &processStopper{
 		cancel: func() {},
@@ -131,7 +131,7 @@ func TestActionStopProcess_StatusReportsError(t *testing.T) {
 func TestActionStopProcess_StatusReportsNotCompleted(t *testing.T) {
 	action := &stopProcessAction{}
 	executionID := uuid.New()
-	state := &StopProcessActionState{ExecutionID: executionID}
+	state := &StopProcessActionState{ExecutionId: executionID}
 
 	stopper := &processStopper{
 		cancel: func() {},
@@ -146,7 +146,7 @@ func TestActionStopProcess_StatusReportsNotCompleted(t *testing.T) {
 
 func TestActionStopProcess_StatusCompletedWhenNotFound(t *testing.T) {
 	action := &stopProcessAction{}
-	state := &StopProcessActionState{ExecutionID: uuid.New()}
+	state := &StopProcessActionState{ExecutionId: uuid.New()}
 
 	result, err := action.Status(context.Background(), state)
 	require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestActionStopProcess_StatusCompletedWhenNotFound(t *testing.T) {
 func TestActionStopProcess_StopCancelsAndRemovesStopper(t *testing.T) {
 	action := &stopProcessAction{}
 	executionID := uuid.New()
-	state := &StopProcessActionState{ExecutionID: executionID}
+	state := &StopProcessActionState{ExecutionId: executionID}
 
 	cancelled := false
 	stopper := &processStopper{
