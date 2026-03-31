@@ -4,23 +4,24 @@
 package network
 
 import (
-	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"strconv"
 	"strings"
+
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 )
 
-type Mode = akn.Mode
+type Mode string
 
-var (
-	ModeAdd    = akn.ModeAdd
-	ModeDelete = akn.ModeDelete
+const (
+	ModeAdd    Mode = "add"
+	ModeDelete Mode = "del"
 )
 
-type Family = akn.Family
+type Family string
 
-var (
-	FamilyV4 = akn.FamilyV4
-	FamilyV6 = akn.FamilyV6
+const (
+	FamilyV4 Family = "inet"
+	FamilyV6 Family = "inet6"
 )
 
 type WinOpts interface {
@@ -38,7 +39,8 @@ var (
 )
 
 type Filter struct {
-	Filter           akn.Filter
+	Include          []akn.NetWithPortRange
+	Exclude          []akn.NetWithPortRange
 	InterfaceIndexes []int
 	Direction        Direction
 }
@@ -48,16 +50,15 @@ func (filter *Filter) writeStringForFilters(sb *strings.Builder) {
 		sb.WriteString("\ndirection: ")
 		sb.WriteString(string(filter.Direction))
 	}
-	f := filter.Filter
 	sb.WriteString("\nto/from:\n")
-	for _, inc := range f.Include {
+	for _, inc := range filter.Include {
 		sb.WriteString(" ")
 		sb.WriteString(inc.String())
 		sb.WriteString("\n")
 	}
-	if len(f.Exclude) > 0 {
+	if len(filter.Exclude) > 0 {
 		sb.WriteString("but not from/to:\n")
-		for _, exc := range f.Exclude {
+		for _, exc := range filter.Exclude {
 			sb.WriteString(" ")
 			sb.WriteString(exc.String())
 			sb.WriteString("\n")
