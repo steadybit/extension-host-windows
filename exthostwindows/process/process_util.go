@@ -44,7 +44,7 @@ func stopProcessWindows(pid int, force bool) error {
 		return fmt.Errorf("fail to find taskkill.exe: %w", err)
 	}
 	if force {
-		err := exec.Command(taskkill, "/F", "/T", "/pid", fmt.Sprintf("%d", pid)).Run()
+		err := exec.Command(taskkill, "/F", "/pid", fmt.Sprintf("%d", pid)).Run()
 		if err != nil {
 			if isProcessNotFound(err) {
 				log.Debug().Int("pid", pid).Msg("process already exited")
@@ -55,7 +55,7 @@ func stopProcessWindows(pid int, force bool) error {
 		return nil
 	}
 
-	err = exec.Command(taskkill, "/T", "/pid", fmt.Sprintf("%d", pid)).Run()
+	err = exec.Command(taskkill, "/pid", fmt.Sprintf("%d", pid)).Run()
 	if err != nil {
 		if isProcessNotFound(err) {
 			log.Debug().Int("pid", pid).Msg("Process already exited")
