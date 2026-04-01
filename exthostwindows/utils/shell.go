@@ -79,7 +79,8 @@ func BuildSystemCommandFor(cmd string) []string {
 		log.Debug().Msg("already running as SYSTEM, skipping scheduled task wrapper")
 		return []string{cmd}
 	}
-	scheduledTaskAction := fmt.Sprintf("$A=New-ScheduledTaskAction -Execute powershell -Argument \"-WindowStyle Hidden -Command %s\"", cmd)
+	escapedCmd := strings.ReplaceAll(cmd, "$", "`$")
+	scheduledTaskAction := fmt.Sprintf("$A=New-ScheduledTaskAction -Execute powershell -Argument \"-WindowStyle Hidden -Command %s\"", escapedCmd)
 	principal := "$P=New-ScheduledTaskPrincipal -UserId \"SYSTEM\" -RunLevel Highest"
 	registerScheduledTask := "Register-ScheduledTask SteadybitTempQoSPolicyTask -Action $A -Principal $P"
 	startTask := "Start-ScheduledTask SteadybitTempQoSPolicyTask"

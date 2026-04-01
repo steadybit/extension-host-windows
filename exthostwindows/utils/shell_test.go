@@ -20,9 +20,10 @@ func Test_BuildSystemCommandFor_wrapsInScheduledTask_whenNotRunningAsSystem(t *t
 	defer func() { isRunningAsSystem = originalFn }()
 	isRunningAsSystem = func() bool { return false }
 
-	cmds := BuildSystemCommandFor("New-NetQosPolicy -Name test")
+	cmds := BuildSystemCommandFor("New-NetQosPolicy -Name test -Confirm:$false")
 
 	require.Len(t, cmds, 7)
+	require.Contains(t, cmds[1], "-Confirm:`$false")
 }
 
 func Test_BuildSystemCommandFor_runsDirectly_whenRunningAsSystem(t *testing.T) {
@@ -30,9 +31,9 @@ func Test_BuildSystemCommandFor_runsDirectly_whenRunningAsSystem(t *testing.T) {
 	defer func() { isRunningAsSystem = originalFn }()
 	isRunningAsSystem = func() bool { return true }
 
-	cmds := BuildSystemCommandFor("New-NetQosPolicy -Name test")
+	cmds := BuildSystemCommandFor("New-NetQosPolicy -Name test -Confirm:$false")
 
-	require.Equal(t, []string{"New-NetQosPolicy -Name test"}, cmds)
+	require.Equal(t, []string{"New-NetQosPolicy -Name test -Confirm:$false"}, cmds)
 }
 
 func Test_sanitizePowerShellArg(t *testing.T) {
