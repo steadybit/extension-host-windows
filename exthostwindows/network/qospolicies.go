@@ -65,7 +65,7 @@ func removeSteadybitQosPolicies(ctx context.Context) error {
 func removeQoSPolicies(ctx context.Context, policies []string) error {
 	var errs error
 	for _, policy := range policies {
-		removeCommand := fmt.Sprintf("Remove-NetQosPolicy -Name %s -Confirm:`$false", policy)
+		removeCommand := fmt.Sprintf("Remove-NetQosPolicy -Name %s -Confirm:$false", policy)
 		if _, err := utils.ExecutePowershellCommand(ctx, utils.BuildSystemCommandFor(removeCommand), utils.PSRun); err != nil {
 			errs = errors.Join(errs, err)
 		}
