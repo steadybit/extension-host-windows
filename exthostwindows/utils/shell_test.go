@@ -1,17 +1,38 @@
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2025 Steadybit GmbH
+// SPDX-FileCopyrightText: 2026 Steadybit GmbH
 
 package utils
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_TrimShellOutput(t *testing.T) {
 	command, err := ExecutePowershellCommand(t.Context(), []string{"echo 'hello world'"}, PSRun)
 	require.NoError(t, err)
 	require.Equal(t, "hello world", command)
+}
+
+func Test_BuildSystemCommandFor_wrapsInScheduledTask_whenNotRunningAsSystem(t *testing.T) {
+	originalFn := isRunningAsSystem
+	defer func() { isRunningAsSystem = originalFn }()
+	isRunningAsSystem = func() bool { return false }
+
+	cmds := BuildSystemCommandFor("New-NetQosPolicy -Name test")
+
+	require.Len(t, cmds, 7)
+}
+
+func Test_BuildSystemCommandFor_runsDirectly_whenRunningAsSystem(t *testing.T) {
+	originalFn := isRunningAsSystem
+	defer func() { isRunningAsSystem = originalFn }()
+	isRunningAsSystem = func() bool { return true }
+
+	cmds := BuildSystemCommandFor("New-NetQosPolicy -Name test")
+
+	require.Equal(t, []string{"New-NetQosPolicy -Name test"}, cmds)
 }
 
 func Test_sanitizePowerShellArg(t *testing.T) {
