@@ -125,7 +125,7 @@ func TestActionStopProcess_StatusReportsError(t *testing.T) {
 	assert.True(t, result.Completed)
 	require.NotNil(t, result.Error)
 	assert.Equal(t, "failed to stop process", result.Error.Title)
-	assert.Equal(t, action_kit_api.Failed, *result.Error.Status)
+	assert.Equal(t, action_kit_api.Errored, *result.Error.Status)
 }
 
 func TestActionStopProcess_StatusReportsNotCompleted(t *testing.T) {
@@ -169,6 +169,32 @@ func TestActionStopProcess_StopCancelsAndRemovesStopper(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, result)
 	assert.True(t, cancelled)
+
+	_, loaded := action.processStoppers.Load(executionID)
+	assert.False(t, loaded)
+}
+
+func TestActionStopProcess_StopReportsError(t *testing.T) {
+	action := &stopProcessAction{}
+	executionID := uuid.New()
+	state := &StopProcessActionState{ExecutionId: executionID}
+
+	cancelled := false
+	stopper := &processStopper{
+		cancel: func() { cancelled = true },
+		err:    atomic.Pointer[error]{},
+	}
+	e := errors.New("failed to stop process")
+	stopper.err.Store(&e)
+	action.processStoppers.Store(executionID, stopper)
+
+	result, err := action.Stop(context.Background(), state)
+	require.NoError(t, err)
+	assert.True(t, cancelled)
+	require.NotNil(t, result)
+	require.NotNil(t, result.Error)
+	assert.Equal(t, "failed to stop process", result.Error.Title)
+	assert.Equal(t, action_kit_api.Errored, *result.Error.Status)
 
 	_, loaded := action.processStoppers.Load(executionID)
 	assert.False(t, loaded)

@@ -50,7 +50,7 @@ func stopProcessWindows(pid int, force bool) error {
 				log.Debug().Int("pid", pid).Msg("process already exited")
 				return nil
 			}
-			return fmt.Errorf("failed to force kill process via taskkill: %w", err)
+			return fmt.Errorf("failed to force kill process %d via taskkill: %w", pid, err)
 		}
 		return nil
 	}
@@ -61,7 +61,7 @@ func stopProcessWindows(pid int, force bool) error {
 			log.Debug().Int("pid", pid).Msg("Process already exited")
 			return nil
 		}
-		return fmt.Errorf("failed to kill process via taskkill: %w", err)
+		return fmt.Errorf("failed to kill process %d via taskkill: %w", pid, err)
 	}
 	return nil
 }
