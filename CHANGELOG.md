@@ -1,6 +1,8 @@
 # Changelog
 
-## (next)
+## v0.2.8
+
+- Update dependencies
 
 ## v0.2.7
 
