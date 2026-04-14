@@ -52,48 +52,48 @@ func (a *stopProcessAction) Describe() action_kit_api.ActionDescription {
 		Label:       "Stop Processes",
 		Description: "Stop targeted processes in the given duration.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(stopProcessIcon),
-		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
+		Icon:        new(stopProcessIcon),
+		TargetSelection: new(action_kit_api.TargetSelection{
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology:  extutil.Ptr(WindowsHostTechnology),
-		Category:    extutil.Ptr("State"),
+		Technology:  new(WindowsHostTechnology),
+		Category:    new("State"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
-		Status: extutil.Ptr(action_kit_api.MutatingEndpointReferenceWithCallInterval{
-			CallInterval: extutil.Ptr("1s"),
+		Status: new(action_kit_api.MutatingEndpointReferenceWithCallInterval{
+			CallInterval: new("1s"),
 		}),
 		Parameters: []action_kit_api.ActionParameter{
 			durationParamter,
 			{
 				Name:        "process",
 				Label:       "Process",
-				Description: extutil.Ptr("PID or string to match the process name or command."),
+				Description: new("PID or string to match the process name or command."),
 				Type:        action_kit_api.ActionParameterTypeString,
-				Required:    extutil.Ptr(true),
-				Order:       extutil.Ptr(1),
+				Required:    new(true),
+				Order:       new(1),
 			},
 			{
 				Name:         "graceful",
 				Label:        "Graceful",
-				Description:  extutil.Ptr("If true a process is killed gracefully, if false forcibly."),
+				Description:  new("If true a process is killed gracefully, if false forcibly."),
 				Type:         action_kit_api.ActionParameterTypeBoolean,
-				DefaultValue: extutil.Ptr("true"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(2),
+				DefaultValue: new("true"),
+				Required:     new(true),
+				Order:        new(2),
 			}, {
 				Name:         "delay",
 				Label:        "Delay",
-				Description:  extutil.Ptr("The delay before the kill signal is sent."),
+				Description:  new("The delay before the kill signal is sent."),
 				Type:         action_kit_api.ActionParameterTypeDuration,
-				DefaultValue: extutil.Ptr("0s"),
-				Required:     extutil.Ptr(true),
-				Advanced:     extutil.Ptr(true),
-				Order:        extutil.Ptr(1),
+				DefaultValue: new("0s"),
+				Required:     new(true),
+				Advanced:     new(true),
+				Order:        new(1),
 			},
 		},
-		Stop: extutil.Ptr(action_kit_api.MutatingEndpointReference{}),
+		Stop: new(action_kit_api.MutatingEndpointReference{}),
 	}
 }
 
@@ -105,7 +105,7 @@ func (a *stopProcessAction) Prepare(_ context.Context, state *StopProcessActionS
 	processOrPid := extutil.ToString(request.Config["process"])
 	if processOrPid == "" {
 		return &action_kit_api.PrepareResult{
-			Error: extutil.Ptr(action_kit_api.ActionKitError{
+			Error: new(action_kit_api.ActionKitError{
 				Title:  "Process is required",
 				Status: extutil.Ptr(action_kit_api.Errored),
 			}),
@@ -116,7 +116,7 @@ func (a *stopProcessAction) Prepare(_ context.Context, state *StopProcessActionS
 	parsedDuration := extutil.ToUInt64(request.Config["duration"])
 	if parsedDuration == 0 {
 		return &action_kit_api.PrepareResult{
-			Error: extutil.Ptr(action_kit_api.ActionKitError{
+			Error: new(action_kit_api.ActionKitError{
 				Title:  "Duration is required",
 				Status: extutil.Ptr(action_kit_api.Errored),
 			}),
@@ -147,7 +147,7 @@ func (a *stopProcessAction) Start(_ context.Context, state *StopProcessActionSta
 
 	stopper.start()
 	return &action_kit_api.StartResult{
-		Messages: extutil.Ptr([]action_kit_api.Message{
+		Messages: new([]action_kit_api.Message{
 			{
 				Level:   extutil.Ptr(action_kit_api.Info),
 				Message: fmt.Sprintf("Starting stop processes %s", state.ProcessFilter),

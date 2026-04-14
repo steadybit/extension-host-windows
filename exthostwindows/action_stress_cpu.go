@@ -143,17 +143,17 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 		Label:       "Stress CPU",
 		Description: "Generates CPU load for one or more cores.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(stressCPUIcon),
-		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
+		Icon:        new(stressCPUIcon),
+		TargetSelection: new(action_kit_api.TargetSelection{
 			// The target type this action is for
 			TargetType: targetID,
 			// You can provide a list of target templates to help the user select targets.
 			// A template can be used to pre-fill a selection
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr(WindowsHostTechnology),
+		Technology: new(WindowsHostTechnology),
 		// Category for the targets to appear in
-		Category: extutil.Ptr("Resource"),
+		Category: new("Resource"),
 
 		// To clarify the purpose of the action, you can set a kind.
 		//   Attack: Will cause harm to targets
@@ -173,31 +173,31 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "cpuLoad",
 				Label:        "Host CPU Load",
-				Description:  extutil.Ptr("How much CPU should be consumed?"),
+				Description:  new("How much CPU should be consumed?"),
 				Type:         action_kit_api.ActionParameterTypePercentage,
-				DefaultValue: extutil.Ptr("100"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(1),
-				MinValue:     extutil.Ptr(0),
-				MaxValue:     extutil.Ptr(100),
+				DefaultValue: new("100"),
+				Required:     new(true),
+				Order:        new(1),
+				MinValue:     new(0),
+				MaxValue:     new(100),
 			},
 			{
 				Name:         "cores",
 				Label:        "Host Cores",
-				Description:  extutil.Ptr("How many CPU cores should be targeted during the stress attack?"),
+				Description:  new("How many CPU cores should be targeted during the stress attack?"),
 				Type:         action_kit_api.ActionParameterTypeStressngWorkers,
-				DefaultValue: extutil.Ptr("0"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(2),
+				DefaultValue: new("0"),
+				Required:     new(true),
+				Order:        new(2),
 			},
 			{
 				Name:         "priority",
 				Label:        "Process Priority",
-				Description:  extutil.Ptr("What is the priority of the stress process?"),
+				Description:  new("What is the priority of the stress process?"),
 				Type:         action_kit_api.ActionParameterTypeString,
-				DefaultValue: extutil.Ptr("Normal"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(3),
+				DefaultValue: new("Normal"),
+				Required:     new(true),
+				Order:        new(3),
 				Options: &[]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "Normal",
@@ -220,14 +220,14 @@ func getStressCpuDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "duration",
 				Label:        "Duration",
-				Description:  extutil.Ptr("How long should CPU be stressed?"),
+				Description:  new("How long should CPU be stressed?"),
 				Type:         action_kit_api.ActionParameterTypeDuration,
-				DefaultValue: extutil.Ptr("30s"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(4),
+				DefaultValue: new("30s"),
+				Required:     new(true),
+				Order:        new(4),
 			},
 		},
-		Stop: extutil.Ptr(action_kit_api.MutatingEndpointReference{}),
+		Stop: new(action_kit_api.MutatingEndpointReference{}),
 	}
 }
 
@@ -276,7 +276,7 @@ func (a *cpuStressAction) Start(ctx context.Context, state *CPUStressActionState
 	}()
 
 	return &action_kit_api.StartResult{
-		Messages: extutil.Ptr([]action_kit_api.Message{
+		Messages: new([]action_kit_api.Message{
 			{
 				Level:   extutil.Ptr(action_kit_api.Info),
 				Message: fmt.Sprintf("Starting stress host with args: %s.", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " "))),

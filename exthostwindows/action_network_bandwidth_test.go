@@ -35,11 +35,11 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 		{
 			name: "Should return config on hostname",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
-					"hostname":  []interface{}{"localhost"},
+					"hostname":  []any{"localhost"},
 				},
 				ExecutionId: uuid.New(),
 				Target: &action_kit_api.Target{
@@ -56,11 +56,11 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 		}, {
 			name: "Should return config on ip",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
-					"ip":        []interface{}{"1.1.1.1", "2.2.2.2"},
+					"ip":        []any{"1.1.1.1", "2.2.2.2"},
 				},
 				ExecutionId: uuid.New(),
 				Target: &action_kit_api.Target{
@@ -80,7 +80,7 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 		}, {
 			name: "Should return error on missing hostname or IP",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
@@ -96,7 +96,7 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 		}, {
 			name: "Should return error on too low duration",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "0",
 					"bandwidth": "1000mbit",
@@ -123,11 +123,11 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 						},
 					},
 				},
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
-					"ip":        []interface{}{"0.0.0.0/0"},
+					"ip":        []any{"0.0.0.0/0"},
 				},
 				ExecutionId: uuid.New(),
 				Target: &action_kit_api.Target{
@@ -147,11 +147,11 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 						},
 					},
 				},
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
-					"ip":        []interface{}{"1.1.1.1"},
+					"ip":        []any{"1.1.1.1"},
 				},
 				ExecutionId: uuid.New(),
 				Target: &action_kit_api.Target{
@@ -173,11 +173,11 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 						},
 					},
 				},
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
-					"ip":        []interface{}{"1.1.1.1"},
+					"ip":        []any{"1.1.1.1"},
 					"port":      "200",
 				},
 				ExecutionId: uuid.New(),
@@ -200,11 +200,11 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 						},
 					},
 				},
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
-					"ip":        []interface{}{"1.1.1.1"},
+					"ip":        []any{"1.1.1.1"},
 					"port":      "111-222",
 				},
 				ExecutionId: uuid.New(),
@@ -227,11 +227,11 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 						},
 					},
 				},
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "10000",
 					"bandwidth": "1000mbit",
-					"ip":        []interface{}{"1.1.1.1"},
+					"ip":        []any{"1.1.1.1"},
 					"port":      "111-122",
 				},
 				ExecutionId: uuid.New(),

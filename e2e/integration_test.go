@@ -18,14 +18,13 @@ import (
 	"github.com/steadybit/discovery-kit/go/discovery_kit_test/validate"
 	"github.com/steadybit/extension-host-windows/exthostwindows"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
-	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
 	defaultExecutionContext = &action_kit_api.ExecutionContext{
-		RestrictedEndpoints: extutil.Ptr([]action_kit_api.RestrictedEndpoint{
+		RestrictedEndpoints: new([]action_kit_api.RestrictedEndpoint{
 			{
 				Name:    "extension",
 				Url:     "localhost",
@@ -319,7 +318,7 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 	// If local communication isn't ignored the blackhole starts before
 	// the start response could be returned and the test fails.
 	executionContext := &action_kit_api.ExecutionContext{
-		RestrictedEndpoints: extutil.Ptr([]action_kit_api.RestrictedEndpoint{
+		RestrictedEndpoints: new([]action_kit_api.RestrictedEndpoint{
 			{
 				Name:    "extension",
 				Cidr:    "127.0.0.0/8",
@@ -730,7 +729,7 @@ func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint 
 	address := net.IPv4(192, 168, 0, 1)
 	result := make([]action_kit_api.RestrictedEndpoint, 0, count)
 
-	for i := 0; i < count; i++ {
+	for range count {
 		result = append(result, action_kit_api.RestrictedEndpoint{
 			Cidr:    fmt.Sprintf("%s/32", address.String()),
 			PortMin: 8084,

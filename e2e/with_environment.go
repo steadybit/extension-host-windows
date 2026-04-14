@@ -24,14 +24,12 @@ func WithEnvironment(t *testing.T, environment Environment, extFactory Extension
 	ctx := t.Context()
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		err := extFactory.Create(ctx, environment)
 		if err != nil {
 			log.Fatal().Err(err).Msgf("failed to create extension executable.")
 		}
-		wg.Done()
-	}()
+	})
 
 	wg.Wait()
 	extension, err := extFactory.Start(ctx, environment)

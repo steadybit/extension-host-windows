@@ -42,24 +42,24 @@ func (l *shutdownAction) Describe() action_kit_api.ActionDescription {
 		Label:       "Trigger Shutdown Host",
 		Description: "Trigger reboot or shut down the host.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(shutdownIcon),
-		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
+		Icon:        new(shutdownIcon),
+		TargetSelection: new(action_kit_api.TargetSelection{
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology:  extutil.Ptr(WindowsHostTechnology),
-		Category:    extutil.Ptr("State"),
+		Technology:  new(WindowsHostTechnology),
+		Category:    new("State"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlInstantaneous,
 		Parameters: []action_kit_api.ActionParameter{
 			{
 				Name:         "reboot",
 				Label:        "Reboot",
-				Description:  extutil.Ptr("Should the host reboot after shutting down?"),
+				Description:  new("Should the host reboot after shutting down?"),
 				Type:         action_kit_api.ActionParameterTypeBoolean,
-				DefaultValue: extutil.Ptr("true"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(2),
+				DefaultValue: new("true"),
+				Required:     new(true),
+				Order:        new(2),
 			},
 		},
 	}
@@ -95,7 +95,7 @@ func (l *shutdownAction) Start(_ context.Context, state *ActionState) (*action_k
 				Error: &action_kit_api.ActionKitError{
 					Title:  "Reboot failed",
 					Status: extutil.Ptr(action_kit_api.Failed),
-					Detail: extutil.Ptr(err.Error()),
+					Detail: new(err.Error()),
 				},
 			}, nil
 		}
@@ -108,7 +108,7 @@ func (l *shutdownAction) Start(_ context.Context, state *ActionState) (*action_k
 				Error: &action_kit_api.ActionKitError{
 					Title:  "Shutdown failed",
 					Status: extutil.Ptr(action_kit_api.Failed),
-					Detail: extutil.Ptr(err.Error()),
+					Detail: new(err.Error()),
 				},
 			}, nil
 		}

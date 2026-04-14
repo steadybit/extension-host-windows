@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +26,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return config",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "1000",
 					"mode":      "PERCENTAGE",
@@ -37,7 +36,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "5",
 				},
 				ExecutionId: getExecutionId(0),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -58,7 +57,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return error too low duration",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "0",
 					"mode":      "PERCENTAGE",
@@ -68,7 +67,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "5",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -80,7 +79,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return error invalid mode",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "1000",
 					"mode":      "RANDOM",
@@ -90,7 +89,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "5",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -102,7 +101,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return error invalid unit",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "1000",
 					"mode":      "PERCENTAGE",
@@ -112,7 +111,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "5",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -124,7 +123,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return error path must not be empty",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "1000",
 					"mode":      "PERCENTAGE",
@@ -134,7 +133,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "5",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -146,7 +145,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return error path must not be empty",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "1000",
 					"mode":      "PERCENTAGE",
@@ -156,7 +155,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "5",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -168,7 +167,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return error blocksize must be greater or equal to 1",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "1000",
 					"mode":      "PERCENTAGE",
@@ -178,7 +177,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "0",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -190,7 +189,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 		{
 			name: "Should return error blocksize must be lesser or equal to 1024",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":    "prepare",
 					"duration":  "1000",
 					"mode":      "PERCENTAGE",
@@ -200,7 +199,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 					"blocksize": "0",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},

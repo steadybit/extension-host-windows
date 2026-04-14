@@ -43,20 +43,20 @@ var _ action_kit_sdk.ActionWithStop[NetworkActionState] = (*networkAction)(nil)
 var durationParamter = action_kit_api.ActionParameter{
 	Name:         "duration",
 	Label:        "Duration",
-	Description:  extutil.Ptr("How long should the network be affected?"),
+	Description:  new("How long should the network be affected?"),
 	Type:         action_kit_api.ActionParameterTypeDuration,
-	DefaultValue: extutil.Ptr("30s"),
-	Required:     extutil.Ptr(true),
-	Order:        extutil.Ptr(0),
+	DefaultValue: new("30s"),
+	Required:     new(true),
+	Order:        new(0),
 }
 
 var networkInterfaceParameter = action_kit_api.ActionParameter{
 	Name:        "networkInterface",
 	Label:       "Network Interface",
-	Description: extutil.Ptr("Target Network Interface which should be affected. All if none specified."),
+	Description: new("Target Network Interface which should be affected. All if none specified."),
 	Type:        action_kit_api.ActionParameterTypeStringArray,
-	Required:    extutil.Ptr(false),
-	Order:       extutil.Ptr(104),
+	Required:    new(false),
+	Order:       new(104),
 }
 
 var commonNetworkParameters = []action_kit_api.ActionParameter{
@@ -64,29 +64,29 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 	{
 		Name:         "hostname",
 		Label:        "Hostnames",
-		Description:  extutil.Ptr("Restrict to/from which hosts the traffic is affected."),
+		Description:  new("Restrict to/from which hosts the traffic is affected."),
 		Type:         action_kit_api.ActionParameterTypeStringArray,
-		DefaultValue: extutil.Ptr(""),
-		Advanced:     extutil.Ptr(true),
-		Order:        extutil.Ptr(101),
+		DefaultValue: new(""),
+		Advanced:     new(true),
+		Order:        new(101),
 	},
 	{
 		Name:         "ip",
 		Label:        "IPs/CIDRs",
-		Description:  extutil.Ptr("Restrict to/from which IP addresses or blocks the traffic is affected."),
+		Description:  new("Restrict to/from which IP addresses or blocks the traffic is affected."),
 		Type:         action_kit_api.ActionParameterTypeStringArray,
-		DefaultValue: extutil.Ptr(""),
-		Advanced:     extutil.Ptr(true),
-		Order:        extutil.Ptr(102),
+		DefaultValue: new(""),
+		Advanced:     new(true),
+		Order:        new(102),
 	},
 	{
 		Name:         "port",
 		Label:        "Ports",
-		Description:  extutil.Ptr("Restrict to/from which ports the traffic is affected."),
+		Description:  new("Restrict to/from which ports the traffic is affected."),
 		Type:         action_kit_api.ActionParameterTypeStringArray,
-		DefaultValue: extutil.Ptr(""),
-		Advanced:     extutil.Ptr(true),
-		Order:        extutil.Ptr(103),
+		DefaultValue: new(""),
+		Advanced:     new(true),
+		Order:        new(103),
 	},
 }
 
@@ -164,7 +164,7 @@ func (a *networkAction) Stop(ctx context.Context, state *NetworkActionState) (*a
 	return nil, nil
 }
 
-func mapToNetworkFilter(ctx context.Context, actionConfig map[string]interface{}, restrictedEndpoints []action_kit_api.RestrictedEndpoint) (network.Filter, action_kit_api.Messages, error) {
+func mapToNetworkFilter(ctx context.Context, actionConfig map[string]any, restrictedEndpoints []action_kit_api.RestrictedEndpoint) (network.Filter, action_kit_api.Messages, error) {
 	ipsAndHosts := append(
 		extutil.ToStringArray(actionConfig["ip"]),
 		extutil.ToStringArray(actionConfig["hostname"])...,

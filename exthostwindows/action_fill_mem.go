@@ -146,13 +146,13 @@ func getFillMemDescription() action_kit_api.ActionDescription {
 		Label:       "Fill Memory",
 		Description: "Fills the memory of the host for the given duration.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(fillMemoryIcon),
-		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
+		Icon:        new(fillMemoryIcon),
+		TargetSelection: new(action_kit_api.TargetSelection{
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr(WindowsHostTechnology),
-		Category:   extutil.Ptr("Resource"),
+		Technology: new(WindowsHostTechnology),
+		Category:   new("Resource"),
 
 		Kind: action_kit_api.Attack,
 
@@ -162,21 +162,21 @@ func getFillMemDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "duration",
 				Label:        "Duration",
-				Description:  extutil.Ptr("How long should the memory be filled?"),
+				Description:  new("How long should the memory be filled?"),
 				Type:         action_kit_api.Duration,
-				DefaultValue: extutil.Ptr("30s"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(1),
+				DefaultValue: new("30s"),
+				Required:     new(true),
+				Order:        new(1),
 			},
 			{
 				Name:         "mode",
 				Label:        "Mode",
-				Description:  extutil.Ptr("*Fill and meet specified usage:* Fill up the memory until the desired usage is met. Memory allocation will be adjusted constantly to meet the target.\n\n*Fill the specified amount:* Allocate and hold the specified amount of Memory."),
+				Description:  new("*Fill and meet specified usage:* Fill up the memory until the desired usage is met. Memory allocation will be adjusted constantly to meet the target.\n\n*Fill the specified amount:* Allocate and hold the specified amount of Memory."),
 				Type:         action_kit_api.String,
-				DefaultValue: extutil.Ptr(string(ModeUsage)),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(2),
-				Options: extutil.Ptr([]action_kit_api.ParameterOption{
+				DefaultValue: new(string(ModeUsage)),
+				Required:     new(true),
+				Order:        new(2),
+				Options: new([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "Fill and meet specified usage",
 						Value: string(ModeUsage),
@@ -190,21 +190,21 @@ func getFillMemDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "size",
 				Label:        "Size",
-				Description:  extutil.Ptr("Percentage of total memory or Megabytes."),
+				Description:  new("Percentage of total memory or Megabytes."),
 				Type:         action_kit_api.Integer,
-				DefaultValue: extutil.Ptr("80"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(3),
+				DefaultValue: new("80"),
+				Required:     new(true),
+				Order:        new(3),
 			},
 			{
 				Name:         "unit",
 				Label:        "Unit",
-				Description:  extutil.Ptr("Unit for the size parameter."),
+				Description:  new("Unit for the size parameter."),
 				Type:         action_kit_api.String,
-				DefaultValue: extutil.Ptr(string(UnitPercent)),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(4),
-				Options: extutil.Ptr([]action_kit_api.ParameterOption{
+				DefaultValue: new(string(UnitPercent)),
+				Required:     new(true),
+				Order:        new(4),
+				Options: new([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "Megabytes",
 						Value: string(UnitMegabyte),
@@ -216,7 +216,7 @@ func getFillMemDescription() action_kit_api.ActionDescription {
 				}),
 			},
 		},
-		Stop: extutil.Ptr(action_kit_api.MutatingEndpointReference{}),
+		Stop: new(action_kit_api.MutatingEndpointReference{}),
 	}
 }
 
@@ -261,7 +261,7 @@ func (a *fillMemAction) Start(ctx context.Context, state *FillMemActionState) (*
 	}()
 
 	return &action_kit_api.StartResult{
-		Messages: extutil.Ptr([]action_kit_api.Message{
+		Messages: new([]action_kit_api.Message{
 			{
 				Level:   extutil.Ptr(action_kit_api.Info),
 				Message: fmt.Sprintf("Starting memfill with args: %s.", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " "))),

@@ -5,7 +5,6 @@ package exthostwindows
 
 import (
 	"fmt"
-	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -55,7 +54,7 @@ func TestCheckTargetHostname(t *testing.T) {
 			hn, err := CheckTargetHostname(tt.args.attributes)
 			tt.wantErr(t, err, fmt.Sprintf("CheckTargetHostname(%v)", tt.args.attributes))
 			if err == nil {
-				assert.Equal(t, extutil.Ptr("myhostname"), hn)
+				assert.Equal(t, new("myhostname"), hn)
 			}
 		})
 	}

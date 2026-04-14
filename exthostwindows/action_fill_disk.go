@@ -258,13 +258,13 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 		Label:       "Fill Disk",
 		Description: "Fills the disk of the host for the given duration.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(string(fillDiskIcon)),
-		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
+		Icon:        new(string(fillDiskIcon)),
+		TargetSelection: new(action_kit_api.TargetSelection{
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology: extutil.Ptr(WindowsHostTechnology),
-		Category:   extutil.Ptr("Resource"),
+		Technology: new(WindowsHostTechnology),
+		Category:   new("Resource"),
 
 		Kind: action_kit_api.Attack,
 
@@ -274,21 +274,21 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "duration",
 				Label:        "Duration",
-				Description:  extutil.Ptr("How long should the disk be filled?"),
+				Description:  new("How long should the disk be filled?"),
 				Type:         action_kit_api.Duration,
-				DefaultValue: extutil.Ptr("30s"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(1),
+				DefaultValue: new("30s"),
+				Required:     new(true),
+				Order:        new(1),
 			},
 			{
 				Name:         "mode",
 				Label:        "Mode",
-				Description:  extutil.Ptr("Decide how to specify the amount to fill the disk:\n\noverall percentage of filled disk space in percent,\n\nMegabytes to write,\n\nMegabytes to leave free on disk"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(2),
-				DefaultValue: extutil.Ptr("PERCENTAGE"),
+				Description:  new("Decide how to specify the amount to fill the disk:\n\noverall percentage of filled disk space in percent,\n\nMegabytes to write,\n\nMegabytes to leave free on disk"),
+				Required:     new(true),
+				Order:        new(2),
+				DefaultValue: new("PERCENTAGE"),
 				Type:         action_kit_api.String,
-				Options: extutil.Ptr([]action_kit_api.ParameterOption{
+				Options: new([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "Overall percentage of filled disk space in percent",
 						Value: string(Percentage),
@@ -306,31 +306,31 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "size",
 				Label:        "Fill Value (depending on Mode)",
-				Description:  extutil.Ptr("Depending on the mode, specify the percentage of filled disk space or the number of Megabytes to be written or left free."),
+				Description:  new("Depending on the mode, specify the percentage of filled disk space or the number of Megabytes to be written or left free."),
 				Type:         action_kit_api.Integer,
-				DefaultValue: extutil.Ptr("80"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(3),
+				DefaultValue: new("80"),
+				Required:     new(true),
+				Order:        new(3),
 			},
 			{
 				Name:         "path",
 				Label:        "File Destination",
-				Description:  extutil.Ptr("Where to temporarily write the file for filling the disk. It will be cleaned up afterwards."),
+				Description:  new("Where to temporarily write the file for filling the disk. It will be cleaned up afterwards."),
 				Type:         action_kit_api.String,
-				DefaultValue: extutil.Ptr("C:\\"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(4),
+				DefaultValue: new("C:\\"),
+				Required:     new(true),
+				Order:        new(4),
 			},
 			{
 				Name:         "method",
 				Label:        "Method used to fill disk",
-				Description:  extutil.Ptr("Should the disk filled at once or over time?"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(5),
-				DefaultValue: extutil.Ptr("AT_ONCE"),
+				Description:  new("Should the disk filled at once or over time?"),
+				Required:     new(true),
+				Order:        new(5),
+				DefaultValue: new("AT_ONCE"),
 				Type:         action_kit_api.String,
-				Advanced:     extutil.Ptr(true),
-				Options: extutil.Ptr([]action_kit_api.ParameterOption{
+				Advanced:     new(true),
+				Options: new([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "At once (fsutil)",
 						Value: string(AtOnce),
@@ -344,17 +344,17 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 			{
 				Name:         "blocksize",
 				Label:        "Block Size (in MBytes) of the File to Write for method `OverTime`",
-				Description:  extutil.Ptr("Define the block size for writing the file with the dd command. If the block size is larger than the fill value, the fill value will be used as block size."),
+				Description:  new("Define the block size for writing the file with the dd command. If the block size is larger than the fill value, the fill value will be used as block size."),
 				Type:         action_kit_api.Integer,
-				DefaultValue: extutil.Ptr("5"),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(6),
-				MinValue:     extutil.Ptr(1),
-				MaxValue:     extutil.Ptr(1024),
-				Advanced:     extutil.Ptr(true),
+				DefaultValue: new("5"),
+				Required:     new(true),
+				Order:        new(6),
+				MinValue:     new(1),
+				MaxValue:     new(1024),
+				Advanced:     new(true),
 			},
 		},
-		Stop: extutil.Ptr(action_kit_api.MutatingEndpointReference{}),
+		Stop: new(action_kit_api.MutatingEndpointReference{}),
 	}
 }
 
@@ -448,7 +448,7 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 	}
 
 	return &action_kit_api.StartResult{
-		Messages: extutil.Ptr([]action_kit_api.Message{
+		Messages: new([]action_kit_api.Message{
 			{
 				Level:   extutil.Ptr(action_kit_api.Info),
 				Message: fmt.Sprintf("Starting disk fill with args: %s.", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " "))),
