@@ -28,8 +28,8 @@ func (f *LocalExtensionFactory) Create(ctx context.Context, e Environment) error
 	start := time.Now()
 	out, err := e.ExecuteProcess(ctx, "make", "artifact")
 
-	lines := strings.Split(out, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(out, "\n")
+	for line := range lines {
 		if line != "" {
 			fmt.Println("🏠", line)
 		}

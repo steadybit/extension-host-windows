@@ -83,7 +83,7 @@ func (n *Iperf) MeasurePackageLoss(ctx context.Context, env Environment) (float6
 		return 0, err
 	}
 
-	var result interface{}
+	var result any
 	err = json.Unmarshal([]byte(out), &result)
 	if err != nil {
 		return 0, fmt.Errorf("failed reading results: %w", err)
@@ -117,7 +117,7 @@ func (n *Iperf) AssertPackageLoss(t *testing.T, ctx context.Context, env Environ
 func (n *Iperf) AssertPackageLossWithRetry(ctx context.Context, env Environment, min float64, max float64, maxRetries int) bool {
 	measurements := make([]float64, 0, 5)
 	success := false
-	for i := 0; i < maxRetries; i++ {
+	for range maxRetries {
 		loss, err := n.MeasurePackageLoss(ctx, env)
 		if err != nil {
 			success = false
@@ -144,7 +144,7 @@ func (n *Iperf) MeasureBandwidth(ctx context.Context, env Environment) (float64,
 		return 0, fmt.Errorf("%w: %s", err, out)
 	}
 
-	var result interface{}
+	var result any
 	err = json.Unmarshal([]byte(out), &result)
 	if err != nil {
 		return 0, fmt.Errorf("failed reading results: %w", err)

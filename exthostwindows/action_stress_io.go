@@ -181,24 +181,24 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 		Label:       "Stress IO",
 		Description: "Stresses IO on the host using read/write operations for the given duration.",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(stressIOIcon),
-		TargetSelection: extutil.Ptr(action_kit_api.TargetSelection{
+		Icon:        new(stressIOIcon),
+		TargetSelection: new(action_kit_api.TargetSelection{
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		}),
-		Technology:  extutil.Ptr(WindowsHostTechnology),
-		Category:    extutil.Ptr("Resource"),
+		Technology:  new(WindowsHostTechnology),
+		Category:    new("Resource"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
 		Parameters: []action_kit_api.ActionParameter{
 			{
 				Name:         "stressLayer",
 				Label:        "IO Stress Layer",
-				Description:  extutil.Ptr("On which layer IO is stressed?"),
+				Description:  new("On which layer IO is stressed?"),
 				Type:         action_kit_api.ActionParameterTypeString,
-				DefaultValue: extutil.Ptr(string(IOStressLayers.NamedPartition)),
-				Required:     extutil.Ptr(true),
-				Order:        extutil.Ptr(1),
+				DefaultValue: new(string(IOStressLayers.NamedPartition)),
+				Required:     new(true),
+				Order:        new(1),
 				Options: &[]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "File System - requires file path in the next field",
@@ -217,38 +217,38 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 			{
 				Name:        "stressLayerInput",
 				Label:       "Stress Layer Input",
-				Description: extutil.Ptr("Based on the previous answer add the value here."),
+				Description: new("Based on the previous answer add the value here."),
 				Type:        action_kit_api.ActionParameterTypeString,
-				Required:    extutil.Ptr(true),
-				Order:       extutil.Ptr(2),
+				Required:    new(true),
+				Order:       new(2),
 			},
 			{
 				Name:         "threadCount",
 				Label:        "Thread Count",
-				Description:  extutil.Ptr("Total number of threads used in the attack."),
+				Description:  new("Total number of threads used in the attack."),
 				Type:         action_kit_api.ActionParameterTypeInteger,
-				Required:     extutil.Ptr(true),
-				DefaultValue: extutil.Ptr("12"),
+				Required:     new(true),
+				DefaultValue: new("12"),
 			},
 			{
 				Name:         "duration",
 				Label:        "Duration",
-				Description:  extutil.Ptr("How long should IO be stressed?"),
+				Description:  new("How long should IO be stressed?"),
 				Type:         action_kit_api.ActionParameterTypeDuration,
-				DefaultValue: extutil.Ptr("30s"),
-				Required:     extutil.Ptr(true),
+				DefaultValue: new("30s"),
+				Required:     new(true),
 			},
 			{
 				Name:         "disableSwHwCaching",
 				Label:        "Disable Software & Hardware Caching",
-				Description:  extutil.Ptr("Disables both software and hardware write caching."),
+				Description:  new("Disables both software and hardware write caching."),
 				Type:         action_kit_api.ActionParameterTypeBoolean,
-				DefaultValue: extutil.Ptr("true"),
-				Required:     extutil.Ptr(true),
-				Advanced:     extutil.Ptr(true),
+				DefaultValue: new("true"),
+				Required:     new(true),
+				Advanced:     new(true),
 			},
 		},
-		Stop: extutil.Ptr(action_kit_api.MutatingEndpointReference{}),
+		Stop: new(action_kit_api.MutatingEndpointReference{}),
 	}
 }
 
@@ -295,7 +295,7 @@ func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) 
 	}()
 
 	return &action_kit_api.StartResult{
-		Messages: extutil.Ptr([]action_kit_api.Message{
+		Messages: new([]action_kit_api.Message{
 			{
 				Level:   extutil.Ptr(action_kit_api.Info),
 				Message: fmt.Sprintf("Starting stress host with args: %s.", fmt.Sprintf("\"%s\"", strings.Join(state.StressOpts.Args(), " "))),

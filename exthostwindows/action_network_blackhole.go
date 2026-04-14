@@ -31,13 +31,13 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 		Label:       "Block Traffic",
 		Description: "Block network traffic (incoming and outgoing).",
 		Version:     extbuild.GetSemverVersionStringOrUnknown(),
-		Icon:        extutil.Ptr(blackHoleIcon),
+		Icon:        new(blackHoleIcon),
 		TargetSelection: &action_kit_api.TargetSelection{
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		},
-		Technology:  extutil.Ptr(WindowsHostTechnology),
-		Category:    extutil.Ptr("Network"),
+		Technology:  new(WindowsHostTechnology),
+		Category:    new("Network"),
 		Kind:        action_kit_api.Attack,
 		TimeControl: action_kit_api.TimeControlExternal,
 		Parameters: append(

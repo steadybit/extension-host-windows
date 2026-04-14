@@ -29,8 +29,8 @@ type Extension interface {
 	Client() *resty.Client
 	DiscoverTargets(discoveryId string) ([]discovery_kit_api.Target, error)
 	DiscoverEnrichmentData(discoveryId string) ([]discovery_kit_api.EnrichmentData, error)
-	RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (aclient.ActionExecution, error)
-	RunActionWithFiles(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []aclient.File) (aclient.ActionExecution, error)
+	RunAction(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext) (aclient.ActionExecution, error)
+	RunActionWithFiles(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext, files []aclient.File) (aclient.ActionExecution, error)
 	PollForTarget(ctx context.Context, targetId string, predicate func(target discovery_kit_api.Target) bool) (discovery_kit_api.Target, error)
 	PollForEnrichmentData(ctx context.Context, targetId string, predicate func(target discovery_kit_api.EnrichmentData) bool) (discovery_kit_api.EnrichmentData, error)
 }

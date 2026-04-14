@@ -122,7 +122,7 @@ func (w *eventLogWriter) Write(p []byte) (n int, err error) {
 	d := json.NewDecoder(bytes.NewReader(p))
 	d.UseNumber()
 
-	var event map[string]interface{}
+	var event map[string]any
 	err = d.Decode(&event)
 	if err != nil {
 		return 0, err

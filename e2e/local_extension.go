@@ -40,11 +40,11 @@ func (e *LocalExtension) DiscoverEnrichmentData(discoveryId string) ([]discovery
 	return dclient.NewDiscoveryClient("/", e.client).DiscoverEnrichmentData(discoveryId)
 }
 
-func (e *LocalExtension) RunAction(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext) (aclient.ActionExecution, error) {
+func (e *LocalExtension) RunAction(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext) (aclient.ActionExecution, error) {
 	return aclient.NewActionClient("/", e.client).RunAction(actionId, target, config, executionContext)
 }
 
-func (e *LocalExtension) RunActionWithFiles(actionId string, target *action_kit_api.Target, config interface{}, executionContext *action_kit_api.ExecutionContext, files []aclient.File) (aclient.ActionExecution, error) {
+func (e *LocalExtension) RunActionWithFiles(actionId string, target *action_kit_api.Target, config any, executionContext *action_kit_api.ExecutionContext, files []aclient.File) (aclient.ActionExecution, error) {
 	return aclient.NewActionClient("/", e.client).RunActionWithFiles(actionId, target, config, executionContext, files)
 }
 

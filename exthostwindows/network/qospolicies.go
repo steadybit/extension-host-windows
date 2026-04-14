@@ -41,8 +41,8 @@ func listQosPolicies(ctx context.Context, command string, separator string) ([]s
 		return nil, fmt.Errorf("failed to list QoS policies: %w", err)
 	}
 	var policies []string
-	blocks := strings.Split(result, separator)
-	for _, block := range blocks {
+	blocks := strings.SplitSeq(result, separator)
+	for block := range blocks {
 		if block != "" {
 			policies = append(policies, block)
 		}

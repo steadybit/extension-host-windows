@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +45,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 		{
 			name: "Should return config",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":   "prepare",
 					"duration": "1000",
 					"cpuLoad":  "80",
@@ -54,7 +53,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 					"priority": "Normal",
 				},
 				ExecutionId: getExecutionId(0),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -73,7 +72,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 		}, {
 			name: "Should return error too low duration",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":   "prepare",
 					"duration": "0",
 					"cpuLoad":  "80",
@@ -81,7 +80,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 					"priority": "Normal",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -93,7 +92,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 		{
 			name: "Should return error too many cores",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":   "prepare",
 					"duration": "1000",
 					"cpuLoad":  "80",
@@ -101,7 +100,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 					"priority": "Normal",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -113,7 +112,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 		{
 			name: "Should return error invalid cpu load",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":   "prepare",
 					"duration": "1000",
 					"cpuLoad":  "0",
@@ -121,7 +120,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 					"priority": "Normal",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -133,7 +132,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 		{
 			name: "Should return error invalid cpu load",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":   "prepare",
 					"duration": "1000",
 					"cpuLoad":  "110",
@@ -141,7 +140,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 					"priority": "Normal",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},
@@ -153,7 +152,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 		{
 			name: "Should return error invalid process priority",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action":   "prepare",
 					"duration": "1000",
 					"cpuLoad":  "80",
@@ -161,7 +160,7 @@ func TestActionStressCpu_Prepare(t *testing.T) {
 					"priority": "Great",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						"host.hostname": {hostname},
 					},

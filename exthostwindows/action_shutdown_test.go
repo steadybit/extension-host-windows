@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/extension-host-windows/exthostwindows/shutdown"
-	"github.com/steadybit/extension-kit/extutil"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -28,12 +27,12 @@ func TestActionShutdown_Prepare(t *testing.T) {
 		{
 			name: "Should return config",
 			requestBody: action_kit_api.PrepareActionRequestBody{
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"action": "prepare",
 					"reboot": "true",
 				},
 				ExecutionId: uuid.New(),
-				Target: extutil.Ptr(action_kit_api.Target{
+				Target: new(action_kit_api.Target{
 					Attributes: map[string][]string{
 						hostNameAttribute: {"myhostname"},
 					},
