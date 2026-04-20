@@ -1,8 +1,10 @@
 # Changelog
 
-## (next)
+## v0.2.9
 
 - Bump Go to 1.26.2
+- Update dependencies
+- Fix windows installer to correctly detect the system architecture
 
 ## v0.2.8
 
