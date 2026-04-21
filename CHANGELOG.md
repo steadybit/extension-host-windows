@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.10
+
+- Fixed version handling - all definitions returned by the extension now return a valid semver version string instead
+  of "unknown". If you had installed the extension before, please make sure to delete existing definitions in the
+  platform after upgrading by visiting "Settings" -> "Extensions" and deleting the existing extension definitions. This
+  is required to make sure that the platform correctly detects new versions of the definitions provided by the extension.
+
 ## v0.2.9
 
 - Bump Go to 1.26.2
