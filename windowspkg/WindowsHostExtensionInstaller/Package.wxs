@@ -25,6 +25,6 @@
 
 		<util:QueryNativeMachine/>
 		<Launch Condition="Installed OR WIX_NATIVE_MACHINE = 34404 OR %PROCESSOR_ARCHITECTURE = &quot;AMD64&quot;"
-            Message="x64 is the only supported architecture. Current architecture is [WIX_NATIVE_MACHINE]."/>
+            Message="This installation package requires an x64 (AMD64) processor. Setup will now exit."/>
   </Package>
 </Wix>
