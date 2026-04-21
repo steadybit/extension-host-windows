@@ -16,6 +16,11 @@ builds:
     flags:
       - -cover={{ if index .Env "BUILD_WITH_COVERAGE"  }}{{ .Env.BUILD_WITH_COVERAGE }}{{ else }}false{{ end }}
       - -covermode=atomic
+    ldflags:
+      - -s -w
+      - -X github.com/steadybit/extension-kit/extbuild.ExtensionName={{.ProjectName}}
+      - -X github.com/steadybit/extension-kit/extbuild.Version={{.Version}}
+      - -X github.com/steadybit/extension-kit/extbuild.Revision={{.Commit}}
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Arch }}"
@@ -25,7 +30,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-{{ .Timestamp }}-next"
+  version_template: "{{ incpatch .Version }}-{{ .CommitTimestamp }}-next"
 
 changelog:
   sort: asc

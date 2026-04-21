@@ -109,8 +109,10 @@ jobs:
         run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
 
       - name: Build extension installer
-        # Go requires gotmp to be present
-        run: make installer
+        # Go requires gotmp to be present.
+        # On tag pushes, clear SNAPSHOT_FLAG so goreleaser uses the git tag
+        # as the version (instead of the snapshot template).
+        run: make installer SNAPSHOT_FLAG="${{ startsWith(github.ref, 'refs/tags/') && '' || '--snapshot' }}"
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 

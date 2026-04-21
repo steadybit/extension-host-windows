@@ -71,9 +71,13 @@ build:
 # ====================================================================================
 
 ## release: package the extension release only
+# SNAPSHOT_FLAG defaults to --snapshot for local dev and main/PR CI builds.
+# On tag pushes, CI overrides with `make installer SNAPSHOT_FLAG=` so
+# goreleaser uses the git tag as the version.
+SNAPSHOT_FLAG ?= --snapshot
 .PHONY: release
 release: clean licenses-report
-	go run github.com/goreleaser/goreleaser/v2@latest release --clean --snapshot
+	go run github.com/goreleaser/goreleaser/v2@latest release --clean $(SNAPSHOT_FLAG)
 
 ## artifact: package a ZIP with the extension and all required files
 .PHONY: artifact
