@@ -1,5 +1,9 @@
 # Changelog
 
+## (next)
+
+- Bump Go to 1.26.3
+
 ## v0.2.10
 
 - Fixed version handling - all definitions returned by the extension now return a valid semver version string instead
