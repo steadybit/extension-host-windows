@@ -74,8 +74,8 @@ github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0t
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
 github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
-github.com/rs/zerolog v1.35.0 h1:VD0ykx7HMiMJytqINBsKcbLS+BJ4WYjz+05us+LRTdI=
-github.com/rs/zerolog v1.35.0/go.mod h1:EjML9kdfa/RMA7h/6z6pYmq1ykOuA8/mjWaEvGI+jcw=
+github.com/rs/zerolog v1.35.1 h1:m7xQeoiLIiV0BCEY4Hs+j2NG4Gp2o2KPKmhnnLiazKI=
+github.com/rs/zerolog v1.35.1/go.mod h1:EjML9kdfa/RMA7h/6z6pYmq1ykOuA8/mjWaEvGI+jcw=
 github.com/smartystreets/assertions v1.13.1 h1:Ef7KhSmjZcK6AVf9YbJdvPYG9avaF0ZxudX+ThRdWfU=
 github.com/smartystreets/assertions v1.13.1/go.mod h1:cXr/IwVfSo/RbCSPhoAPv73p3hlSdrBH/b3SdnW/LMY=
 github.com/smartystreets/goconvey v1.8.0 h1:Oi49ha/2MURE0WexF052Z0m+BNSGirfjg5RL+JXWq3w=
@@ -93,8 +93,8 @@ github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.1 h1:CBMPzLfAF0huCO
 github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.1/go.mod h1:1Lq/Y33uTb6ezFg7kYy1hJjhpCfLl//qD0p4RqLAMZw=
 github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.3.1 h1:b+Q2f0soE6I1FW9jQ9CZ8++SxmJrT/vqphyg+VDBQYY=
 github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.3.1/go.mod h1:tDHrNzndAnllw1Wj8m0OiPxt7qctr34xSkyKBGhR+Wg=
-github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.2 h1:xt2zJ5AykcUvZYiCesVxxfWReAl7rEye2+bUAhT1F58=
-github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.2/go.mod h1:iF/w15ursykWjPXgciQuDV23lKffhqtx4QghgDpHJ5A=
+github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.5 h1:1yT/4Aw+lQvYXSCen8L/RgJmh/z4eC5dEccwBp9ABOY=
+github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.5/go.mod h1:gOPfHZ3hw/7TMxEYCCTYnOz9tZ2ybNYa+MKmUbPXKIQ=
 github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.1 h1:CabRtfE70gt/4H/TgL/TRm54OkxWKbmPhTX2qEhzKZ4=
 github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.1/go.mod h1:PPJh5gSdVRKG/0qJCGJK5XnGxXat/v6UT8/2ilIbbX8=
 github.com/steadybit/extension-kit v1.10.4 h1:/XJH43+WepBz0xX7vPTB0X+nJeAB0Hu1fmB/mkecM+4=
@@ -113,8 +113,8 @@ github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0 h1:6fRhSjgLCkTD3JnJx
 github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0/go.mod h1:/LWChgwKmvncFJFHJ7Gvn9wZArjbV5/FppcK2fKk/tI=
 github.com/zmwangx/debounce v1.0.0 h1:Dyf+WfLESjc2bqFKHgI1dZTW9oh6CJm8SBDkhXrwLB4=
 github.com/zmwangx/debounce v1.0.0/go.mod h1:U+/QHt+bSMdUh8XKOb6U+MQV5Ew4eS8M3ua5WJ7Ns6I=
-golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 h1:jiDhWWeC7jfWqR9c/uplMOqJ0sbNlNWv0UkzE0vX1MA=
-golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90/go.mod h1:xE1HEv6b+1SCZ5/uscMRjUBKtIxworgEcEi+/n9NQDQ=
+golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a h1:+3jdDGGB8NGb1Zktc737jlt3/A5f6UlwSzmvqUuufxw=
+golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a/go.mod h1:d2fgXJLVs4dYDHUk5lwMIfzRzSrWCfGZb0ZqeLa/Vcw=
 golang.org/x/net v0.49.0 h1:eeHFmOGUTtaaPSGNmjBKpbng9MulQsJURQUAfUwY++o=
 golang.org/x/net v0.49.0/go.mod h1:/ysNB2EvaqvesRkuLAyjI1ycPZlQHM3q01F02UY/MV8=
 golang.org/x/sys v0.44.0 h1:ildZl3J4uzeKP07r2F++Op7E9B29JRUy+a27EibtBTQ=
