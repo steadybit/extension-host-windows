@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.12
+
+- Support discovery group attribute via `STEADYBIT_EXTENSION_DISCOVERY_GROUP` env var — when set, the extension adds `steadybit.group=<value>` to every discovered target
+- Update dependencies
+
 ## v0.2.11
 
 - Bump Go to 1.26.3
