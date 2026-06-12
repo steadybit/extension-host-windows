@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.13
+
+- build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
+- build(deps): bump golang.org/x/sys from 0.44.0 to 0.45.0
+- chore: update to go 1.26.4
+- feat: add weekly auto patch-release workflow
+
 ## v0.2.12
 
 - Support discovery group attribute via `STEADYBIT_EXTENSION_DISCOVERY_GROUP` env var — when set, the extension adds `steadybit.group=<value>` to every discovered target
