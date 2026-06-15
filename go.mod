@@ -47,8 +47,8 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	github.com/zmwangx/debounce v1.0.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
