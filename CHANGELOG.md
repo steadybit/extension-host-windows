@@ -3,7 +3,6 @@
 ## v0.2.14
 
 - build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
-- build: rename workflow_dispatch input labels for the GH UI
 - chore(deps): bump golang.org/x/net to v0.55.0 (CVE-2026-39821) (#169)
 
 ## v0.2.13
