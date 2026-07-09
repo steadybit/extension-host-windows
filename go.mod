@@ -17,7 +17,7 @@ require (
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.3.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.5
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.1
-	github.com/steadybit/extension-kit v1.10.5
+	github.com/steadybit/extension-kit v1.10.8
 	github.com/stretchr/testify v1.11.1
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
