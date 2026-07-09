@@ -154,6 +154,7 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 		ip                  []string
 		hostname            []string
 		port                []string
+		excludeIp           []string
 		interfaces          []string
 		restrictedEndpoints []action_kit_api.RestrictedEndpoint
 		wantedDelay         bool
@@ -188,6 +189,12 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			wantedDelay:         true,
 		},
 		{
+			name:                "should not delay traffic for excluded cidr",
+			excludeIp:           []string{fmt.Sprintf("%s/32", netperf.Ip)},
+			restrictedEndpoints: generateRestrictedEndpoints(restrictedEndpointsCount),
+			wantedDelay:         false,
+		},
+		{
 			name:        "should delay all interfaces",
 			interfaces:  network.GetOwnNetworkInterfaces(),
 			wantedDelay: true,
@@ -207,6 +214,7 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			Ip           []string `json:"ip"`
 			Hostname     []string `json:"hostname"`
 			Port         []string `json:"port"`
+			ExcludeIp    []string `json:"excludeIp"`
 			NetInterface []string `json:"networkInterface"`
 		}{
 			Duration:     10000,
@@ -215,6 +223,7 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			Ip:           tt.ip,
 			Hostname:     tt.hostname,
 			Port:         tt.port,
+			ExcludeIp:    tt.excludeIp,
 			NetInterface: tt.interfaces,
 		}
 

@@ -56,14 +56,14 @@ var networkInterfaceParameter = action_kit_api.ActionParameter{
 	Description: new("Target Network Interface which should be affected. All if none specified."),
 	Type:        action_kit_api.ActionParameterTypeStringArray,
 	Required:    new(false),
-	Order:       new(104),
+	Order:       new(105),
 }
 
 var commonNetworkParameters = []action_kit_api.ActionParameter{
 	durationParamter,
 	{
 		Name:         "hostname",
-		Label:        "Hostnames",
+		Label:        "Include Hostnames",
 		Description:  new("Restrict to/from which hosts the traffic is affected."),
 		Type:         action_kit_api.ActionParameterTypeStringArray,
 		DefaultValue: new(""),
@@ -72,7 +72,7 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 	},
 	{
 		Name:         "ip",
-		Label:        "IPs/CIDRs",
+		Label:        "Include IPs/CIDRs",
 		Description:  new("Restrict to/from which IP addresses or blocks the traffic is affected."),
 		Type:         action_kit_api.ActionParameterTypeStringArray,
 		DefaultValue: new(""),
@@ -81,12 +81,21 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 	},
 	{
 		Name:         "port",
-		Label:        "Ports",
+		Label:        "Include Ports",
 		Description:  new("Restrict to/from which ports the traffic is affected."),
 		Type:         action_kit_api.ActionParameterTypeStringArray,
 		DefaultValue: new(""),
 		Advanced:     new(true),
 		Order:        new(103),
+	},
+	{
+		Name:        "excludeIp",
+		Label:       "Exclude IPs/CIDRs",
+		Description: new("Exclude traffic to/from these IP addresses or CIDR blocks from being affected. Excludes always take precedence over the include restrictions above (hostnames, IPs/CIDRs, ports), e.g. affect all traffic except 10.0.0.0/8."),
+		Type:        action_kit_api.ActionParameterTypeStringArray,
+		Required:    new(false),
+		Advanced:    new(true),
+		Order:       new(104),
 	},
 }
 
@@ -189,14 +198,24 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]any, restri
 	}
 
 	includes := akn.NewNetWithPortRanges(includeCidrs, portRanges...)
-	for _, i := range includes {
-		i.Comment = "parameters"
+	for i := range includes {
+		includes[i].Comment = "parameters"
 	}
 
 	excludes, err := toExcludes(restrictedEndpoints)
 	if err != nil {
 		return network.Filter{}, nil, err
 	}
+
+	excludeCidrs, err := utils.MapToNetworks(ctx, extutil.ToStringArray(actionConfig["excludeIp"])...)
+	if err != nil {
+		return network.Filter{}, nil, err
+	}
+	userExcludes := akn.NewNetWithPortRanges(excludeCidrs, akn.PortRangeAny)
+	for i := range userExcludes {
+		userExcludes[i].Comment = "parameters"
+	}
+	excludes = append(excludes, userExcludes...)
 
 	excludes = append(excludes, akn.ComputeExcludesForOwnIpAndPorts(config.Config.Port, config.Config.HealthPort)...)
 

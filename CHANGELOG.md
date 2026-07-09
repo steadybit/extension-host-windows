@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: new `Exclude IPs/CIDRs` parameter (`excludeIp`) on the WinDivert-based network attacks (delay, blackhole, package loss, package corruption) — affect all traffic except the given IPs/CIDRs. Excludes always take precedence over the include restrictions. The existing filter parameters are relabeled to `Include Hostnames`, `Include IPs/CIDRs` and `Include Ports` to make the distinction explicit. The bandwidth attack is not covered: Windows QoS policies only support include-style match conditions.
+
 ## v0.2.14
 
 - build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
