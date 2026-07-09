@@ -56,7 +56,7 @@ var networkInterfaceParameter = action_kit_api.ActionParameter{
 	Description: new("Target Network Interface which should be affected. All if none specified."),
 	Type:        action_kit_api.ActionParameterTypeStringArray,
 	Required:    new(false),
-	Order:       new(105),
+	Order:       new(106),
 }
 
 var commonNetworkParameters = []action_kit_api.ActionParameter{
@@ -89,13 +89,22 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 		Order:        new(103),
 	},
 	{
+		Name:        "excludeHostname",
+		Label:       "Exclude Hostnames",
+		Description: new("Exclude traffic to/from these hosts from being affected. Excludes always take precedence over the include restrictions above (hostnames, IPs/CIDRs, ports)."),
+		Type:        action_kit_api.ActionParameterTypeStringArray,
+		Required:    new(false),
+		Advanced:    new(true),
+		Order:       new(104),
+	},
+	{
 		Name:        "excludeIp",
 		Label:       "Exclude IPs/CIDRs",
 		Description: new("Exclude traffic to/from these IP addresses or CIDR blocks from being affected. Excludes always take precedence over the include restrictions above (hostnames, IPs/CIDRs, ports), e.g. affect all traffic except 10.0.0.0/8."),
 		Type:        action_kit_api.ActionParameterTypeStringArray,
 		Required:    new(false),
 		Advanced:    new(true),
-		Order:       new(104),
+		Order:       new(105),
 	},
 }
 
@@ -207,7 +216,10 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]any, restri
 		return network.Filter{}, nil, err
 	}
 
-	excludeCidrs, err := utils.MapToNetworks(ctx, extutil.ToStringArray(actionConfig["excludeIp"])...)
+	excludeCidrs, err := utils.MapToNetworks(ctx, append(
+		extutil.ToStringArray(actionConfig["excludeIp"]),
+		extutil.ToStringArray(actionConfig["excludeHostname"])...,
+	)...)
 	if err != nil {
 		return network.Filter{}, nil, err
 	}
