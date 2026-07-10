@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.3.0
 
 - feat: new `Exclude Hostnames` (`excludeHostname`) and `Exclude IPs/CIDRs` (`excludeIp`) parameters on the WinDivert-based network attacks (delay, blackhole, package loss, package corruption) — affect all traffic except the given hosts or IPs/CIDRs. Excludes always take precedence over the include restrictions. The existing filter parameters are relabeled to `Include Hostnames`, `Include IPs/CIDRs` and `Include Ports` to make the distinction explicit. The bandwidth attack is not covered: Windows QoS policies only support include-style match conditions.
+- Update Go to 1.26.5
+- Update dependencies
 
 ## v0.2.14
 
