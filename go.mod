@@ -3,7 +3,7 @@ module github.com/steadybit/extension-host-windows
 go 1.26.5
 
 require (
-	github.com/elastic/go-sysinfo v1.15.4
+	github.com/elastic/go-sysinfo v1.15.5
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -11,13 +11,13 @@ require (
 	github.com/rs/zerolog v1.35.1
 	github.com/steadybit/action-kit/go/action_kit_api/v2 v2.10.5
 	github.com/steadybit/action-kit/go/action_kit_commons v1.8.1
-	github.com/steadybit/action-kit/go/action_kit_sdk v1.3.1
+	github.com/steadybit/action-kit/go/action_kit_sdk v1.4.0
 	github.com/steadybit/action-kit/go/action_kit_test v1.4.7
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.3.1
-	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.3.5
+	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.4.0
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.1
-	github.com/steadybit/extension-kit v1.10.5
+	github.com/steadybit/extension-kit v1.11.0
 	github.com/stretchr/testify v1.11.1
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
@@ -33,7 +33,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.18.6 // indirect
+	github.com/klauspost/compress v1.19.0 // indirect
 	github.com/mailru/easyjson v0.9.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.21 // indirect
