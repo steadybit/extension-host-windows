@@ -5,8 +5,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -22,8 +20,6 @@ import (
 	"github.com/steadybit/extension-kit/extruntime"
 	"github.com/steadybit/extension-kit/extsignals"
 )
-
-var startedAt = time.Now().Format(time.RFC3339)
 
 func main() {
 	extlogging.InitZeroLog()
@@ -69,7 +65,7 @@ func main() {
 
 	discovery_kit_sdk.Register(exthostwindows.NewHostDiscovery())
 
-	exthttp.RegisterHttpHandler("/", exthttp.IfNoneMatchHandler(func() string { return startedAt }, exthttp.GetterAsHandler(getExtensionList)))
+	exthttp.RegisterRevisionedHandler("/", getExtensionList)
 
 	extsignals.ActivateSignalHandlers()
 
