@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.1
+
+- build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
+- build(deps): bump golang.org/x/sys from 0.46.0 to 0.47.0
+- build(deps): bump softprops/action-gh-release from 2.6.1 to 3.0.1
+- refactor: register extension index via exthttp.RegisterRevisionedHandler (#188)
+
 ## v0.3.0
 
 - feat: new `Exclude Hostnames` (`excludeHostname`) and `Exclude IPs/CIDRs` (`excludeIp`) parameters on the WinDivert-based network attacks (delay, blackhole, package loss, package corruption) — affect all traffic except the given hosts or IPs/CIDRs. Excludes always take precedence over the include restrictions. The existing filter parameters are relabeled to `Include Hostnames`, `Include IPs/CIDRs` and `Include Ports` to make the distinction explicit. The bandwidth attack is not covered: Windows QoS policies only support include-style match conditions.
