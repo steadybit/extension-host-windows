@@ -373,27 +373,20 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 }
 
 func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
-	port, err := FindAvailablePorts(8080, 8800, 2)
-	require.NoError(t, err)
-	netperf := NewHttpNetperf(port)
-	err = netperf.Deploy(t.Context(), l)
-	require.NoError(t, err)
-	defer func() { _ = netperf.Delete() }()
-
 	tests := []struct {
-		name             string
-		dnsPort          uint
-		wantedReachesUrl bool
+		name           string
+		dnsPort        uint
+		wantResolvable bool
 	}{
 		{
-			name:             "should block dns traffic",
-			dnsPort:          53,
-			wantedReachesUrl: false,
+			name:           "should block dns traffic",
+			dnsPort:        53,
+			wantResolvable: false,
 		},
 		{
-			name:             "should block dns traffic on port 5353",
-			dnsPort:          5353,
-			wantedReachesUrl: true,
+			name:           "should block dns traffic on port 5353",
+			dnsPort:        5353,
+			wantResolvable: true,
 		},
 	}
 
@@ -407,19 +400,53 @@ func testNetworkBlockDns(t *testing.T, l Environment, e Extension) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			// Use different dns names to make sure that they are not cached.
-			require.True(t, netperf.CanReach("steadybit.com"))
+			assertDnsResolvable(t, true)
 
 			action, err := e.RunAction(exthostwindows.BaseActionID+".network_block_dns", l.BuildTarget(t.Context()), config, defaultExecutionContext)
 			defer func() { _ = action.Cancel() }()
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.wantedReachesUrl, netperf.CanReach("chaosmesh.com"))
+			assertDnsResolvable(t, tt.wantResolvable)
 
 			require.NoError(t, action.Cancel())
-			require.True(t, netperf.CanReach("google.com"))
+			assertDnsResolvable(t, true)
 		})
 	}
+}
+
+// canResolveDns issues a real DNS query for a fresh name against a public
+// resolver on port 53. The block-dns attack drops outgoing traffic on the
+// configured DNS port, so resolution fails only when port 53 itself is blocked.
+func canResolveDns(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			dialer := net.Dialer{Timeout: 3 * time.Second}
+			return dialer.DialContext(ctx, "udp", "8.8.8.8:53")
+		},
+	}
+
+	_, err := resolver.LookupHost(ctx, "steadybit.com")
+	return err == nil
+}
+
+func assertDnsResolvable(t *testing.T, wantResolvable bool) {
+	t.Helper()
+
+	if !wantResolvable {
+		assert.False(t, canResolveDns(t.Context()), "expected dns resolution to be blocked")
+		return
+	}
+
+	Retry(t, 8, 500*time.Millisecond, func(r *R) {
+		if !canResolveDns(t.Context()) {
+			r.Failed = true
+			_, _ = fmt.Fprint(r.Log, "expected dns resolution to succeed")
+		}
+	})
 }
 
 func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
