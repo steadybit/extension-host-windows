@@ -135,7 +135,7 @@ jobs:
           path: |
             dist/*.zip
             dist/*.msi
-          retention-days: 30
+          retention-days: 7
 
       - name: Release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b
