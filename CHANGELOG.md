@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.2
+
+- build(deps): bump actions/setup-go from 6 to 7
+- build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
+- ci: skip build on .trivyignore.yml-only changes [skip ci]
+
 ## v0.3.1
 
 - build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
