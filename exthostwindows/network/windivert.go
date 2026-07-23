@@ -236,10 +236,15 @@ func excludeClause(addrField, tcpPortField, udpPortField string, portRange akn.P
 	addr := addressMatch(addrField, startIp, endIp)
 	spare := "false"
 	if portRange != akn.PortRangeAny {
+		// A port-scoped exclude must spare only the tcp/udp packets whose port is
+		// in the range. Each port test is guarded with `not tcp`/`not udp` so that
+		// portless protocols (e.g. ICMP) stay subject to the attack — a bare port
+		// comparison is false for a packet that has no port, which would otherwise
+		// spare all ICMP to/from the excluded address.
 		if portRange.From == portRange.To {
-			spare = fmt.Sprintf("(( %s != %d ) or ( %s != %d ))", tcpPortField, portRange.From, udpPortField, portRange.From)
+			spare = fmt.Sprintf("(( not tcp or %s != %d ) and ( not udp or %s != %d ))", tcpPortField, portRange.From, udpPortField, portRange.From)
 		} else {
-			spare = fmt.Sprintf("(( %s < %d or %s > %d ) or ( %s < %d or %s > %d ))", tcpPortField, portRange.From, tcpPortField, portRange.To, udpPortField, portRange.From, udpPortField, portRange.To)
+			spare = fmt.Sprintf("(( not tcp or %s < %d or %s > %d ) and ( not udp or %s < %d or %s > %d ))", tcpPortField, portRange.From, tcpPortField, portRange.To, udpPortField, portRange.From, udpPortField, portRange.To)
 		}
 	}
 	return fmt.Sprintf("(( %s )? %s: true)", addr, spare)
