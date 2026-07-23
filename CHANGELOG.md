@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.3
+
+- fix: WinDivert-based network attacks (delay, blackhole, package loss, package corruption) now also affect protocols without ports (e.g. ICMP) when no port is specified. The filter previously matched only `tcp`/`udp` packets, so portless traffic such as `ping` slipped through the attack.
+
 ## v0.3.2
 
 - build(deps): bump actions/setup-go from 6 to 7
