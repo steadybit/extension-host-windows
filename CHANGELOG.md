@@ -3,6 +3,7 @@
 ## v0.3.3
 
 - fix: WinDivert-based network attacks (delay, blackhole, package loss, package corruption) now also affect protocols without ports (e.g. ICMP) when no port is specified. The filter previously matched only `tcp`/`udp` packets, so portless traffic such as `ping` slipped through the attack. Port-scoped excludes now also only spare their tcp/udp port and no longer spare all ICMP traffic to/from the excluded address.
+- fix: the build information log line (and other early startup logs) is no longer dropped from the on-disk log / Windows Event Log — the log writer is now attached synchronously before startup logging instead of in a background goroutine.
 
 ## v0.3.2
 

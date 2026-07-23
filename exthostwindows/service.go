@@ -27,21 +27,27 @@ func ActivateWindowsServiceHandler(stopHandler func()) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to detect if executed as Windows service")
 	}
-	if isInService {
-		go func() {
-			service, err := newExtensionService(stopHandler)
-			if err != nil {
-				log.Fatal().Err(err).Msg("Error starting as Windows service")
-				return
-			}
-			err = service.Run()
-			if err != nil {
-				log.Fatal().Err(err).Msg("Error starting as Windows service")
-				return
-			}
-			log.Info().Msg("Windows service stopped")
-		}()
+	if !isInService {
+		return
 	}
+
+	// Attach the file/event-log writer synchronously, before returning to the
+	// startup sequence that emits the first log lines (e.g. build information).
+	// Only the blocking svc.Run loop runs in the goroutine; doing the writer
+	// setup there raced with startup logging and dropped the earliest lines.
+	service, err := newExtensionService(stopHandler)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error starting as Windows service")
+		return
+	}
+
+	go func() {
+		if err := service.Run(); err != nil {
+			log.Fatal().Err(err).Msg("Error starting as Windows service")
+			return
+		}
+		log.Info().Msg("Windows service stopped")
+	}()
 }
 
 type extensionService struct {
