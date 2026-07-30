@@ -15,9 +15,9 @@ require (
 	github.com/steadybit/action-kit/go/action_kit_test v1.4.7
 	github.com/steadybit/discovery-kit/go/discovery_kit_api v1.7.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_commons v0.3.1
-	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.4.0
+	github.com/steadybit/discovery-kit/go/discovery_kit_sdk v1.4.1
 	github.com/steadybit/discovery-kit/go/discovery_kit_test v1.2.1
-	github.com/steadybit/extension-kit v1.11.0
+	github.com/steadybit/extension-kit v1.11.1
 	github.com/stretchr/testify v1.11.1
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef
@@ -26,6 +26,7 @@ require (
 )
 
 require (
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/elastic/go-windows v1.0.2 // indirect
