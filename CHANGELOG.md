@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.5
+
+- feat: support filtering targets out of discovery
+- fix: use gcp.zone instead of google.zone as availability zone fallback attribute (#196)
+
 ## v0.3.4
 
 - chore(deps): update dependencies
