@@ -60,7 +60,7 @@ func (d *hostDiscovery) DescribeTarget() discovery_kit_api.TargetDescription {
 			Columns: []discovery_kit_api.Column{
 				{Attribute: hostNameAttribute},
 				{Attribute: hostIp4Attribute},
-				{Attribute: "aws.zone", FallbackAttributes: &[]string{"google.zone", "azure.zone"}},
+				{Attribute: "aws.zone", FallbackAttributes: &[]string{"gcp.zone", "azure.zone"}},
 			},
 			OrderBy: []discovery_kit_api.OrderBy{
 				{
