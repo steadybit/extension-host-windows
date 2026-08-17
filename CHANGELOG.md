@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.6
+
+- build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
+
 ## v0.3.5
 
 - feat: support filtering targets out of discovery
