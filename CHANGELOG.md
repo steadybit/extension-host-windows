@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.7
+
+- build(deps): bump github.com/stretchr/testify from 1.11.1 to 1.12.0
+- chore(deps): bump steadybit kits and drop Go patch pin (#198)
+
 ## v0.3.6
 
 - build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
