@@ -59,10 +59,15 @@ clean:
 	powershell -Command "if (Test-Path 'windowspkg/WindowsHostExtensionInstaller/Artifacts') { Remove-Item 'windowspkg/WindowsHostExtensionInstaller/Artifacts' -Recurse -Force }"
 	powershell -Command "if (Test-Path 'windowspkg/WindowsHostExtensionInstaller/obj') { Remove-Item 'windowspkg/WindowsHostExtensionInstaller/obj' -Recurse -Force }"
 
+# Pinned rather than @latest: this builds goreleaser from source under
+# GOTOOLCHAIN=local, so a goreleaser release that raises its own Go requirement
+# above golang_version in ci.yml breaks the build.
+GORELEASER_VERSION ?= v2.18.1
+
 ## build: build the extension
 .PHONY: build
 build:
-	go run github.com/goreleaser/goreleaser/v2@latest build --clean --snapshot --single-target -o extension.exe
+	go run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) build --clean --snapshot --single-target -o extension.exe
 
 # ====================================================================================
 #
@@ -77,7 +82,7 @@ build:
 SNAPSHOT_FLAG ?= --snapshot
 .PHONY: release
 release: clean licenses-report
-	go run github.com/goreleaser/goreleaser/v2@latest release --clean $(SNAPSHOT_FLAG)
+	go run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) release --clean $(SNAPSHOT_FLAG)
 
 ## artifact: package a ZIP with the extension and all required files
 .PHONY: artifact
