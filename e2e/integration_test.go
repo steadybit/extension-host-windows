@@ -241,11 +241,25 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			require.NoError(t, err)
 
 			if tt.wantedDelay {
+				// The attack holds every *packet* matching the filter for the
+				// configured delay; it does not stretch a round trip by that
+				// amount. Both legs of a loopback request are outbound, and the
+				// filter matches traffic to and from the target, so the request
+				// and the response are each held once: an HTTP round trip grows
+				// by 2x the configured delay. This is the documented behaviour on
+				// every platform -- "you may encounter HTTP requests that are
+				// delayed by a multiple of the specified delay".
+				const matchedLegs = 2
+				delayDuration := time.Duration(config.Delay) * time.Millisecond * matchedLegs
 
-				// TODO: WinDivert considers all local communication as outgoing and delays it by 2x
-				delayDuration := time.Duration(config.Delay) * time.Millisecond * 2
-
-				netperf.AssertLatency(t, unaffectedLatency+delayDuration*90/100, unaffectedLatency+delayDuration*350/100)
+				// The lower bound deliberately leaves out unaffectedLatency. The
+				// baseline is measured before the attack and does not add to the
+				// delayed measurement, so folding it in made this assertion fail
+				// whenever the baseline measurement happened to be noisy. The
+				// upper bound keeps it, and stays generous enough to tolerate
+				// extra matched packets (a TCP handshake, retransmits) when the
+				// connection is not reused.
+				netperf.AssertLatency(t, delayDuration*90/100, unaffectedLatency+delayDuration*350/100)
 			} else {
 				netperf.AssertLatency(t, 0, unaffectedLatency*120/100)
 			}

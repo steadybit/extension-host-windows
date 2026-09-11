@@ -21,8 +21,15 @@ type HttpNetperf struct {
 }
 
 func NewHttpNetperf(port int) *HttpNetperf {
+	// Keep-alive is on deliberately, so a measured request is one request packet
+	// and one response packet. The network attacks act per packet, so letting the
+	// client reopen the connection would add a handshake and silently change the
+	// latency the delay and loss assertions expect.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DisableKeepAlives = false
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout:   5 * time.Second,
+		Transport: transport,
 	}
 	return &HttpNetperf{"127.0.0.1", port, 1, client, nil}
 }

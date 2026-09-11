@@ -34,6 +34,12 @@ while ($l.IsListening) {
         }
     } else {
         $c = [System.Text.Encoding]::UTF8.GetBytes("<html><body>Hello, Windows HTTP Server</body></html>");
+        # Set ContentLength64 so the response is length-delimited rather than
+        # chunked or terminated by closing the socket. That keeps the connection
+        # reusable, which keeps the number of packets per request constant -- the
+        # network attacks act per packet, so a stray TCP handshake changes the
+        # latency the delay/loss tests measure.
+        $res.ContentLength64 = $c.Length
         $res.OutputStream.Write($c, 0, $c.Length);
     }
     $res.OutputStream.Flush()
