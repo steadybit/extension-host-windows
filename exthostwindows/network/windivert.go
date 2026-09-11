@@ -104,7 +104,7 @@ func buildWinDivertFilter(f Filter) (string, error) {
 	}
 
 	if len(f.Include) > 0 {
-		err := writeIncludeFilter(&sb, f, f.Direction)
+		err := writeIncludeFilter(&sb, f)
 		if err != nil {
 			return "", err
 		}
@@ -139,7 +139,22 @@ func writeInterfaceFilter(sb *strings.Builder, ifIdxs []int) {
 	sb.WriteString(closeGroup)
 }
 
-func writeIncludeFilter(sb *strings.Builder, filter Filter, direction Direction) error {
+// writeIncludeFilter restricts the attack to the configured addresses and ports.
+// Each entry is matched against both the destination and the source, so an
+// include affects traffic *to and from* the address/port -- what the action
+// parameters promise ("Restrict to/from which ports the traffic is affected")
+// and what the Linux attacks do, emitting one rule for dst/dport and one for
+// src/sport.
+//
+// The destination alone is not enough: a port-scoped attack on a server host
+// must also affect the responses the host sends *out of* that port, whose
+// DstPort is the client's ephemeral port. Matching only DstPort silently spares
+// them.
+//
+// Restricting to inbound or outbound packets is a separate concern, applied by
+// writeDirectionFilter, so this clause is direction-independent -- as the
+// matching exclude clause already was.
+func writeIncludeFilter(sb *strings.Builder, filter Filter) error {
 	sb.WriteString(openGroup)
 	for i, ran := range filter.Include {
 		family, err := getFamily(ran.Net)
@@ -153,17 +168,9 @@ func writeIncludeFilter(sb *strings.Builder, filter Filter, direction Direction)
 			return err
 		}
 
-		if direction != DirectionIncoming {
-			sb.WriteString(includeClause(dstAddr, "tcp.DstPort", "udp.DstPort", ran.PortRange, startIp, endIp))
-		}
-
-		if direction == DirectionAll {
-			sb.WriteString(" or ")
-		}
-
-		if direction != DirectionOutgoing {
-			sb.WriteString(includeClause(srcAddr, "tcp.SrcPort", "udp.SrcPort", ran.PortRange, startIp, endIp))
-		}
+		sb.WriteString(includeClause(dstAddr, "tcp.DstPort", "udp.DstPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(" or ")
+		sb.WriteString(includeClause(srcAddr, "tcp.SrcPort", "udp.SrcPort", ran.PortRange, startIp, endIp))
 
 		if i < len(filter.Include)-1 {
 			sb.WriteString(" or ")
