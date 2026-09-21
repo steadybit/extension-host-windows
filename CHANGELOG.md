@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.8
+
+- Add OpenTelemetry tracing support
+- Match source as well as destination in network attack filters
+- Update dependencies
+
 ## v0.3.7
 
 - build(deps): bump github.com/stretchr/testify from 1.11.1 to 1.12.0
