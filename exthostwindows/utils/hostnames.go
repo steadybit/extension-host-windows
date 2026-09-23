@@ -59,9 +59,13 @@ func (h *HostnameResolver) Resolve(ctx context.Context, hostnames ...string) ([]
 
 	for _, hostnameInput := range toResolve {
 		output, err := hostnameInput.Resolve(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("could not resolve hostname '%s': %w", hostnameInput.Hostname, err)
+		}
 
-		if err != nil || len(output.IPAddresses) == 0 {
-			return nil, fmt.Errorf("could not resolve hostnames: %w", err)
+		if len(output.IPAddresses) == 0 {
+			// Resolve-DnsName doesn't fail for unknown names, it just yields no addresses; keep it in unresolved to report it by name
+			continue
 		}
 
 		unresolved = slices.DeleteFunc(unresolved, func(hostname string) bool {
@@ -92,7 +96,7 @@ func (i *HostnameInput) Resolve(ctx context.Context) (*HostnameOutput, error) {
 		}
 		out, err := ExecutePowershellCommand(ctx, cmd, PSRun)
 		if err != nil {
-			return nil, fmt.Errorf("could not resolve hostnames: %w", err)
+			return nil, err
 		}
 
 		scanner := bufio.NewScanner(strings.NewReader(out))
