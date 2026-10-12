@@ -38,10 +38,12 @@ tidy:
 	go mod tidy -v
 
 ## audit: run quality control checks
+# staticcheck is pinned to a master commit that supports go 1.27.2 (dominikh/go-tools#1835);
+# switch back to @latest once a release containing the fix is published.
 .PHONY: audit
 audit:
 	go vet ./...
-	go run honnef.co/go/tools/cmd/staticcheck@latest "-checks=all,-SA1019,-ST1000,-ST1003,-U1000" ./...
+	go run honnef.co/go/tools/cmd/staticcheck@452d5bb86b45 "-checks=all,-SA1019,-ST1000,-ST1003,-U1000" ./...
 	go test -vet=off -coverprofile=coverage.out -timeout 45m ./...
 	go mod verify
 
