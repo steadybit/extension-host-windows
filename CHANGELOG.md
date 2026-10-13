@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.9
+
+- build(deps): bump github.com/steadybit/action-kit/go/action_kit_test
+- chore(deps): build with go 1.26 until staticcheck supports go 1.27.2
+- chore(deps): build with go 1.27 and pin staticcheck to a go 1.27.2 compatible commit
+- chore(deps): bump golang.org/x/net to v0.61.0
+- fix: report unresolvable hostnames by name in network attacks
+
 ## v0.3.8
 
 - Add OpenTelemetry tracing support
