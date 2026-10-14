@@ -412,7 +412,7 @@ func TestWinDivertBuildFilterExcludeLoopback(t *testing.T) {
 	filter, err := buildWinDivertFilter(f)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "true and not loopback and (( ip.DstAddr >= 1.1.1.1 and ip.DstAddr <= 1.1.1.1 and (( tcp.DstPort >= 80 and tcp.DstPort <= 80 ) or ( udp.DstPort >= 80 and udp.DstPort <= 80 ))) or ( ip.SrcAddr >= 1.1.1.1 and ip.SrcAddr <= 1.1.1.1 and (( tcp.SrcPort >= 80 and tcp.SrcPort <= 80 ) or ( udp.SrcPort >= 80 and udp.SrcPort <= 80 ))))", filter)
+	assert.Equal(t, "true and not loopback and (( ip.DstAddr == 1.1.1.1 and (( tcp.DstPort == 80 ) or ( udp.DstPort == 80 ))) or ( ip.SrcAddr == 1.1.1.1 and (( tcp.SrcPort == 80 ) or ( udp.SrcPort == 80 ))))", filter)
 }
 
 func TestWinDivertBuildFilterIncludesLoopbackByDefault(t *testing.T) {
