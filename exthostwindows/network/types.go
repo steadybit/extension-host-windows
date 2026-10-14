@@ -43,6 +43,9 @@ type Filter struct {
 	Exclude          []akn.NetWithPortRange
 	InterfaceIndexes []int
 	Direction        Direction
+	// ExcludeLoopback leaves loopback traffic (127.0.0.0/8, ::1) untouched.
+	// WinDivert captures loopback packets, so they are affected unless excluded.
+	ExcludeLoopback bool
 }
 
 func (filter *Filter) writeStringForFilters(sb *strings.Builder) {

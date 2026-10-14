@@ -45,6 +45,9 @@ func (o *BlackholeOpts) WinDivertCommands(mode Mode) ([]string, error) {
 func (o *BlackholeOpts) String() string {
 	var sb strings.Builder
 	sb.WriteString("blocking traffic ")
+	if !o.ExcludeLoopback {
+		sb.WriteString("(including localhost) ")
+	}
 	o.Filter.writeStringForFilters(&sb)
 	return sb.String()
 }

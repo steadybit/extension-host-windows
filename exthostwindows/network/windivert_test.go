@@ -397,3 +397,26 @@ func TestWinDivertBuildFilterPortScopedExcludeDoesNotSpareIcmp(t *testing.T) {
 
 	assert.Equal(t, "true and (( ip.DstAddr == 10.0.0.5 ) or ( ip.SrcAddr == 10.0.0.5 )) and ((( ip.DstAddr == 10.0.0.9 )? (( not tcp or tcp.DstPort != 8085 ) and ( not udp or udp.DstPort != 8085 )): true) and (( ip.SrcAddr == 10.0.0.9 )? (( not tcp or tcp.SrcPort != 8085 ) and ( not udp or udp.SrcPort != 8085 )): true))", filter)
 }
+
+func TestWinDivertBuildFilterExcludeLoopback(t *testing.T) {
+	net1, err := akn.ParseCIDR("1.1.1.1/32")
+	require.NoError(t, err)
+	f := Filter{
+		Direction:       DirectionAll,
+		ExcludeLoopback: true,
+		Include: []akn.NetWithPortRange{
+			{Net: *net1, PortRange: akn.PortRange{From: 80, To: 80}},
+		},
+	}
+
+	filter, err := buildWinDivertFilter(f)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "true and not loopback and (( ip.DstAddr == 1.1.1.1 and (( tcp.DstPort == 80 ) or ( udp.DstPort == 80 ))) or ( ip.SrcAddr == 1.1.1.1 and (( tcp.SrcPort == 80 ) or ( udp.SrcPort == 80 ))))", filter)
+}
+
+func TestWinDivertBuildFilterIncludesLoopbackByDefault(t *testing.T) {
+	filter, err := buildWinDivertFilter(Filter{Direction: DirectionAll})
+	assert.NoError(t, err)
+	assert.Equal(t, "true", filter)
+}

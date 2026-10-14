@@ -95,6 +95,10 @@ func buildWinDivertFilter(f Filter) (string, error) {
 	// a port is specified; when no port is given they match every protocol.
 	sb.WriteString("true")
 
+	if f.ExcludeLoopback {
+		sb.WriteString(" and not loopback")
+	}
+
 	if f.Direction != DirectionAll {
 		writeDirectionFilter(&sb, f.Direction)
 	}

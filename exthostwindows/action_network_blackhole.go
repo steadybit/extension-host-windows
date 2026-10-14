@@ -8,10 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/steadybit/extension-host-windows/config"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
+	"net"
+	"slices"
 	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
@@ -43,6 +47,15 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 		Parameters: append(
 			commonNetworkParameters,
 			networkInterfaceParameter,
+			action_kit_api.ActionParameter{
+				Name:         "blockLocalhost",
+				Label:        "Block Localhost Traffic",
+				Description:  new("Also block matching traffic on the loopback interface (127.0.0.0/8, ::1), e.g. between two processes on the same host. Combine with the include restrictions above, otherwise all localhost traffic is blocked."),
+				Type:         action_kit_api.ActionParameterTypeBoolean,
+				DefaultValue: new("false"),
+				Advanced:     new(true),
+				Order:        new(107),
+			},
 		),
 	}
 }
@@ -67,6 +80,13 @@ func blackhole() networkOptsProvider {
 		// Block incoming and outgoing traffic
 		filter.Direction = network.DirectionAll
 
+		blockLocalhost := extutil.ToBool(request.Config["blockLocalhost"])
+		// selecting a loopback interface only makes sense for loopback traffic
+		filter.ExcludeLoopback = !blockLocalhost && !selectsLoopbackInterface(extutil.ToStringArray(request.Config["networkInterface"]))
+		if !filter.ExcludeLoopback {
+			filter.Exclude = append(filter.Exclude, localhostExcludesForOwnPorts()...)
+		}
+
 		return &network.BlackholeOpts{
 			Filter:   filter,
 			Duration: duration,
@@ -78,4 +98,30 @@ func blackholeDecode(data json.RawMessage) (network.WinOpts, error) {
 	var opts network.BlackholeOpts
 	err := json.Unmarshal(data, &opts)
 	return &opts, err
+}
+
+func selectsLoopbackInterface(interfaces []string) bool {
+	loopback := akn.GetLoopbackNetworkInterfaces()
+	return slices.ContainsFunc(interfaces, func(name string) bool {
+		return slices.Contains(loopback, name)
+	})
+}
+
+// localhostExcludesForOwnPorts keeps the extension reachable via localhost (e.g. an
+// agent on the same host calling http://localhost:8085) when localhost traffic is
+// blocked.
+func localhostExcludesForOwnPorts() []akn.NetWithPortRange {
+	loopback := []net.IPNet{
+		{IP: net.IPv4(127, 0, 0, 0), Mask: net.CIDRMask(8, 32)},
+		{IP: net.IPv6loopback, Mask: net.CIDRMask(128, 128)},
+	}
+	ports := []akn.PortRange{{From: config.Config.Port, To: config.Config.Port}}
+	if config.Config.HealthPort > 0 && config.Config.HealthPort != config.Config.Port {
+		ports = append(ports, akn.PortRange{From: config.Config.HealthPort, To: config.Config.HealthPort})
+	}
+	excludes := akn.NewNetWithPortRanges(loopback, ports...)
+	for i := range excludes {
+		excludes[i].Comment = "ext. port (localhost)"
+	}
+	return excludes
 }

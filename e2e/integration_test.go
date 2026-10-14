@@ -69,6 +69,9 @@ func TestWithLocalhost(t *testing.T) {
 			Name: "network blackhole",
 			Test: testNetworkBlackhole,
 		}, {
+			Name: "network blackhole localhost",
+			Test: testNetworkBlackholeLocalhost,
+		}, {
 			Name: "network block dns",
 			Test: testNetworkBlockDns,
 		}, {
@@ -265,6 +268,99 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			}
 			require.NoError(t, action.Cancel())
 			netperf.AssertLatency(t, 0, unaffectedLatency*120/100)
+		})
+	}
+}
+
+// testNetworkBlackholeLocalhost covers the blockLocalhost option. netperf listens
+// on 127.0.0.1, so requesting it directly is loopback traffic. Only the
+// extension's own port is excluded on loopback, unlike testNetworkBlackhole.
+func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
+	port, err := FindAvailablePorts(8080, 8800, 2)
+	require.NoError(t, err)
+	netperf := NewHttpNetperf(port)
+	err = netperf.Deploy(t.Context(), l)
+	require.NoError(t, err)
+	defer func() { _ = netperf.Delete() }()
+
+	executionContext := &action_kit_api.ExecutionContext{
+		RestrictedEndpoints: new([]action_kit_api.RestrictedEndpoint{
+			{Name: "extension", Cidr: "127.0.0.0/8", PortMin: 8084, PortMax: 8084},
+			{Name: "extension", Cidr: "::1/128", PortMin: 8084, PortMax: 8084},
+		}),
+	}
+
+	tests := []struct {
+		name            string
+		blockLocalhost  bool
+		allPorts        bool
+		excludeIp       []string
+		interfaces      []string
+		wantedReachable bool
+	}{
+		{
+			name:            "should not blackhole localhost traffic by default",
+			blockLocalhost:  false,
+			wantedReachable: true,
+		},
+		{
+			name:            "should blackhole localhost traffic when enabled",
+			blockLocalhost:  true,
+			wantedReachable: false,
+		},
+		{
+			name:            "should not blackhole excluded localhost traffic",
+			blockLocalhost:  true,
+			excludeIp:       []string{"127.0.0.1"},
+			wantedReachable: true,
+		},
+		{
+			name:            "should blackhole localhost traffic when the loopback interface is selected",
+			blockLocalhost:  false,
+			interfaces:      network.GetLoopbackNetworkInterfaces(),
+			wantedReachable: false,
+		},
+		{
+			// no restricted endpoints: only the extension's own loopback excludes
+			// keep it reachable, so the attack can still be cancelled
+			name:            "should keep the extension reachable when blocking all localhost traffic",
+			blockLocalhost:  true,
+			allPorts:        true,
+			wantedReachable: false,
+		},
+	}
+
+	for _, tt := range tests {
+		config := struct {
+			Duration       int      `json:"duration"`
+			Port           []string `json:"port"`
+			ExcludeIp      []string `json:"excludeIp"`
+			NetInterface   []string `json:"networkInterface"`
+			BlockLocalhost bool     `json:"blockLocalhost"`
+		}{
+			Duration:       30000,
+			Port:           []string{strconv.Itoa(port)},
+			ExcludeIp:      tt.excludeIp,
+			NetInterface:   tt.interfaces,
+			BlockLocalhost: tt.blockLocalhost,
+		}
+		eCtx := executionContext
+		if tt.allPorts {
+			config.Port = nil
+			eCtx = &action_kit_api.ExecutionContext{}
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			require.True(t, netperf.IsReachable())
+
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, eCtx)
+			defer func() { _ = action.Cancel() }()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantedReachable, netperf.IsReachable())
+
+			require.NoError(t, action.Cancel())
+			require.True(t, netperf.IsReachable())
 		})
 	}
 }
