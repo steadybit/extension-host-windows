@@ -11,6 +11,7 @@ import (
 	"github.com/steadybit/extension-host-windows/config"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -80,7 +81,8 @@ func blackhole() networkOptsProvider {
 		filter.Direction = network.DirectionAll
 
 		blockLocalhost := extutil.ToBool(request.Config["blockLocalhost"])
-		filter.ExcludeLoopback = !blockLocalhost
+		// selecting a loopback interface only makes sense for loopback traffic
+		filter.ExcludeLoopback = !blockLocalhost && !selectsLoopbackInterface(extutil.ToStringArray(request.Config["networkInterface"]))
 		if blockLocalhost {
 			filter.Exclude = append(filter.Exclude, localhostExcludesForOwnPorts()...)
 		}
@@ -96,6 +98,13 @@ func blackholeDecode(data json.RawMessage) (network.WinOpts, error) {
 	var opts network.BlackholeOpts
 	err := json.Unmarshal(data, &opts)
 	return &opts, err
+}
+
+func selectsLoopbackInterface(interfaces []string) bool {
+	loopback := akn.GetLoopbackNetworkInterfaces()
+	return slices.ContainsFunc(interfaces, func(name string) bool {
+		return slices.Contains(loopback, name)
+	})
 }
 
 // localhostExcludesForOwnPorts keeps the extension reachable via localhost (e.g. an

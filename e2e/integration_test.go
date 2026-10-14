@@ -293,7 +293,9 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 	tests := []struct {
 		name            string
 		blockLocalhost  bool
+		allPorts        bool
 		excludeIp       []string
+		interfaces      []string
 		wantedReachable bool
 	}{
 		{
@@ -312,6 +314,20 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 			excludeIp:       []string{"127.0.0.1"},
 			wantedReachable: true,
 		},
+		{
+			name:            "should blackhole localhost traffic when the loopback interface is selected",
+			blockLocalhost:  false,
+			interfaces:      network.GetLoopbackNetworkInterfaces(),
+			wantedReachable: false,
+		},
+		{
+			// no restricted endpoints: only the extension's own loopback excludes
+			// keep it reachable, so the attack can still be cancelled
+			name:            "should keep the extension reachable when blocking all localhost traffic",
+			blockLocalhost:  true,
+			allPorts:        true,
+			wantedReachable: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -319,18 +335,25 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 			Duration       int      `json:"duration"`
 			Port           []string `json:"port"`
 			ExcludeIp      []string `json:"excludeIp"`
+			NetInterface   []string `json:"networkInterface"`
 			BlockLocalhost bool     `json:"blockLocalhost"`
 		}{
 			Duration:       30000,
 			Port:           []string{strconv.Itoa(port)},
 			ExcludeIp:      tt.excludeIp,
+			NetInterface:   tt.interfaces,
 			BlockLocalhost: tt.blockLocalhost,
+		}
+		eCtx := executionContext
+		if tt.allPorts {
+			config.Port = nil
+			eCtx = &action_kit_api.ExecutionContext{}
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
 			require.True(t, netperf.IsReachable())
 
-			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, executionContext)
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, eCtx)
 			defer func() { _ = action.Cancel() }()
 			require.NoError(t, err)
 

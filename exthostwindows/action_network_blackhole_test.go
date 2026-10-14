@@ -6,6 +6,7 @@ package exthostwindows
 import (
 	"testing"
 
+	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/steadybit/extension-host-windows/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,4 +38,15 @@ func Test_blackholeDescription_hasBlockLocalhost(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "blockLocalhost parameter missing")
+}
+
+func Test_selectsLoopbackInterface(t *testing.T) {
+	loopback := akn.GetLoopbackNetworkInterfaces()
+	if len(loopback) == 0 {
+		t.Skip("no loopback interface found")
+	}
+	assert.True(t, selectsLoopbackInterface([]string{loopback[0]}))
+	assert.True(t, selectsLoopbackInterface([]string{"not-an-interface", loopback[0]}))
+	assert.False(t, selectsLoopbackInterface([]string{"not-an-interface"}))
+	assert.False(t, selectsLoopbackInterface(nil))
 }
