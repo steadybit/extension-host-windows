@@ -49,9 +49,9 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 			action_kit_api.ActionParameter{
 				Name:         "blockLocalhost",
 				Label:        "Block Localhost Traffic",
-				Description:  new("Also block matching traffic on the loopback interface (127.0.0.0/8, ::1), e.g. between two processes on the same host. Combine with the include restrictions above, otherwise all localhost traffic is blocked."),
+				Description:  new("Also block matching traffic on the loopback interface (127.0.0.0/8, ::1), e.g. between two processes on the same host. Enabled by default on Windows, where localhost traffic has always been blocked; disable it to leave localhost traffic untouched."),
 				Type:         action_kit_api.ActionParameterTypeBoolean,
-				DefaultValue: new("false"),
+				DefaultValue: new("true"),
 				Advanced:     new(true),
 				Order:        new(107),
 			},
@@ -79,7 +79,7 @@ func blackhole() networkOptsProvider {
 		// Block incoming and outgoing traffic
 		filter.Direction = network.DirectionAll
 
-		blockLocalhost := extutil.ToBool(request.Config["blockLocalhost"])
+		blockLocalhost := blockLocalhostFromConfig(request.Config)
 		filter.ExcludeLoopback = !blockLocalhost
 		if blockLocalhost {
 			filter.Exclude = append(filter.Exclude, localhostExcludesForOwnPorts()...)
@@ -96,6 +96,16 @@ func blackholeDecode(data json.RawMessage) (network.WinOpts, error) {
 	var opts network.BlackholeOpts
 	err := json.Unmarshal(data, &opts)
 	return &opts, err
+}
+
+// blockLocalhostFromConfig defaults to true when the parameter is missing, e.g. for
+// experiments saved before it existed, which always blocked localhost traffic.
+func blockLocalhostFromConfig(config map[string]any) bool {
+	v, ok := config["blockLocalhost"]
+	if !ok || v == nil {
+		return true
+	}
+	return extutil.ToBool(v)
 }
 
 // localhostExcludesForOwnPorts keeps the extension reachable via localhost (e.g. an
