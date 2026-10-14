@@ -83,7 +83,7 @@ func blackhole() networkOptsProvider {
 		blockLocalhost := extutil.ToBool(request.Config["blockLocalhost"])
 		// selecting a loopback interface only makes sense for loopback traffic
 		filter.ExcludeLoopback = !blockLocalhost && !selectsLoopbackInterface(extutil.ToStringArray(request.Config["networkInterface"]))
-		if blockLocalhost {
+		if !filter.ExcludeLoopback {
 			filter.Exclude = append(filter.Exclude, localhostExcludesForOwnPorts()...)
 		}
 
