@@ -50,7 +50,7 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 			action_kit_api.ActionParameter{
 				Name:         "blockLocalhost",
 				Label:        "Block Localhost Traffic",
-				Description:  new("Also block matching traffic on the loopback interface (127.0.0.0/8, ::1), e.g. between two processes on the same host. Enabled by default on Windows, where Block Traffic has always included localhost traffic; disable it to leave localhost traffic untouched."),
+				Description:  new("Also block matching traffic on the loopback interface (127.0.0.0/8, ::1), e.g. between two processes on the same host."),
 				Type:         action_kit_api.ActionParameterTypeBoolean,
 				DefaultValue: new("true"),
 				Advanced:     new(true),
