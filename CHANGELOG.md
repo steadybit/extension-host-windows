@@ -2,8 +2,7 @@
 
 ## v0.4.0
 
-- **Breaking:** Block Traffic no longer blocks localhost traffic (`127.0.0.0/8`, `::1` and traffic to the host's own IPs) by default. Enable the new *Block Localhost Traffic* option to keep the previous behavior. Selecting a loopback interface in *Network Interface* keeps localhost traffic in scope as before.
-- feat: add the *Block Localhost Traffic* option to Block Traffic, aligned with the Linux host and container attacks (#211)
+- feat: add the *Block Localhost Traffic* option to Block Traffic (#211, #213). It is enabled by default, so Block Traffic keeps blocking matching localhost traffic as before; disable it to leave localhost traffic (`127.0.0.0/8`, `::1` and traffic to the host's own IPs) untouched. The extension's own ports stay reachable on localhost.
 - test: increase unit test coverage
 
 ## v0.3.9
