@@ -34,8 +34,13 @@ var (
 			},
 		}),
 	}
-	steadybitIPs   = getIpFor("steadybit.com")
-	steadybitCIDRs = getCIDRsFor("steadybit.com", 16)
+	// remoteHost is the external host the network attack tests reach and block.
+	// example.com is reserved for this kind of use and serves scripted requests
+	// reliably; requests to steadybit.com from the CI runner started failing
+	// partway through the suite.
+	remoteHost  = "example.com"
+	remoteIPs   = getIpFor(remoteHost)
+	remoteCIDRs = getCIDRsFor(remoteHost, 16, 48)
 )
 
 func TestWithLocalhost(t *testing.T) {
@@ -380,9 +385,9 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 	require.NoError(t, err)
 	defer func() { _ = netperf.Delete() }()
 
-	var steadybitAddresses []string
-	for _, ip := range steadybitIPs {
-		steadybitAddresses = append(steadybitAddresses, ip.String())
+	var remoteAddresses []string
+	for _, ip := range remoteIPs {
+		remoteAddresses = append(remoteAddresses, ip.String())
 	}
 
 	tests := []struct {
@@ -409,12 +414,12 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 		},
 		{
 			name:       "should blackhole traffic to ip",
-			ip:         steadybitAddresses,
+			ip:         remoteAddresses,
 			wantedDrop: true,
 		},
 		{
-			name:       "should blackhole traffic to steadybit.com hostname",
-			hostname:   []string{"steadybit.com"},
+			name:       "should blackhole traffic to remote hostname",
+			hostname:   []string{remoteHost},
 			wantedDrop: true,
 		},
 		{
@@ -423,8 +428,8 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 			wantedDrop: false,
 		},
 		{
-			name:       "should blackhole traffic to steadybit.com cider",
-			ip:         steadybitCIDRs,
+			name:       "should blackhole traffic to remote cidr",
+			ip:         remoteCIDRs,
 			wantedDrop: true,
 		},
 		{
@@ -475,16 +480,16 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			require.True(t, netperf.CanReach("steadybit.com"))
+			require.True(t, netperf.CanReach(remoteHost))
 
 			action, err := e.RunAction(exthostwindows.BaseActionID+".network_blackhole", l.BuildTarget(t.Context()), config, executionContext)
 			defer func() { _ = action.Cancel() }()
 			require.NoError(t, err)
 
-			assert.Equal(t, !tt.wantedDrop, netperf.CanReach("steadybit.com"))
+			assert.Equal(t, !tt.wantedDrop, netperf.CanReach(remoteHost))
 
 			require.NoError(t, action.Cancel())
-			require.True(t, netperf.CanReach("steadybit.com"))
+			require.True(t, netperf.CanReach(remoteHost))
 		})
 	}
 }
@@ -871,7 +876,7 @@ func testTwoNetworkAttacks(t *testing.T, l Environment, e Extension) {
 	}{
 		Duration:  10000,
 		Bandwidth: "200mbit",
-		Hostname:  []string{"steadybit.com"},
+		Hostname:  []string{remoteHost},
 	}
 	actionLimit, err2 := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), configLimit, defaultExecutionContext)
 	defer func() { _ = actionLimit.Cancel() }()
