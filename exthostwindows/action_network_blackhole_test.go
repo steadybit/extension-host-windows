@@ -33,7 +33,7 @@ func Test_blackholeDescription_hasBlockLocalhost(t *testing.T) {
 	for _, p := range getNetworkBlackholeDescription().Parameters {
 		if p.Name == "blockLocalhost" {
 			found = true
-			assert.Equal(t, "false", *p.DefaultValue)
+			assert.Equal(t, "true", *p.DefaultValue)
 			assert.True(t, *p.Advanced)
 		}
 	}
@@ -49,4 +49,13 @@ func Test_selectsLoopbackInterface(t *testing.T) {
 	assert.True(t, selectsLoopbackInterface([]string{"not-an-interface", loopback[0]}))
 	assert.False(t, selectsLoopbackInterface([]string{"not-an-interface"}))
 	assert.False(t, selectsLoopbackInterface(nil))
+}
+
+func Test_blockLocalhostFromConfig(t *testing.T) {
+	assert.True(t, blockLocalhostFromConfig(map[string]any{}), "missing parameter keeps the previous behavior")
+	assert.True(t, blockLocalhostFromConfig(map[string]any{"blockLocalhost": nil}))
+	assert.True(t, blockLocalhostFromConfig(map[string]any{"blockLocalhost": true}))
+	assert.True(t, blockLocalhostFromConfig(map[string]any{"blockLocalhost": "true"}))
+	assert.False(t, blockLocalhostFromConfig(map[string]any{"blockLocalhost": false}))
+	assert.False(t, blockLocalhostFromConfig(map[string]any{"blockLocalhost": "false"}))
 }
