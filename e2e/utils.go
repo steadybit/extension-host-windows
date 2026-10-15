@@ -179,10 +179,16 @@ func getIpFor(s string) []net.IP {
 	return ips
 }
 
-func getCIDRsFor(s string, maskLen int) (cidrs []string) {
+// getCIDRsFor returns the networks around the host's IPv4 and IPv6 addresses.
+func getCIDRsFor(s string, maskLenV4, maskLenV6 int) (cidrs []string) {
 	ips, _ := net.LookupIP(s)
 	for _, p := range ips {
-		cidr := net.IPNet{IP: p.To4(), Mask: net.CIDRMask(maskLen, 32)}
+		var cidr net.IPNet
+		if v4 := p.To4(); v4 != nil {
+			cidr = net.IPNet{IP: v4.Mask(net.CIDRMask(maskLenV4, 32)), Mask: net.CIDRMask(maskLenV4, 32)}
+		} else {
+			cidr = net.IPNet{IP: p.Mask(net.CIDRMask(maskLenV6, 128)), Mask: net.CIDRMask(maskLenV6, 128)}
+		}
 		cidrs = append(cidrs, cidr.String())
 	}
 	return
