@@ -277,9 +277,10 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 	}
 }
 
-// testNetworkBlackholeLocalhost covers the blockLocalhost option. netperf listens
-// on 127.0.0.1, so requesting it directly is loopback traffic. Only the
-// extension's own port is excluded on loopback, unlike testNetworkBlackhole.
+// testNetworkBlackholeLocalhost covers the blockLocalhost option, which defaults to
+// true on Windows (also when missing). netperf listens on 127.0.0.1, so requesting
+// it directly is loopback traffic. Only the extension's own port is excluded on
+// loopback, unlike testNetworkBlackhole.
 func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 	port, err := FindAvailablePorts(8080, 8800, 2)
 	require.NoError(t, err)
@@ -297,31 +298,37 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 
 	tests := []struct {
 		name            string
-		blockLocalhost  bool
+		blockLocalhost  *bool
 		allPorts        bool
 		excludeIp       []string
 		interfaces      []string
 		wantedReachable bool
 	}{
 		{
-			name:            "should not blackhole localhost traffic by default",
-			blockLocalhost:  false,
-			wantedReachable: true,
-		},
-		{
-			name:            "should blackhole localhost traffic when enabled",
-			blockLocalhost:  true,
+			// parameter missing, e.g. experiments saved before it existed
+			name:            "should blackhole localhost traffic by default",
+			blockLocalhost:  nil,
 			wantedReachable: false,
 		},
 		{
+			name:            "should blackhole localhost traffic when enabled",
+			blockLocalhost:  new(true),
+			wantedReachable: false,
+		},
+		{
+			name:            "should not blackhole localhost traffic when disabled",
+			blockLocalhost:  new(false),
+			wantedReachable: true,
+		},
+		{
 			name:            "should not blackhole excluded localhost traffic",
-			blockLocalhost:  true,
+			blockLocalhost:  new(true),
 			excludeIp:       []string{"127.0.0.1"},
 			wantedReachable: true,
 		},
 		{
 			name:            "should blackhole localhost traffic when the loopback interface is selected",
-			blockLocalhost:  false,
+			blockLocalhost:  new(false),
 			interfaces:      network.GetLoopbackNetworkInterfaces(),
 			wantedReachable: false,
 		},
@@ -329,7 +336,7 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 			// no restricted endpoints: only the extension's own loopback excludes
 			// keep it reachable, so the attack can still be cancelled
 			name:            "should keep the extension reachable when blocking all localhost traffic",
-			blockLocalhost:  true,
+			blockLocalhost:  new(true),
 			allPorts:        true,
 			wantedReachable: false,
 		},
@@ -341,7 +348,7 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 			Port           []string `json:"port"`
 			ExcludeIp      []string `json:"excludeIp"`
 			NetInterface   []string `json:"networkInterface"`
-			BlockLocalhost bool     `json:"blockLocalhost"`
+			BlockLocalhost *bool    `json:"blockLocalhost,omitempty"`
 		}{
 			Duration:       30000,
 			Port:           []string{strconv.Itoa(port)},
