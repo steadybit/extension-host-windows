@@ -87,7 +87,6 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 				Description:  new("Restrict to/from which port the traffic is affected."),
 				Type:         action_kit_api.ActionParameterTypeString,
 				DefaultValue: new(""),
-				Advanced:     new(true),
 				Order:        new(103),
 			},
 		},
