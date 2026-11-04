@@ -246,6 +246,8 @@ func getStressIoDescription() action_kit_api.ActionDescription {
 				DefaultValue: new("true"),
 				Required:     new(true),
 				Advanced:     new(true),
+				Group:        new(action_kit_api.ParameterGroupAdditionalSettings),
+				Order:        new(3),
 			},
 		},
 		Stop: new(action_kit_api.MutatingEndpointReference{}),

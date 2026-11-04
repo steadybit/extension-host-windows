@@ -56,6 +56,7 @@ var networkInterfaceParameter = action_kit_api.ActionParameter{
 	Description: new("Target Network Interface which should be affected. All if none specified."),
 	Type:        action_kit_api.ActionParameterTypeStringArray,
 	Required:    new(false),
+	Group:       new(groupTrafficFilter),
 	Order:       new(106),
 }
 
@@ -68,6 +69,7 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 		Type:         action_kit_api.ActionParameterTypeStringArray,
 		DefaultValue: new(""),
 		Advanced:     new(true),
+		Group:        new(groupTrafficFilter),
 		Order:        new(101),
 	},
 	{
@@ -77,6 +79,7 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 		Type:         action_kit_api.ActionParameterTypeStringArray,
 		DefaultValue: new(""),
 		Advanced:     new(true),
+		Group:        new(groupTrafficFilter),
 		Order:        new(102),
 	},
 	{
@@ -86,6 +89,7 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 		Type:         action_kit_api.ActionParameterTypeStringArray,
 		DefaultValue: new(""),
 		Advanced:     new(true),
+		Group:        new(groupTrafficFilter),
 		Order:        new(103),
 	},
 	{
@@ -95,6 +99,7 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 		Type:        action_kit_api.ActionParameterTypeStringArray,
 		Required:    new(false),
 		Advanced:    new(true),
+		Group:       new(groupTrafficFilter),
 		Order:       new(104),
 	},
 	{
@@ -104,6 +109,7 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 		Type:        action_kit_api.ActionParameterTypeStringArray,
 		Required:    new(false),
 		Advanced:    new(true),
+		Group:       new(groupTrafficFilter),
 		Order:       new(105),
 	},
 }

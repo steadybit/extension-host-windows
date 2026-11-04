@@ -37,10 +37,11 @@ func getNetworkPackageLossDescription() action_kit_api.ActionDescription {
 			TargetType:         targetID,
 			SelectionTemplates: &targetSelectionTemplates,
 		},
-		Technology:  new(WindowsHostTechnology),
-		Category:    new("Network"),
-		Kind:        action_kit_api.Attack,
-		TimeControl: action_kit_api.TimeControlExternal,
+		Technology:      new(WindowsHostTechnology),
+		Category:        new("Network"),
+		Kind:            action_kit_api.Attack,
+		TimeControl:     action_kit_api.TimeControlExternal,
+		ParameterGroups: new([]action_kit_api.ParameterGroup{trafficFilterGroup}),
 		Parameters: append(
 			commonNetworkParameters,
 			action_kit_api.ActionParameter{

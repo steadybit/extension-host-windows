@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat: network attacks show their traffic filters in a "Traffic Filter" group and Fill Disk its method settings in a "Fill Behavior" group on platforms that support parameter groups; Limit Outgoing Bandwidth shows Ports with its other filters
+
 ## v0.4.1
 
 - build(deps): bump github.com/steadybit/action-kit/go/action_kit_commons
