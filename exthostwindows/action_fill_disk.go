@@ -330,6 +330,7 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 				DefaultValue: new("AT_ONCE"),
 				Type:         action_kit_api.String,
 				Advanced:     new(true),
+				Group:        new(groupFillBehavior),
 				Options: new([]action_kit_api.ParameterOption{
 					action_kit_api.ExplicitParameterOption{
 						Label: "At once (fsutil)",
@@ -352,6 +353,7 @@ func getFillDiskDescription() action_kit_api.ActionDescription {
 				MinValue:     new(1),
 				MaxValue:     new(1024),
 				Advanced:     new(true),
+				Group:        new(groupFillBehavior),
 			},
 		},
 		Stop: new(action_kit_api.MutatingEndpointReference{}),
