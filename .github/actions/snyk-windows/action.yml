@@ -17,4 +17,8 @@ runs:
       env:
         INPUTS_COMMAND: ${{ inputs.command }}
         INPUTS_ARGS: ${{ inputs.args }}
-      run: .\snyk-win.exe $INPUTS_COMMAND $INPUTS_ARGS
+      # In pwsh, environment variables are only reachable as $env:NAME - a bare $INPUTS_ARGS is an empty
+      # PowerShell variable, so snyk ran without arguments, printed its help and exited 0.
+      run: |
+        $snykArgs = @($env:INPUTS_COMMAND) + ($env:INPUTS_ARGS -split '\s+' | Where-Object { $_ })
+        & .\snyk-win.exe @snykArgs
