@@ -1,8 +1,15 @@
 # Changelog
 
-## Unreleased
+## v0.4.2
 
+- build(deps): bump the steadybit group with 2 updates
+- chore(deps): bump golang.org/x/net to v0.62.0
+- feat: name the Additional Settings group of the remaining advanced parameters
 - feat: network attacks show their traffic filters in a "Traffic Filter" group and Fill Disk its method settings in a "Fill Behavior" group on platforms that support parameter groups; Limit Outgoing Bandwidth shows Ports with its other filters
+- feat: show Ports of Limit Outgoing Bandwidth with the other traffic filters
+- feat: show the fill disk method settings in a group
+- feat: show the traffic filters of network attacks in a group
+- refa: rename the fill memory Megabytes unit label to MiB (#221)
 
 ## v0.4.1
 
