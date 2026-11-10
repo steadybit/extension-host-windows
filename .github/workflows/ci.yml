@@ -50,7 +50,7 @@ jobs:
 
       - name: Set dependency versions
         id: versions
-        run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
+        run: Get-Content versions.txt | Add-Content $env:GITHUB_ENV
 
       - name: Audit
         # Go requires gotmp to be present
@@ -112,7 +112,7 @@ jobs:
 
       - name: Set dependency versions
         id: versions
-        run: echo "STEADYBIT_WINDIVERT_VERSION=$(grep STEADYBIT_WINDIVERT_VERSION versions.txt | cut -d= -f2)" >> GITHUB_ENV
+        run: Get-Content versions.txt | Add-Content $env:GITHUB_ENV
 
       - name: Build extension installer
         # Go requires gotmp to be present.
