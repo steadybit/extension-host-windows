@@ -60,14 +60,16 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
+      - name: "[Release] Set up Snyk CLI"
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: steadybit/extension-kit/.github/actions/setup-snyk@main # NOSONAR githubactions:S7637 - our own action
+
       - name: "[Release] Snyk test"
-        uses: ./.github/actions/snyk-windows
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=${{ github.ref_name }}
+          SNYK_ORG_ID: ${{ vars.SNYK_ORG_ID }}
+        run: snyk test --org="$env:SNYK_ORG_ID" --severity-threshold=high --project-name="$env:GITHUB_REPOSITORY" --target-reference="$env:GITHUB_REF_NAME"
 
       - name: SonarCloud Scan
         if: ${{ env.sonar_available == 'true' }}
@@ -120,14 +122,16 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
+      - name: "[Release] Set up Snyk CLI"
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: steadybit/extension-kit/.github/actions/setup-snyk@main # NOSONAR githubactions:S7637 - our own action
+
       - name: "[Release] Snyk monitor release candidate"
-        uses: ./.github/actions/snyk-windows
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: monitor
-          args: --org=${{ vars.SNYK_ORG_ID }} --severity-threshold=high --project-name=${{ github.repository }} --target-reference=release-candidate
+          SNYK_ORG_ID: ${{ vars.SNYK_ORG_ID }}
+        run: snyk monitor --org="$env:SNYK_ORG_ID" --severity-threshold=high --project-name="$env:GITHUB_REPOSITORY" --target-reference=release-candidate
 
       - name: Upload Artifacts
         id: artifact-upload
@@ -199,12 +203,17 @@ jobs:
         with:
           fetch-depth: 0
       - run: mkdir ${{ env.GOTMPDIR }}
-      - uses: ./.github/actions/snyk-windows
+      # Snyk takes the stdlib version of the Go scan from this toolchain.
+      - uses: actions/setup-go@v7
         with:
-          command: monitor
-          args: --severity-threshold=high --project-name=${{ github.repository }} --target-reference=latest
+          go-version: ${{ env.golang_version }}
+          check-latest: true
+      - name: Set up Snyk CLI
+        uses: steadybit/extension-kit/.github/actions/setup-snyk@main # NOSONAR githubactions:S7637 - our own action
+      - name: Snyk monitor
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk monitor --severity-threshold=high --project-name="$env:GITHUB_REPOSITORY" --target-reference=latest
 
   refresh-demo:
     name: Refresh Dev Demo
