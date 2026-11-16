@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.4
+
+- **Behaviour change** — the extension only accepts connections from the same host (`localhost`) by default. An agent on another host needs `STEADYBIT_EXTENSION_BIND_ADDRESS=0.0.0.0`, see "Accepting connections from other hosts" in the README.
+
 ## v0.4.3
 
 - build(deps): bump github.com/steadybit/discovery-kit/go/discovery_kit_sdk
