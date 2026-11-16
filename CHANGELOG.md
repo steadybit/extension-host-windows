@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.3
+
+- build(deps): bump github.com/steadybit/discovery-kit/go/discovery_kit_sdk
+- build(deps): bump golang.org/x/sys from 0.49.0 to 0.50.0
+- ci: export the pinned WinDivert version to the build
+- ci: run Snyk through extension-kit's setup-snyk action
+
 ## v0.4.2
 
 - build(deps): bump the steadybit group with 2 updates
