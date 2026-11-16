@@ -119,7 +119,7 @@ func (f *LocalExtensionFactory) startAndAwait(ctx context.Context) error {
 	log.Info().Str("path", pathEnv).Msg("Setting custom path environment")
 	cmd.Env = append(customEnv, pathEnv)
 
-	err := awaitStartup(cmd, awaitLog("Starting extension http server on port"))
+	err := awaitStartup(cmd, awaitLog("Starting extension http server on "))
 	if err != nil {
 		return err
 	}
