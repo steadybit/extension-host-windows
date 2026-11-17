@@ -38,8 +38,8 @@ func TestCleanupQosPolicies(t *testing.T) {
 
 type MockNetworkOpt struct{}
 
-func (o *MockNetworkOpt) WinDivertCommands(_ Mode) ([]string, error) {
-	return nil, nil
+func (o *MockNetworkOpt) WinDivert() *WinDivertOpts {
+	return nil
 }
 
 func (o *MockNetworkOpt) QoSCommands(_ Mode) ([]string, error) {

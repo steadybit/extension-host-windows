@@ -6,6 +6,7 @@ package network
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 )
@@ -26,8 +27,28 @@ const (
 
 type WinOpts interface {
 	QoSCommands(mode Mode) ([]string, error)
-	WinDivertCommands(mode Mode) ([]string, error)
+	// WinDivert returns the wdna.exe run for attacks implemented with WinDivert, nil otherwise.
+	WinDivert() *WinDivertOpts
 	String() string
+}
+
+type WinDivertMode string
+
+const (
+	WinDivertModeDelay   WinDivertMode = "delay"
+	WinDivertModeDrop    WinDivertMode = "drop"
+	WinDivertModeCorrupt WinDivertMode = "corrupt"
+)
+
+type WinDivertOpts struct {
+	Filter   Filter
+	Mode     WinDivertMode
+	Duration time.Duration
+	// Delay and Jitter apply to WinDivertModeDelay, Percentage to WinDivertModeDrop and WinDivertModeCorrupt.
+	Delay      time.Duration
+	Jitter     bool
+	Percentage uint
+	FlushDNS   bool
 }
 
 type Direction string

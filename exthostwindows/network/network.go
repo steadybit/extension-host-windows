@@ -7,12 +7,10 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	aku "github.com/steadybit/action-kit/go/action_kit_commons/utils"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
-	"golang.org/x/sys/windows/svc"
 )
 
 var (
@@ -47,11 +45,6 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		return err
 	}
 
-	winDivertCommands, err := opts.WinDivertCommands(mode)
-	if err != nil {
-		return err
-	}
-
 	runLock.LockKey("windows")
 	defer func() { _ = runLock.UnlockKey("windows") }()
 
@@ -67,10 +60,14 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		}
 	}
 
-	if len(winDivertCommands) > 0 {
-		if _, wdErr := executeWinDivertCommands(ctx, winDivertCommands, mode); wdErr != nil {
-			err = errors.Join(err, wdErr)
+	if attack := opts.WinDivert(); attack != nil {
+		var wdErr error
+		if mode == ModeAdd {
+			wdErr = startWinDivert(ctx, attack)
+		} else {
+			wdErr = stopWinDivert(ctx)
 		}
+		err = errors.Join(err, wdErr)
 	}
 
 	if mode == ModeDelete {
@@ -116,23 +113,8 @@ func popActiveFw(id string, opts WinOpts) {
 	}
 }
 
-func executeWinDivertCommands(ctx context.Context, cmds []string, mode Mode) (string, error) {
-	out, err := utils.ExecutePowershellCommand(ctx, utils.SanitizePowershellArgs(cmds...), utils.PSStart)
-	if err == nil {
-		timeout := 15 * time.Second
-		if mode == ModeAdd {
-			err = awaitWinDivertServiceStatus(svc.Running, timeout)
-			log.Debug().Msgf("WinDivert service is running")
-		} else {
-			err = awaitWinDivertServiceStatus(svc.Stopped, timeout)
-			log.Debug().Msgf("WinDivert service is stopped")
-		}
-	}
-	return out, err
-}
-
 func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
 	logCurrentQoSRules(ctx, "before")
 	defer logCurrentQoSRules(ctx, "after")
-	return utils.ExecutePowershellCommand(ctx, cmds, utils.PSRun)
+	return utils.ExecutePowershellCommand(ctx, cmds)
 }

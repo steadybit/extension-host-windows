@@ -36,7 +36,7 @@ func listSteadybitQosPolicyNames(ctx context.Context) ([]string, error) {
 }
 
 func listQosPolicies(ctx context.Context, command string, separator string) ([]string, error) {
-	result, err := utils.ExecutePowershellCommand(ctx, []string{command}, utils.PSRun)
+	result, err := utils.ExecutePowershellCommand(ctx, []string{command})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list QoS policies: %w", err)
 	}
@@ -66,7 +66,7 @@ func removeQoSPolicies(ctx context.Context, policies []string) error {
 	var errs error
 	for _, policy := range policies {
 		removeCommand := fmt.Sprintf("Remove-NetQosPolicy -Name %s -Confirm:$false", policy)
-		if _, err := utils.ExecutePowershellCommand(ctx, utils.BuildSystemCommandFor(removeCommand), utils.PSRun); err != nil {
+		if _, err := utils.ExecutePowershellCommand(ctx, utils.BuildSystemCommandFor(removeCommand)); err != nil {
 			errs = errors.Join(errs, err)
 		}
 	}

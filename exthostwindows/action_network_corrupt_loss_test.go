@@ -116,7 +116,7 @@ func TestNetworkPackageLoss_OptsProvider(t *testing.T) {
 }
 
 func TestNetworkCorruptAndLoss_DecodeRoundTrip(t *testing.T) {
-	corrupt := &network.CorruptPackagesOpts{Corruption: 10, Duration: 5 * time.Second, FilterFile: `C:\temp\filter.txt`}
+	corrupt := &network.CorruptPackagesOpts{Corruption: 10, Duration: 5 * time.Second}
 	data, err := json.Marshal(corrupt)
 	require.NoError(t, err)
 	decodedCorrupt, err := corruptPackagesDecode(data)

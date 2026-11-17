@@ -118,7 +118,7 @@ func GetDriveSpace(driveLetter string, kind DriveSpace) (uint64, error) {
 type CmdOutputProvider func() ([]byte, error)
 
 func IsTestSigningEnabled() (bool, error) {
-	cmd := PowershellCommand("bcdedit")
+	cmd := exec.Command(SystemExecutable("bcdedit.exe"))
 	isEnabled, err := CheckTestSigningAttribute(cmd.Output)
 
 	if err != nil {

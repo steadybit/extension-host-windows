@@ -18,8 +18,8 @@ type LimitBandwidthOpts struct {
 	PortRange    network.PortRange
 }
 
-func (o *LimitBandwidthOpts) WinDivertCommands(_ Mode) ([]string, error) {
-	return nil, nil
+func (o *LimitBandwidthOpts) WinDivert() *WinDivertOpts {
+	return nil
 }
 
 func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {

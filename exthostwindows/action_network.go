@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
@@ -148,12 +149,8 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 }
 
 func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*action_kit_api.StartResult, error) {
-
-	if isTestSigningEnabled, err := utils.IsTestSigningEnabled(); err != nil {
-		log.Warn().Err(err).Msg("failed retrieving testsigning flag from the bcdedit.")
-	} else if isTestSigningEnabled {
-		log.Debug().Msg("testsigning is enabled on the machine")
-	}
+	start := time.Now()
+	defer func() { log.Debug().Dur("total", time.Since(start)).Msg("network action started") }()
 
 	opts, err := a.optsDecoder(state.NetworkOpts)
 	if err != nil {
@@ -176,6 +173,9 @@ func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*
 }
 
 func (a *networkAction) Stop(ctx context.Context, state *NetworkActionState) (*action_kit_api.StopResult, error) {
+	start := time.Now()
+	defer func() { log.Debug().Dur("total", time.Since(start)).Msg("network action stopped") }()
+
 	opts, err := a.optsDecoder(state.NetworkOpts)
 	if err != nil {
 		return nil, extensionKit.ToError("Failed to deserialize network settings.", err)
@@ -297,4 +297,13 @@ func toExcludes(restrictedEndpoints []action_kit_api.RestrictedEndpoint) ([]akn.
 		excludes = append(excludes, nwps...)
 	}
 	return excludes, nil
+}
+
+// LogTestSigningStatus records whether test signing is enabled, which helps to diagnose WinDivert driver load failures.
+func LogTestSigningStatus() {
+	if isTestSigningEnabled, err := utils.IsTestSigningEnabled(); err != nil {
+		log.Warn().Err(err).Msg("failed retrieving testsigning flag from the bcdedit.")
+	} else {
+		log.Info().Bool("testsigning", isTestSigningEnabled).Msg("checked testsigning flag of the machine")
+	}
 }

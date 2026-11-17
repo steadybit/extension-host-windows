@@ -194,7 +194,7 @@ func awsInstanceId(ctx context.Context) string {
 		"$token = Invoke-RestMethod -Method PUT -Headers @{'X-aws-ec2-metadata-token-ttl-seconds' = '60'} http://169.254.169.254/latest/api/token",
 		"Invoke-RestMethod -Method GET -Headers @{'X-aws-ec2-metadata-token' = $token} http://169.254.169.254/latest/meta-data/instance-id",
 	}
-	instanceId, err := utils.ExecutePowershellCommand(ctx, commands, utils.PSRun)
+	instanceId, err := utils.ExecutePowershellCommand(ctx, commands)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to retrieve AWS EC2 instance id")
 		return ""
@@ -204,7 +204,7 @@ func awsInstanceId(ctx context.Context) string {
 
 func gcpInstanceId(ctx context.Context) string {
 	command := "if ((Get-WmiObject Win32_BIOS).Manufacturer -eq 'Google') { Invoke-RestMethod -Headers @{'Metadata-Flavor' = 'Google'} -Uri 'http://metadata.google.internal/computeMetadata/v1/instance/id' }"
-	instanceId, err := utils.ExecutePowershellCommand(ctx, []string{command}, utils.PSRun)
+	instanceId, err := utils.ExecutePowershellCommand(ctx, []string{command})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to retrieve GCP instance id")
 		return ""
@@ -219,7 +219,7 @@ func azureInstanceId(ctx context.Context) string {
 		"if($sys.Manufacturer -eq 'Microsoft Corporation' -and $sys.Model -eq 'Virtual Machine' -and $bios.Manufacturer -eq 'Microsoft Corporation') { " +
 			"try{(Invoke-RestMethod -Headers @{Metadata='true'} -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01').compute.vmId} catch{''}} else {''}",
 	}
-	instanceId, err := utils.ExecutePowershellCommand(ctx, commands, utils.PSRun)
+	instanceId, err := utils.ExecutePowershellCommand(ctx, commands)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to retrieve Azure instance id")
 		return ""
