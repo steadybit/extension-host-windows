@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
-	stopprocess "github.com/steadybit/extension-host-windows/exthostwindows/process"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"os"
 	"os/exec"
 	"path"
@@ -38,7 +38,7 @@ func (l *LocalEnvironment) BuildTarget(_ context.Context) *action_kit_api.Target
 }
 
 func (l *LocalEnvironment) FindProcessIds(_ context.Context, name string) []int {
-	return stopprocess.FindProcessIds(name)
+	return utils.FindProcessIds(name)
 }
 
 func (l *LocalEnvironment) ExecuteProcess(ctx context.Context, command string, parameters ...string) (string, error) {
@@ -77,9 +77,9 @@ func (l *LocalEnvironment) StartAndAwaitProcess(ctx context.Context, command str
 }
 
 func (l *LocalEnvironment) StopProcess(_ context.Context, commandOrPid string) error {
-	pids := stopprocess.FindProcessIds(commandOrPid)
+	pids := utils.FindProcessIds(commandOrPid)
 	if len(pids) != 1 {
 		return fmt.Errorf("cannot stop process %q, found candidates %v", commandOrPid, pids)
 	}
-	return stopprocess.StopProcesses(pids, true)
+	return utils.StopProcesses(pids, true)
 }

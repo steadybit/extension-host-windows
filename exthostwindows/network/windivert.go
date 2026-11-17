@@ -4,16 +4,20 @@
 package network
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
-	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/mgr"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
+	"golang.org/x/sys/windows"
 )
 
 func getFamily(net net.IPNet) (Family, error) {
@@ -267,7 +271,7 @@ func buildWinDivertFilterFile(f Filter) (string, error) {
 		return "", err
 	}
 
-	tempFile, err := os.CreateTemp("", "wdna-filter-*.txt")
+	tempFile, err := os.CreateTemp("", winDivertFilterPattern)
 	if err != nil {
 		return "", err
 	}
@@ -282,42 +286,78 @@ func buildWinDivertFilterFile(f Filter) (string, error) {
 	return tempFile.Name(), nil
 }
 
-func awaitWinDivertServiceStatus(state svc.State, timeout time.Duration) error {
-	// wait until the windivert service reports successful startup or an error occurred
-	m, err := mgr.Connect()
+const (
+	winDivertServiceName    = "windivert"
+	winDivertServiceTimeout = 15 * time.Second
+	winDivertFilterPattern  = "wdna-filter-*.txt"
+)
+
+func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
+	if opts.FlushDNS {
+		if out, err := exec.CommandContext(ctx, utils.SystemExecutable("ipconfig.exe"), "/flushdns").CombinedOutput(); err != nil {
+			log.Warn().Err(err).Str("output", strings.TrimSpace(string(out))).Msg("failed to flush the DNS cache")
+		}
+	}
+
+	filterFile, err := buildWinDivertFilterFile(opts.Filter)
 	if err != nil {
 		return err
 	}
-	defer func(m *mgr.Mgr) {
-		_ = m.Disconnect()
-	}(m)
+	removeWinDivertFilterFile()
+	activeFilterFile = filterFile
 
-	end := time.Now().Add(timeout)
-	for time.Now().Before(end) {
-		s, err := m.OpenService("windivert")
-		if err != nil {
-			time.Sleep(500 * time.Millisecond)
-			log.Debug().Msgf("failed opening the windivert service with error (retrying in 500ms): %v", err)
-			continue
-		}
-
-		log.Info().Msgf("successfully opened the windivert service.")
-		// deferred function is only created once
-		//goland:noinspection GoDeferInLoop
-		defer func(s *mgr.Service) {
-			_ = s.Close()
-		}(s)
-
-		for time.Now().Before(end) {
-			status, err := s.Query()
-			if err == nil && status.State == state {
-				log.Debug().Int("state", int(status.State)).Msgf("windivert service reached state %d", state)
-				return nil
-			}
-			//goland:noinspection GoDfaErrorMayBeNotNil
-			log.Debug().Int("state", int(status.State)).Msgf("windivert service not yet in state %d", state)
-			time.Sleep(100 * time.Millisecond)
-		}
+	// Not bound to ctx: wdna has to outlive the request that started the attack.
+	cmd := exec.Command("wdna.exe", opts.args(filterFile)...) //NOSONAR arguments are passed without a shell
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start wdna.exe: %w", err)
 	}
-	return fmt.Errorf("windivert service did not reach state %d in time", state)
+	go func() {
+		log.Debug().Err(cmd.Wait()).Msg("wdna.exe exited")
+	}()
+
+	return utils.AwaitServiceRunning(winDivertServiceName, winDivertServiceTimeout)
+}
+
+func (o *WinDivertOpts) args(filterFile string) []string {
+	args := []string{"--file=" + filterFile, "--mode=" + string(o.Mode), fmt.Sprintf("--duration=%d", int(o.Duration.Seconds()))}
+	switch o.Mode {
+	case WinDivertModeDelay:
+		args = append(args, fmt.Sprintf("--time=%d", o.Delay.Milliseconds()))
+		if o.Jitter {
+			args = append(args, "--jitter")
+		}
+	case WinDivertModeDrop, WinDivertModeCorrupt:
+		args = append(args, fmt.Sprintf("--percentage=%d", o.Percentage))
+	}
+	return args
+}
+
+// stopWinDivert ends wdna and stops the driver service. WinDivert marks the service for deletion right after starting
+// it, so stopping it also unloads and removes the driver; a missing service therefore counts as stopped.
+func stopWinDivert(ctx context.Context) error {
+	if out, err := exec.CommandContext(ctx, "wdna_shutdown.exe").CombinedOutput(); err != nil { //NOSONAR no user input
+		// Expected when wdna already exited because its duration elapsed.
+		log.Info().Err(err).Str("output", strings.TrimSpace(string(out))).Msg("wdna_shutdown failed")
+	}
+	removeWinDivertFilterFile()
+
+	err := utils.StopService(winDivertServiceName, winDivertServiceTimeout)
+	if errors.Is(err, windows.ERROR_SERVICE_DOES_NOT_EXIST) {
+		return nil
+	}
+	return err
+}
+
+// activeFilterFile is the filter file of the running WinDivert attack. The attack state does not carry the file name
+// from start to stop, and only one WinDivert attack runs at a time. Start and stop hold the network run lock.
+var activeFilterFile string
+
+func removeWinDivertFilterFile() {
+	if activeFilterFile != "" {
+		_ = os.Remove(activeFilterFile)
+		activeFilterFile = ""
+	}
 }

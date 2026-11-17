@@ -47,6 +47,7 @@ func main() {
 
 	extbuild.PrintBuildInformation()
 	extruntime.LogRuntimeInformation(zerolog.InfoLevel)
+	go exthostwindows.LogTestSigningStatus()
 
 	config.ParseConfiguration()
 	config.ValidateConfiguration()

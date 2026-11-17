@@ -4,14 +4,17 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/require"
+	"net"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_ResolveHostnames(t *testing.T) {
 	ips, err := Resolve(t.Context(), "localhost")
 	require.NoError(t, err)
-	require.NotZero(t, len(ips))
+	require.Contains(t, ips, net.IPv4(127, 0, 0, 1).To4())
+	require.Contains(t, ips, net.IPv6loopback)
 }
 
 func Test_ResolveHostnames_Unresolvable(t *testing.T) {

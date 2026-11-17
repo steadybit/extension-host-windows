@@ -46,6 +46,6 @@ func TestListSteadybitQosPolicies(t *testing.T) {
 
 func createQosPolicy(t *testing.T, name string) {
 	command := fmt.Sprintf("New-NetQosPolicy -Name %s -ThrottleRateActionBitsPerSecond 100MB -Confirm:$false", name)
-	_, err := utils.ExecutePowershellCommand(t.Context(), []string{command}, utils.PSRun)
+	_, err := utils.ExecutePowershellCommand(t.Context(), []string{command})
 	require.NoError(t, err)
 }

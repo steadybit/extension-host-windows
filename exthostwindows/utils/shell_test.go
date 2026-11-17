@@ -10,7 +10,7 @@ import (
 )
 
 func Test_TrimShellOutput(t *testing.T) {
-	command, err := ExecutePowershellCommand(t.Context(), []string{"echo 'hello world'"}, PSRun)
+	command, err := ExecutePowershellCommand(t.Context(), []string{"echo 'hello world'"})
 	require.NoError(t, err)
 	require.Equal(t, "hello world", command)
 }

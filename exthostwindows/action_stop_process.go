@@ -6,6 +6,7 @@ package exthostwindows
 import (
 	"context"
 	"fmt"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
-	stopprocess "github.com/steadybit/extension-host-windows/exthostwindows/process"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
 )
@@ -218,9 +218,9 @@ func newProcessStopper(processFilter string, graceful bool, delay, duration time
 			for {
 				select {
 				case <-time.After(delay):
-					pids := stopprocess.FindProcessIds(processFilter)
+					pids := utils.FindProcessIds(processFilter)
 					log.Debug().Msgf("Found %d processes to stop", len(pids))
-					err := stopprocess.StopProcesses(pids, !graceful)
+					err := utils.StopProcesses(pids, !graceful)
 					if err != nil {
 						log.Error().Err(err).Msg("Failed to stop processes")
 						s.err.Store(&err)

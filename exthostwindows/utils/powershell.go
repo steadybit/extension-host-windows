@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 Steadybit GmbH
+
 package utils
 
 import (
@@ -6,48 +9,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog/log"
+	"golang.org/x/sys/windows"
 )
-
-func IsProcessRunning(processName string) (bool, error) {
-	cmd := PowershellCommand("Get-Process", "-Name", processName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		if strings.Contains(string(output), "Cannot find a process with the name") {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	return len(strings.TrimSpace(string(output))) > 0, nil
-}
-
-func StopProcess(processName string) error {
-	isRunning, err := IsProcessRunning(processName)
-
-	if err != nil {
-		return err
-	}
-
-	if isRunning {
-		cmd := PowershellCommand("Stop-Process", "-Name", processName, "-Force")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			if strings.Contains(string(out), "Cannot find a process with the name") {
-				log.Err(err).Msg("Stop-Process failed")
-				return err
-			}
-		}
-
-		log.Info().Msgf("%s", out)
-	}
-
-	return nil
-}
 
 func IsExecutableOperational(executableName string, args ...string) error {
 	cmd := exec.Command(executableName, args...)
@@ -91,34 +56,24 @@ func GetAvailableDriveLetters() ([]string, error) {
 	return driveLetters, nil
 }
 
-type DriveSpace string
-
-const (
-	Available DriveSpace = "SizeRemaining"
-	Total     DriveSpace = "Size"
-)
-
-func GetDriveSpace(driveLetter string, kind DriveSpace) (uint64, error) {
-	cmd := PowershellCommand(fmt.Sprintf("(Get-Volume -DriveLetter %s).%s", driveLetter, kind))
-	output, err := cmd.Output()
-
+// GetDriveSpace returns the free and the total bytes of the given drive.
+func GetDriveSpace(driveLetter string) (free uint64, total uint64, err error) {
+	root, err := windows.UTF16PtrFromString(driveLetter + `:\`)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	availableSpace, err := strconv.ParseUint(strings.TrimSpace(string(output)), 10, 0)
-
-	if err != nil {
-		return 0, err
+	var freeToCaller uint64
+	if err := windows.GetDiskFreeSpaceEx(root, &freeToCaller, &total, &free); err != nil {
+		return 0, 0, fmt.Errorf("failed to read the space of drive %s: %w", driveLetter, err)
 	}
-
-	return availableSpace, nil
+	return free, total, nil
 }
 
 type CmdOutputProvider func() ([]byte, error)
 
 func IsTestSigningEnabled() (bool, error) {
-	cmd := PowershellCommand("bcdedit")
+	cmd := exec.Command(SystemExecutable("bcdedit.exe"))
 	isEnabled, err := CheckTestSigningAttribute(cmd.Output)
 
 	if err != nil {

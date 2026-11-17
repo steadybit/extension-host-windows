@@ -205,7 +205,7 @@ func fillDisk() fillDiskOptsProvider {
 }
 
 func calculateAllocation(fillMode FillMode, driveLetter string, percentageOrMegabytes uint64) (uint64, error) {
-	availableSpace, err := utils.GetDriveSpace(driveLetter, utils.Available)
+	availableSpace, totalSpace, err := utils.GetDriveSpace(driveLetter)
 
 	if err != nil {
 		return 0, err
@@ -230,12 +230,6 @@ func calculateAllocation(fillMode FillMode, driveLetter string, percentageOrMega
 	}
 
 	if fillMode == Percentage {
-		totalSpace, err := utils.GetDriveSpace(driveLetter, utils.Total)
-
-		if err != nil {
-			return 0, err
-		}
-
 		currentlyAllocated := ((float64(totalSpace) - float64(availableSpace)) / float64(totalSpace)) * 100
 
 		if currentlyAllocated > float64(percentageOrMegabytes) {
