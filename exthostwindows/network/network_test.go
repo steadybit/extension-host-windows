@@ -13,8 +13,12 @@ func TestCleanupQosPolicies(t *testing.T) {
 	// Cleanup works if no leftover policies exist
 	CleanupQosPolicies()
 
+	// Cleanup skips the listing while no attack changed QoS policies
+	assert.True(t, qosPoliciesClean.Load())
+
 	// Cleanup does not run if experiment is active
 	createQosPolicy(t, qosPolicyPrefix+"test_policy_cleanup")
+	qosPoliciesClean.Store(false) // as if a failed revert left the policy behind
 	opts := &MockNetworkOpt{}
 	err := generateAndRunCommands(t.Context(), opts, ModeAdd)
 	require.NoError(t, err)
@@ -34,6 +38,7 @@ func TestCleanupQosPolicies(t *testing.T) {
 	policies, err = listSteadybitQosPolicyNames(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, policies)
+	assert.True(t, qosPoliciesClean.Load())
 }
 
 type MockNetworkOpt struct{}

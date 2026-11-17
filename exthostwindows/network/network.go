@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
 	aku "github.com/steadybit/action-kit/go/action_kit_commons/utils"
@@ -18,6 +19,10 @@ var (
 
 	activeFWLock   = sync.Mutex{}
 	activeFirewall = map[string][]WinOpts{}
+
+	// qosPoliciesClean is reset whenever an attack changes QoS policies; until the next cleanup, leftovers are possible.
+	// It starts unset, as a crashed process may have left policies behind.
+	qosPoliciesClean atomic.Bool
 )
 
 func Apply(ctx context.Context, opts WinOpts) error {
@@ -28,15 +33,22 @@ func Revert(ctx context.Context, opts WinOpts) error {
 	return generateAndRunCommands(ctx, opts, ModeDelete)
 }
 
+// CleanupQosPolicies removes leftover Steadybit QoS policies. It only lists them when they may exist, as listing
+// starts PowerShell and holds the lock that network attacks wait for.
 func CleanupQosPolicies() {
+	if qosPoliciesClean.Load() {
+		return
+	}
 	runLock.LockKey("windows")
 	defer func() { _ = runLock.UnlockKey("windows") }()
-	if !activeFw() {
-		err := removeSteadybitQosPolicies(context.Background())
-		if err != nil {
-			log.Error().Err(err).Msg("Error removing Steadybit QoS policies")
-		}
+	if activeFw() {
+		return
 	}
+	if err := removeSteadybitQosPolicies(context.Background()); err != nil {
+		log.Error().Err(err).Msg("Error removing Steadybit QoS policies")
+		return
+	}
+	qosPoliciesClean.Store(true)
 }
 
 func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error {
@@ -55,6 +67,7 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 	}
 
 	if len(qosCommands) > 0 {
+		qosPoliciesClean.Store(false)
 		if _, qosErr := executeQoSCommands(ctx, qosCommands); qosErr != nil {
 			err = errors.Join(err, qosErr)
 		}
