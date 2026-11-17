@@ -35,7 +35,7 @@ Download the latest Windows installer [here](https://windows-registry.steadybit.
 Specific versions of the Windows Host Extension can be found in the [Steadybit Windows Registry](https://windows-registry.steadybit.com/#steadybit-extension-host-windows/).
 
 As the extension requires extended privileges to execute host attacks, like injecting network traffic errors, the installer and the extension need to be executed as an **Administrator user**.
-During installation, a Windows Service named `SteadybitWindowsExtensionHost` is created and configured. It runs on startup on port `8085` and, by default, only accepts connections from the same host (`localhost`).
+During installation, a Windows Service named `SteadybitWindowsHostExtension` is created and configured. It runs on startup on port `8085` and, by default, only accepts connections from the same host (`localhost`).
 
 #### Pre-Release Versions
 
@@ -71,11 +71,11 @@ The extension must be executed as `Administrator` to perform network attacks. Fu
 
 The extension API is not authenticated unless [mutual TLS](https://github.com/steadybit/extension-kit#environment-variables) is configured: anyone who can reach port `8085` can run attacks on the host, bypassing the platform's permissions and audit log. The extension therefore binds its API (`8085`) and health endpoints (`8081`) to `localhost` only.
 
-Only if an agent on another host must reach the extension, set the system environment variable `STEADYBIT_EXTENSION_BIND_ADDRESS` to `0.0.0.0` (all interfaces) or to a specific IP address of the host, and restart the `SteadybitWindowsExtensionHost` service:
+Only if an agent on another host must reach the extension, set the system environment variable `STEADYBIT_EXTENSION_BIND_ADDRESS` to `0.0.0.0` (all interfaces) or to a specific IP address of the host, and restart the `SteadybitWindowsHostExtension` service:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("STEADYBIT_EXTENSION_BIND_ADDRESS", "0.0.0.0", "Machine")
-Restart-Service SteadybitWindowsExtensionHost
+Restart-Service SteadybitWindowsHostExtension
 ```
 
 Restrict access to port `8085` to the agent's host, for example with a Windows Firewall rule, or configure mutual TLS.
@@ -86,4 +86,4 @@ In case of problems, the extension logs are always a good starting point for inv
 
 ### Extension can not be reached
 
-Please check if the Windows service `SteadybitWindowsExtensionHost` is started correctly and (re-)start it.
+Please check if the Windows service `SteadybitWindowsHostExtension` is started correctly and (re-)start it.
