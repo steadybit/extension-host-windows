@@ -3,6 +3,7 @@ package exthostwindows
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -11,6 +12,11 @@ import (
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
+)
+
+const (
+	timeServiceName    = "w32time"
+	timeServiceTimeout = 30 * time.Second
 )
 
 type timeTravelAction struct {
@@ -135,27 +141,17 @@ func (a *timeTravelAction) Prepare(_ context.Context, state *TimeTravelActionSta
 func (a *timeTravelAction) Start(ctx context.Context, state *TimeTravelActionState) (*action_kit_api.StartResult, error) {
 	if state.DisableNtp {
 		log.Info().Msg("Blocking NTP traffic")
-		command := utils.PowershellCommand("Stop-Service", "w32time")
-		output, err := command.CombinedOutput()
-
-		if err != nil {
-			log.Error().Msg("Failed to block NTP traffic.")
+		if err := utils.StopService(timeServiceName, timeServiceTimeout); err != nil {
+			log.Error().Err(err).Msg("Failed to block NTP traffic.")
 			return nil, err
 		}
-
-		log.Info().Msgf("%s", output)
 	}
 
 	log.Info().Dur("offset", state.Offset).Msg("Adjusting time")
-
-	command := utils.PowershellCommand(fmt.Sprintf("Set-Date -Date (Get-Date).AddMinutes(%f)", state.Offset.Minutes()))
-	output, err := command.CombinedOutput()
-	if err != nil {
-		log.Error().Msg("Failed to adjust time.")
+	if err := utils.ShiftSystemTime(state.Offset); err != nil {
+		log.Error().Err(err).Msg("Failed to adjust time.")
 		return nil, err
 	}
-
-	log.Info().Msgf("%s", output)
 
 	state.OffsetApplied = true
 	return nil, nil
@@ -174,31 +170,20 @@ func (a *timeTravelAction) Stop(ctx context.Context, state *TimeTravelActionStat
 	log.Info().Msg("Adjusting time back.")
 	if state.DisableNtp {
 		log.Info().Msg("Unblocking NTP traffic.")
-		command := utils.PowershellCommand("Start-Service", "w32time")
-
-		output, err := command.CombinedOutput()
-
-		if err != nil {
-			log.Error().Msg("Failed to unblock NTP traffic.")
+		if err := utils.StartService(timeServiceName, timeServiceTimeout); err != nil {
+			log.Error().Err(err).Msg("Failed to unblock NTP traffic.")
 			return nil, err
 		}
-
-		log.Info().Msgf("%s", output)
 	}
 
-	command := utils.PowershellCommand(fmt.Sprintf("Set-Date -Date (Get-Date).AddMinutes(-%f)", state.Offset.Minutes()))
-	output, err := command.CombinedOutput()
-	if err != nil {
-		log.Error().Msg("Failed to revert time adjustment.")
+	if err := utils.ShiftSystemTime(-state.Offset); err != nil {
+		log.Error().Err(err).Msg("Failed to revert time adjustment.")
 		return nil, err
 	}
 
-	log.Info().Msgf("%s", output)
-
-	command = utils.PowershellCommand("w32tm", "/resync")
-	output, err = command.CombinedOutput()
+	output, err := exec.CommandContext(ctx, utils.SystemExecutable("w32tm.exe"), "/resync").CombinedOutput()
 	if err != nil {
-		log.Error().Msg("Failed to resync time using NTP.")
+		log.Error().Err(err).Msgf("Failed to resync time using NTP: %s", output)
 		return nil, err
 	}
 
