@@ -210,15 +210,17 @@ func incrementIP(a net.IP, idx int) {
 	}
 }
 
+// IsPortAvailable checks the wildcard and the loopback address: on Windows a wildcard
+// bind succeeds next to a process bound to 127.0.0.1 only (like the extension's own
+// health server), while the test servers listening on 127.0.0.1 would then fail.
 func IsPortAvailable(port int) bool {
-	address := ":" + strconv.Itoa(port)
-	listener, err := net.Listen("tcp", address)
-	if err != nil {
-		return false
-	}
-	defer func(listener net.Listener) {
+	for _, host := range []string{"", "127.0.0.1"} {
+		listener, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+		if err != nil {
+			return false
+		}
 		_ = listener.Close()
-	}(listener)
+	}
 	return true
 }
 

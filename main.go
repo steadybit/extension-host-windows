@@ -53,6 +53,11 @@ func main() {
 
 	extensionRegistry.Port(config.Config.Port) // update port once configuration is parsed
 
+	// The agent runs on the same host and reaches the extension via localhost (see the extension
+	// registry), so keep the unauthenticated API off the network. STEADYBIT_EXTENSION_BIND_ADDRESS
+	// overrides this for an agent on another host.
+	exthttp.SetDefaultBindAddress(exthttp.BindAddressLocalhost)
+
 	exthealth.SetReady(false)
 	exthealth.StartProbes(int(config.Config.HealthPort))
 

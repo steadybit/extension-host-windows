@@ -35,7 +35,7 @@ Download the latest Windows installer [here](https://windows-registry.steadybit.
 Specific versions of the Windows Host Extension can be found in the [Steadybit Windows Registry](https://windows-registry.steadybit.com/#steadybit-extension-host-windows/).
 
 As the extension requires extended privileges to execute host attacks, like injecting network traffic errors, the installer and the extension need to be executed as an **Administrator user**.
-During installation, a Windows Service named `SteadybitWindowsExtensionHost` is created and configured. It runs on startup on port `8085`.
+During installation, a Windows Service named `SteadybitWindowsExtensionHost` is created and configured. It runs on startup on port `8085` and, by default, only accepts connections from the same host (`localhost`).
 
 #### Pre-Release Versions
 
@@ -53,7 +53,9 @@ Make sure that the extension is registered with the Steadybit agent. Please refe
 the [documentation](https://docs.steadybit.com/install-and-configure/install-agent/extension-registration) for more
 information about extension registration and how to verify.
 
-In many cases adding the `STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_<n>_URL` environment variable to the Steadybit agent is sufficient:
+A Steadybit agent on the same host discovers the extension automatically through the Windows registry.
+
+To register the extension with an agent on another host, first make the extension accept connections from other hosts (see [Accepting connections from other hosts](#accepting-connections-from-other-hosts)). Then add the `STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_<n>_URL` environment variable to the Steadybit agent:
 
 ```shell
 STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_0_URL=http://<extension-windows-host-ip>:8085/
@@ -64,6 +66,19 @@ STEADYBIT_AGENT_EXTENSIONS_REGISTRATIONS_0_URL=http://<extension-windows-host-ip
 We limit the permissions required by the extension to the absolute minimum.
 
 The extension must be executed as `Administrator` to perform network attacks. Furthermore, the "limit outgoing bandwidth attack" creates and removes network quality of service policies in the `SYSTEM` context.
+
+### Accepting connections from other hosts
+
+The extension API is not authenticated unless [mutual TLS](https://github.com/steadybit/extension-kit#environment-variables) is configured: anyone who can reach port `8085` can run attacks on the host, bypassing the platform's permissions and audit log. The extension therefore binds its API (`8085`) and health endpoints (`8081`) to `localhost` only.
+
+Only if an agent on another host must reach the extension, set the system environment variable `STEADYBIT_EXTENSION_BIND_ADDRESS` to `0.0.0.0` (all interfaces) or to a specific IP address of the host, and restart the `SteadybitWindowsExtensionHost` service:
+
+```powershell
+[Environment]::SetEnvironmentVariable("STEADYBIT_EXTENSION_BIND_ADDRESS", "0.0.0.0", "Machine")
+Restart-Service SteadybitWindowsExtensionHost
+```
+
+Restrict access to port `8085` to the agent's host, for example with a Windows Firewall rule, or configure mutual TLS.
 
 ## Troubleshooting
 
