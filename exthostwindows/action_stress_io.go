@@ -1,7 +1,6 @@
 package exthostwindows
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -20,6 +19,7 @@ import (
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/extutil"
+	"golang.org/x/sys/windows"
 )
 
 type IOStressLayer string
@@ -348,27 +348,19 @@ func (a *ioStressAction) Stop(_ context.Context, state *IoStressActionState) (*a
 	}, nil
 }
 
+// isPhysicalDeviceAvailable checks for \\.\PhysicalDriveN, the device diskspd addresses as #N.
 func isPhysicalDeviceAvailable(deviceId uint64) (bool, error) {
-	cmd := exec.Command("powershell", "-Command", "Get-PhysicalDisk | ForEach-Object { $_.DeviceId }")
-	output, err := cmd.Output()
+	path, err := windows.UTF16PtrFromString(fmt.Sprintf(`\\.\PhysicalDrive%d`, deviceId))
 	if err != nil {
 		return false, err
 	}
-
-	reader := strings.NewReader(string(output))
-	scanner := bufio.NewScanner(reader)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		id, err := strconv.ParseUint(line, 10, 0)
-		if err != nil {
-			return false, err
-		}
-
-		if deviceId == id {
-			return true, nil
-		}
+	h, err := windows.CreateFile(path, 0, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, 0, 0)
+	if errors.Is(err, windows.ERROR_FILE_NOT_FOUND) || errors.Is(err, windows.ERROR_PATH_NOT_FOUND) {
+		return false, nil
 	}
-
-	return false, nil
+	if err != nil {
+		return false, err
+	}
+	_ = windows.CloseHandle(h)
+	return true, nil
 }

@@ -58,7 +58,7 @@ func Test_PSGetDriveSpace_Available(t *testing.T) {
 	driveLetters, err := GetAvailableDriveLetters()
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(driveLetters), 1)
-	space, err := GetDriveSpace(driveLetters[0], Available)
+	space, _, err := GetDriveSpace(driveLetters[0])
 	require.NoError(t, err)
 	require.Greater(t, space, uint64(0))
 }
@@ -67,11 +67,9 @@ func Test_PSGetDriveSpace_Total(t *testing.T) {
 	driveLetters, err := GetAvailableDriveLetters()
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(driveLetters), 1)
-	space, err := GetDriveSpace(driveLetters[0], Available)
+	space, totalSpace, err := GetDriveSpace(driveLetters[0])
 	require.NoError(t, err)
 	require.Greater(t, space, uint64(0))
-	totalSpace, err := GetDriveSpace(driveLetters[0], Total)
-	require.NoError(t, err)
 	require.Greater(t, totalSpace, space)
 }
 
