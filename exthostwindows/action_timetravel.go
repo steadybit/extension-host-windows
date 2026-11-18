@@ -2,6 +2,7 @@ package exthostwindows
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"time"
@@ -17,6 +18,12 @@ import (
 const (
 	timeServiceName    = "w32time"
 	timeServiceTimeout = 30 * time.Second
+)
+
+var (
+	shiftSystemTime  = utils.ShiftSystemTime
+	stopTimeService  = func() error { return utils.StopService(timeServiceName, timeServiceTimeout) }
+	startTimeService = func() error { return utils.StartService(timeServiceName, timeServiceTimeout) }
 )
 
 type timeTravelAction struct {
@@ -141,15 +148,21 @@ func (a *timeTravelAction) Prepare(_ context.Context, state *TimeTravelActionSta
 func (a *timeTravelAction) Start(ctx context.Context, state *TimeTravelActionState) (*action_kit_api.StartResult, error) {
 	if state.DisableNtp {
 		log.Info().Msg("Blocking NTP traffic")
-		if err := utils.StopService(timeServiceName, timeServiceTimeout); err != nil {
+		if err := stopTimeService(); err != nil {
 			log.Error().Err(err).Msg("Failed to block NTP traffic.")
 			return nil, err
 		}
 	}
 
 	log.Info().Dur("offset", state.Offset).Msg("Adjusting time")
-	if err := utils.ShiftSystemTime(state.Offset); err != nil {
+	if err := shiftSystemTime(state.Offset); err != nil {
 		log.Error().Err(err).Msg("Failed to adjust time.")
+		// Stop skips everything while no offset is applied, so the time service would otherwise stay stopped.
+		if state.DisableNtp {
+			if startErr := startTimeService(); startErr != nil {
+				err = errors.Join(err, fmt.Errorf("failed to unblock NTP traffic: %w", startErr))
+			}
+		}
 		return nil, err
 	}
 
@@ -170,13 +183,13 @@ func (a *timeTravelAction) Stop(ctx context.Context, state *TimeTravelActionStat
 	log.Info().Msg("Adjusting time back.")
 	if state.DisableNtp {
 		log.Info().Msg("Unblocking NTP traffic.")
-		if err := utils.StartService(timeServiceName, timeServiceTimeout); err != nil {
+		if err := startTimeService(); err != nil {
 			log.Error().Err(err).Msg("Failed to unblock NTP traffic.")
 			return nil, err
 		}
 	}
 
-	if err := utils.ShiftSystemTime(-state.Offset); err != nil {
+	if err := shiftSystemTime(-state.Offset); err != nil {
 		log.Error().Err(err).Msg("Failed to revert time adjustment.")
 		return nil, err
 	}

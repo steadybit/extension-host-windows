@@ -2,6 +2,7 @@ package exthostwindows
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -89,4 +90,25 @@ func TestActionTimeTravel_Prepare(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestActionTimeTravel_Start_failedShiftUnblocksNtp(t *testing.T) {
+	var calls []string
+	stub := func(target *func() error, name string) {
+		previous := *target
+		*target = func() error { calls = append(calls, name); return nil }
+		t.Cleanup(func() { *target = previous })
+	}
+	stub(&stopTimeService, "stop")
+	stub(&startTimeService, "start")
+	previousShift := shiftSystemTime
+	shiftSystemTime = func(time.Duration) error { calls = append(calls, "shift"); return errors.New("privilege not held") }
+	t.Cleanup(func() { shiftSystemTime = previousShift })
+
+	state := TimeTravelActionState{Offset: time.Hour, DisableNtp: true}
+	_, err := (&timeTravelAction{}).Start(context.Background(), &state)
+
+	assert.ErrorContains(t, err, "privilege not held")
+	assert.Equal(t, []string{"stop", "shift", "start"}, calls)
+	assert.False(t, state.OffsetApplied)
 }
