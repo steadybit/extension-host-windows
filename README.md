@@ -30,7 +30,7 @@ extensions:
 
 **Note**: Only x64 systems are supported.
 
-Download the latest Windows installer [here](https://windows-registry.steadybit.com/steadybit-agent/windows-agent-latest.zip). SHA-256 checksum of the artifact can be found [here](https://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-latest.sha256).
+Download the latest Windows installer [here](https://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-latest.zip). SHA-256 checksum of the artifact can be found [here](https://windows-registry.steadybit.com/steadybit-extension-host-windows/windows-host-extension-latest.sha256).
 
 Specific versions of the Windows Host Extension can be found in the [Steadybit Windows Registry](https://windows-registry.steadybit.com/#steadybit-extension-host-windows/).
 

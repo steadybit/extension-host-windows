@@ -3,7 +3,6 @@
 ## v0.5.1
 
 - chore: list the Visual C++ runtime in the third-party licenses
-- chore: update changelog for v0.5.1
 - ci: remove the e2e workflow
 - fix(build): check the WinDivert files instead of an unset exit code
 - fix(build): unpack WinDivert without Expand-Archive and fail on a broken package
