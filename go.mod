@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/elastic/go-sysinfo v1.15.5
+	github.com/go-ole/go-ole v1.3.0
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0

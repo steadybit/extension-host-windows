@@ -49,9 +49,10 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 				},
 			},
 			wantedState: &network.LimitBandwidthOpts{
-				Bandwidth:    "1000MB",
-				IncludeCidrs: networks,
-				PortRange:    akn.PortRangeAny,
+				Bandwidth:     "1000MB",
+				BitsPerSecond: 1_000_000_000,
+				IncludeCidrs:  networks,
+				PortRange:     akn.PortRangeAny,
 			},
 		}, {
 			name: "Should return config on ip",
@@ -70,7 +71,8 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 				},
 			},
 			wantedState: &network.LimitBandwidthOpts{
-				Bandwidth: "1000MB",
+				Bandwidth:     "1000MB",
+				BitsPerSecond: 1_000_000_000,
 				IncludeCidrs: []net.IPNet{
 					{IP: net.ParseIP("1.1.1.1"), Mask: net.CIDRMask(32, 32)},
 					{IP: net.ParseIP("2.2.2.2"), Mask: net.CIDRMask(32, 32)},
@@ -242,7 +244,8 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 				},
 			},
 			wantedState: &network.LimitBandwidthOpts{
-				Bandwidth: "1000MB",
+				Bandwidth:     "1000MB",
+				BitsPerSecond: 1_000_000_000,
 				PortRange: akn.PortRange{
 					From: 111,
 					To:   122,
@@ -308,4 +311,39 @@ func assertContainsCidr(wantedCidr net.IPNet, actualCidrs []net.IPNet) bool {
 		}
 	}
 	return false
+}
+
+func TestParseBandwidth(t *testing.T) {
+	tests := []struct {
+		bandwidth string
+		wantName  string
+		wantBits  uint64
+		wantErr   bool
+	}{
+		{bandwidth: "1024kbit", wantName: "1024KB", wantBits: 1_024_000},
+		{bandwidth: "100mbit", wantName: "100MB", wantBits: 100_000_000},
+		{bandwidth: "2gbit", wantName: "2GB", wantBits: 2_000_000_000},
+		{bandwidth: "1tbit", wantName: "1TB", wantBits: 1_000_000_000_000},
+		{bandwidth: "8bit", wantName: "8", wantBits: 8},
+		{bandwidth: "100mbps", wantName: "800MB", wantBits: 800_000_000},
+		{bandwidth: "1bps", wantName: "8", wantBits: 8},
+		{bandwidth: "7bit", wantErr: true},
+		{bandwidth: "0kbit", wantErr: true},
+		{bandwidth: "100", wantErr: true},
+		{bandwidth: "100mbit; Remove-Item", wantErr: true},
+		{bandwidth: "99999999999999999999tbit", wantErr: true},
+		{bandwidth: "3000000tbps", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.bandwidth, func(t *testing.T) {
+			name, bits, err := parseBandwidth(tt.bandwidth)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantName, name)
+			assert.Equal(t, tt.wantBits, bits)
+		})
+	}
 }

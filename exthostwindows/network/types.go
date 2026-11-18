@@ -26,7 +26,8 @@ const (
 )
 
 type WinOpts interface {
-	QoSCommands(mode Mode) ([]string, error)
+	// QoSPolicies returns the QoS policies for attacks implemented with Windows QoS, nil otherwise.
+	QoSPolicies() []QosPolicy
 	// WinDivert returns the wdna.exe run for attacks implemented with WinDivert, nil otherwise.
 	WinDivert() *WinDivertOpts
 	String() string

@@ -17,7 +17,7 @@ func TestCleanupQosPolicies(t *testing.T) {
 	assert.True(t, qosPoliciesClean.Load())
 
 	// Cleanup does not run if experiment is active
-	createQosPolicy(t, qosPolicyPrefix+"test_policy_cleanup")
+	createTestQosPolicy(t, qosPolicyPrefix+"TEST_POLICY_CLEANUP")
 	qosPoliciesClean.Store(false) // as if a failed revert left the policy behind
 	opts := &MockNetworkOpt{}
 	err := generateAndRunCommands(t.Context(), opts, ModeAdd)
@@ -25,8 +25,7 @@ func TestCleanupQosPolicies(t *testing.T) {
 
 	CleanupQosPolicies()
 
-	policies, err := listSteadybitQosPolicyNames(t.Context())
-	require.NoError(t, err)
+	policies := qosPolicyNames(t)
 	assert.NotEmpty(t, policies)
 
 	// Cleanup removes leftover policies after the experiment has finished
@@ -35,8 +34,7 @@ func TestCleanupQosPolicies(t *testing.T) {
 
 	CleanupQosPolicies()
 
-	policies, err = listSteadybitQosPolicyNames(t.Context())
-	require.NoError(t, err)
+	policies = qosPolicyNames(t)
 	assert.Empty(t, policies)
 	assert.True(t, qosPoliciesClean.Load())
 }
@@ -47,8 +45,8 @@ func (o *MockNetworkOpt) WinDivert() *WinDivertOpts {
 	return nil
 }
 
-func (o *MockNetworkOpt) QoSCommands(_ Mode) ([]string, error) {
-	return nil, nil
+func (o *MockNetworkOpt) QoSPolicies() []QosPolicy {
+	return nil
 }
 
 func (o *MockNetworkOpt) String() string {

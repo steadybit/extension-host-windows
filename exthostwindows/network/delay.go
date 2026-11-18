@@ -15,8 +15,8 @@ type DelayOpts struct {
 	Jitter   bool
 }
 
-func (o *DelayOpts) QoSCommands(_ Mode) ([]string, error) {
-	return nil, nil
+func (o *DelayOpts) QoSPolicies() []QosPolicy {
+	return nil
 }
 
 func (o *DelayOpts) WinDivert() *WinDivertOpts {

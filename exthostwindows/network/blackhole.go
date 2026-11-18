@@ -13,8 +13,8 @@ type BlackholeOpts struct {
 	Duration time.Duration
 }
 
-func (o *BlackholeOpts) QoSCommands(_ Mode) ([]string, error) {
-	return nil, nil
+func (o *BlackholeOpts) QoSPolicies() []QosPolicy {
+	return nil
 }
 
 func (o *BlackholeOpts) WinDivert() *WinDivertOpts {

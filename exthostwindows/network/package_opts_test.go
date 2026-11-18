@@ -30,9 +30,7 @@ func testFilter(t *testing.T) Filter {
 func TestCorruptPackagesOpts(t *testing.T) {
 	opts := &CorruptPackagesOpts{Filter: testFilter(t), Corruption: 15, Duration: 30 * time.Second}
 
-	qosCmds, err := opts.QoSCommands(ModeAdd)
-	require.NoError(t, err)
-	assert.Empty(t, qosCmds)
+	assert.Empty(t, opts.QoSPolicies())
 
 	assert.Equal(t, &WinDivertOpts{Filter: opts.Filter, Mode: WinDivertModeCorrupt, Duration: 30 * time.Second, Percentage: 15}, opts.WinDivert())
 
@@ -42,9 +40,7 @@ func TestCorruptPackagesOpts(t *testing.T) {
 func TestPackageLossOpts(t *testing.T) {
 	opts := &PackageLossOpts{Filter: testFilter(t), Loss: 70, Duration: 90 * time.Second}
 
-	qosCmds, err := opts.QoSCommands(ModeAdd)
-	require.NoError(t, err)
-	assert.Empty(t, qosCmds)
+	assert.Empty(t, opts.QoSPolicies())
 
 	assert.Equal(t, &WinDivertOpts{Filter: opts.Filter, Mode: WinDivertModeDrop, Duration: 90 * time.Second, Percentage: 70}, opts.WinDivert())
 
