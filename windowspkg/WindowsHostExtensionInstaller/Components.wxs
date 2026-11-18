@@ -8,6 +8,10 @@
         <File Source="./Artifacts/WinDivert64.sys" />
 				<Environment Id="WdnaPath" Name="PATH" Value="[WDNAFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
       </Component>
+			<!-- wdna.exe and wdna_shutdown.exe need the Visual C++ runtime, which Windows does not include. -->
+			<Component Guid="9d268aed-53a9-46fa-9611-c7caf25eeffa">
+				<File Id="WdnaVcRuntime" Source="./Artifacts/vcruntime140.dll" />
+			</Component>
     </ComponentGroup>
 		<ComponentGroup Id="MEMORY" Directory="MEMFOLDER">
 			<Component Guid="3e17a3d6-052f-44ba-9fcf-eb084c47b035">
@@ -21,6 +25,10 @@
 				<File Source="./Artifacts/diskspd.exe"/>
 				<File Source="./Artifacts/coreutils.exe"/>
 				<Environment Id="DiskFolderPath" Name="PATH" Value="[DISKFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
+			</Component>
+			<!-- coreutils.exe needs the Visual C++ runtime, which Windows does not include. -->
+			<Component Guid="65981a0a-f514-4107-9207-dbda1783a53f">
+				<File Id="DiskVcRuntime" Source="./Artifacts/vcruntime140.dll" />
 			</Component>
 		</ComponentGroup>
 		<ComponentGroup Id="CPUSTRESS" Directory="CPUFOLDER">
