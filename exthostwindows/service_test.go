@@ -36,7 +36,6 @@ func TestExtensionService_Execute(t *testing.T) {
 	changeRequests := make(chan svc.ChangeRequest)
 	statuses := make(chan svc.Status, 1)
 
-	// Execute never returns for non-stop requests (stop terminates the process via log.Fatal)
 	go s.Execute(nil, changeRequests, statuses)
 
 	assert.Equal(t, svc.StartPending, receiveStatus(t, statuses).State)
@@ -54,6 +53,28 @@ func TestExtensionService_Execute(t *testing.T) {
 	case status := <-statuses:
 		t.Fatalf("unexpected status %+v", status)
 	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestExtensionService_Execute_Stop(t *testing.T) {
+	for name, cmd := range map[string]svc.Cmd{"stop": svc.Stop, "shutdown": svc.Shutdown} {
+		t.Run(name, func(t *testing.T) {
+			stopHandlerCalled := false
+			s := &extensionService{stopHandler: func() { stopHandlerCalled = true }}
+			changeRequests := make(chan svc.ChangeRequest, 1)
+			changeRequests <- svc.ChangeRequest{Cmd: cmd}
+			statuses := make(chan svc.Status, 3)
+
+			ssec, errno := s.Execute(nil, changeRequests, statuses)
+
+			assert.False(t, ssec)
+			assert.Zero(t, errno)
+			assert.True(t, stopHandlerCalled)
+			assert.Equal(t, svc.StartPending, (<-statuses).State)
+			assert.Equal(t, svc.Running, (<-statuses).State)
+			assert.Equal(t, svc.StopPending, (<-statuses).State)
+			assert.Empty(t, statuses)
+		})
 	}
 }
 

@@ -42,7 +42,6 @@ func main() {
 			log.Error().Err(err).Msg("unable to remove local discovery from the Windows registry")
 		}
 		stopQosCleanup()
-		exthttp.StopListen()
 	})
 
 	extbuild.PrintBuildInformation()

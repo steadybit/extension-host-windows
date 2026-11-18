@@ -22,6 +22,13 @@ var serviceName = "SteadybitExtensionHostWindows"
 var applicationDataPath = filepath.Join(os.Getenv("ProgramData"), "Steadybit GmbH")
 var logFilePath = filepath.Join(applicationDataPath, "extension-host-windows.log")
 
+// stopWaitHint is in milliseconds; the stop handler may wait for a running QoS policy cleanup.
+const stopWaitHint = 30_000
+
+// ActivateWindowsServiceHandler exits the process once the service control manager
+// has been told that the service stopped. Exiting any earlier, e.g. by returning
+// from main, makes the SCM report every stop and restart as "terminated
+// unexpectedly" (error 1067).
 func ActivateWindowsServiceHandler(stopHandler func()) {
 	isInService, err := svc.IsWindowsService()
 	if err != nil {
@@ -38,15 +45,13 @@ func ActivateWindowsServiceHandler(stopHandler func()) {
 	service, err := newExtensionService(stopHandler)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting as Windows service")
-		return
 	}
 
 	go func() {
 		if err := service.Run(); err != nil {
 			log.Fatal().Err(err).Msg("Error starting as Windows service")
-			return
 		}
-		log.Info().Msg("Windows service stopped")
+		os.Exit(0)
 	}()
 }
 
@@ -111,9 +116,11 @@ func (s *extensionService) Execute(_ []string, changeRequests <-chan svc.ChangeR
 		case svc.Interrogate:
 			statuses <- changeRequest.CurrentStatus
 		case svc.Stop, svc.Shutdown:
+			statuses <- svc.Status{State: svc.StopPending, WaitHint: stopWaitHint}
+			log.Info().Msg("Received Windows service stop command")
 			s.stopHandler()
-			statuses <- svc.Status{State: svc.Stopped, Accepts: cmdsAccepted}
-			log.Fatal().Msg("Received Windows service stop command")
+			// svc.Run reports SERVICE_STOPPED once Execute has returned.
+			return false, 0
 		default:
 			log.Info().Msgf("Unexpected control request: cmd %d", changeRequest.Cmd)
 		}
