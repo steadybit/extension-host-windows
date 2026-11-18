@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.4
+## Unreleased
 
 - **Behaviour change** — the extension only accepts connections from the same host (`localhost`) by default. An agent on another host needs `STEADYBIT_EXTENSION_BIND_ADDRESS=0.0.0.0`, see "Accepting connections from other hosts" in the README.
 - build(deps): bump the steadybit group with 2 updates
