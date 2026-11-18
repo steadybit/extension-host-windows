@@ -93,7 +93,20 @@ try {
 
   # Extract the zip file to the destination directory
   Write-Host "Extracting to $DownloadDir..."
-  Expand-Archive -Path $assetZipPath -DestinationPath $DownloadDir -Force
+  # Not Expand-Archive: on newer GitHub runner images it calls a ZipFile.ExtractToDirectory overload that Windows
+  # PowerShell 5.1 (.NET Framework) does not have.
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $zip = [System.IO.Compression.ZipFile]::OpenRead($assetZipPath)
+  try {
+    foreach ($entry in $zip.Entries) {
+      if ([string]::IsNullOrEmpty($entry.Name)) { continue }
+      $target = Join-Path $DownloadDir $entry.FullName
+      New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+      [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true)
+    }
+  } finally {
+    $zip.Dispose()
+  }
 
   Write-Host "Successfully downloaded and extracted windows-build to $DownloadDir"
 } catch {

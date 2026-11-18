@@ -12,6 +12,9 @@ Write-Output "Downloading WinDivert release"
 $winDivertPath = "$distPath\WinDivert"
 $releaseVersion = if ($env:STEADYBIT_WINDIVERT_VERSION) { $env:STEADYBIT_WINDIVERT_VERSION } else { "latest" }
 & "$scriptPath\download-windivert.ps1" -DownloadDir "$winDivertPath" -ReleaseVersion "$releaseVersion"
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path "$winDivertPath\wdna.exe")) {
+  Write-Error "Downloading WinDivert failed, the extension would ship without it" -ErrorAction Stop
+}
 
 # Create a temp location for the extraction
 $tempDir = "$distPath\temp_extract_$(Get-Random)"
@@ -33,7 +36,7 @@ Write-Output "Adding the Visual C++ runtime"
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 $vcRuntime = Get-ChildItem "$vsPath\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140.dll" |
-    Sort-Object { [version]$_.VersionInfo.FileVersion } -Descending |
+    Sort-Object { $v = $_.VersionInfo; [version]::new($v.FileMajorPart, $v.FileMinorPart, $v.FileBuildPart, $v.FilePrivatePart) } -Descending |
     Select-Object -First 1
 if (-not $vcRuntime) {
     Write-Error "vcruntime140.dll not found in the Visual Studio installation $vsPath" -ErrorAction Stop
