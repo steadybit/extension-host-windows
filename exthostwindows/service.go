@@ -72,9 +72,10 @@ func ActivateWindowsServiceHandler(stopHandler func()) (isService bool) {
 
 	zerolog.FatalExitFunc = func() {
 		service.fail()
-		// The goroutine below exits once SERVICE_STOPPED is reported. That never
+		// The goroutine below exits once SERVICE_STOPPED is reported. During a stop
+		// that is after the stop handler finished rolling back actions, and it never
 		// happens if log.Fatal was called on the Execute goroutine itself.
-		time.Sleep(5 * time.Second)
+		time.Sleep(waitHint * time.Millisecond)
 		os.Exit(1)
 	}
 
