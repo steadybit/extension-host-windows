@@ -91,6 +91,9 @@ func TestWithLocalhost(t *testing.T) {
 		}, {
 			Name: "two simultaneous network attacks should error",
 			Test: testTwoNetworkAttacks,
+		}, {
+			Name: "unknown network interface should error",
+			Test: testUnknownNetworkInterface,
 		},
 	})
 }
@@ -881,6 +884,23 @@ func testTwoNetworkAttacks(t *testing.T, l Environment, e Extension) {
 	actionLimit, err2 := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), configLimit, defaultExecutionContext)
 	defer func() { _ = actionLimit.Cancel() }()
 	require.ErrorContains(t, err2, "running multiple network attacks at the same time is not supported")
+}
+
+func testUnknownNetworkInterface(t *testing.T, l Environment, e Extension) {
+	config := struct {
+		Duration     int      `json:"duration"`
+		NetInterface []string `json:"networkInterface"`
+	}{
+		Duration:     10000,
+		NetInterface: []string{"no-such-nic"},
+	}
+	for _, actionId := range []string{"network_delay", "network_package_loss", "network_package_corruption", "network_blackhole"} {
+		t.Run(actionId, func(t *testing.T) {
+			action, err := e.RunAction(exthostwindows.BaseActionID+"."+actionId, l.BuildTarget(t.Context()), config, defaultExecutionContext)
+			defer func() { _ = action.Cancel() }()
+			require.ErrorContains(t, err, "network interface no-such-nic not found")
+		})
+	}
 }
 
 func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint {
