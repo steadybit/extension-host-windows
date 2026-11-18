@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## v0.5.1
 
 - chore: list the Visual C++ runtime in the third-party licenses
+- chore: update changelog for v0.5.1
 - ci: remove the e2e workflow
+- fix(build): check the WinDivert files instead of an unset exit code
+- fix(build): unpack WinDivert without Expand-Archive and fail on a broken package
 - fix: do not crash or hang when devzero or dd fails to start in fill disk
 - fix: fail on network interfaces that do not exist on the host
 - fix: leave a running network attack alone when a late stop of a failed start arrives
