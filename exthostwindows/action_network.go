@@ -248,10 +248,9 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]any, restri
 		})
 	}
 
-	interfaces := extutil.ToStringArray(actionConfig["networkInterface"])
-	var interfaceIndexes []int
-	if len(interfaces) != 0 {
-		interfaceIndexes = akn.GetNetworkInterfaceIndexesByName(interfaces)
+	interfaceIndexes, err := networkInterfaceIndexes(extutil.ToStringArray(actionConfig["networkInterface"]))
+	if err != nil {
+		return network.Filter{}, nil, err
 	}
 
 	return network.Filter{
@@ -306,4 +305,42 @@ func LogTestSigningStatus() {
 	} else {
 		log.Info().Bool("testsigning", isTestSigningEnabled).Msg("checked testsigning flag of the machine")
 	}
+}
+
+// networkInterfaceIndexes fails on names that do not exist on this host: without a matching interface the filter
+// would not restrict the interfaces at all, and the attack would hit every interface.
+func networkInterfaceIndexes(names []string) ([]int, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list network interfaces: %w", err)
+	}
+	indexByName := make(map[string]int, len(ifaces))
+	for _, iface := range ifaces {
+		indexByName[iface.Name] = iface.Index
+	}
+
+	var indexes []int
+	var missing []string
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		index, ok := indexByName[name]
+		if !ok {
+			missing = append(missing, name)
+			continue
+		}
+		indexes = append(indexes, index)
+	}
+	if len(missing) > 0 {
+		available := make([]string, 0, len(ifaces))
+		for _, iface := range ifaces {
+			available = append(available, iface.Name)
+		}
+		return nil, fmt.Errorf("network interface %s not found, available: %s", strings.Join(missing, ", "), strings.Join(available, ", "))
+	}
+	return indexes, nil
 }

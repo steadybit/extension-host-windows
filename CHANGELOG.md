@@ -4,7 +4,6 @@
 
 - **Behaviour change** — the extension only accepts connections from the same host (`localhost`) by default. An agent on another host needs `STEADYBIT_EXTENSION_BIND_ADDRESS=0.0.0.0`, see "Accepting connections from other hosts" in the README.
 - build(deps): bump the steadybit group with 2 updates
-- chore: update changelog for v0.4.4
 - ci: CLA check with a GitHub App token (#229)
 - ci: SonarQube Cloud analysis without a stored token (#232)
 - feat: bind the extension to localhost by default (#230)

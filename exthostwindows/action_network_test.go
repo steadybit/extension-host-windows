@@ -5,6 +5,7 @@ package exthostwindows
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -66,4 +67,25 @@ func Test_mapToNetworkFilter_excludeIp(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_mapToNetworkFilter_networkInterface(t *testing.T) {
+	ifaces, err := net.Interfaces()
+	require.NoError(t, err)
+	require.NotEmpty(t, ifaces)
+
+	filter, _, err := mapToNetworkFilter(context.Background(), map[string]any{"networkInterface": []any{ifaces[0].Name}}, nil)
+	require.NoError(t, err)
+	require.Equal(t, []int{ifaces[0].Index}, filter.InterfaceIndexes)
+
+	filter, _, err = mapToNetworkFilter(context.Background(), map[string]any{}, nil)
+	require.NoError(t, err)
+	require.Empty(t, filter.InterfaceIndexes)
+
+	filter, _, err = mapToNetworkFilter(context.Background(), map[string]any{"networkInterface": []any{""}}, nil)
+	require.NoError(t, err)
+	require.Empty(t, filter.InterfaceIndexes)
+
+	_, _, err = mapToNetworkFilter(context.Background(), map[string]any{"networkInterface": []any{ifaces[0].Name, "no-such-nic"}}, nil)
+	require.ErrorContains(t, err, "network interface no-such-nic not found")
 }
