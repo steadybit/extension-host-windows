@@ -22,6 +22,8 @@ func TestActionNetworkBandwidth_Prepare(t *testing.T) {
 	osHostname = func() (string, error) {
 		return "myhostname", nil
 	}
+	isWindowsHomeEdition = func() bool { return false }
+	t.Cleanup(func() { isWindowsHomeEdition = utils.IsWindowsHomeEdition })
 
 	networks, err := utils.MapToNetworks(t.Context(), "localhost")
 	require.NoError(t, err)
@@ -311,6 +313,19 @@ func assertContainsCidr(wantedCidr net.IPNet, actualCidrs []net.IPNet) bool {
 		}
 	}
 	return false
+}
+
+func TestActionNetworkBandwidth_PrepareRejectsHomeEdition(t *testing.T) {
+	osHostname = func() (string, error) { return "myhostname", nil }
+	isWindowsHomeEdition = func() bool { return true }
+	t.Cleanup(func() { isWindowsHomeEdition = utils.IsWindowsHomeEdition })
+
+	_, _, err := limitBandwidth()(t.Context(), networkPrepareRequest("myhostname", map[string]any{
+		"duration":  "10000",
+		"bandwidth": "8mbit",
+		"ip":        []any{"1.1.1.1"},
+	}))
+	assert.ErrorContains(t, err, "Windows Home editions")
 }
 
 func TestParseBandwidth(t *testing.T) {

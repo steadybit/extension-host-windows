@@ -6,6 +6,7 @@ package exthostwindows
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -94,11 +95,17 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 	}
 }
 
+var isWindowsHomeEdition = utils.IsWindowsHomeEdition
+
 func limitBandwidth() networkOptsProvider {
 	return func(ctx context.Context, request action_kit_api.PrepareActionRequestBody) (network.WinOpts, action_kit_api.Messages, error) {
 		_, err := CheckTargetHostname(request.Target.Attributes)
 		if err != nil {
 			return nil, nil, err
+		}
+
+		if isWindowsHomeEdition() {
+			return nil, nil, errors.New("limit bandwidth needs Windows policy-based QoS, which Windows Home editions do not apply")
 		}
 
 		parsedDuration := extutil.ToUInt64(request.Config["duration"])
