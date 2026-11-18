@@ -412,35 +412,7 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 
 		log.Info().Msgf("Running command: %s, %s.", ddCmd.Path, ddCmd.Args)
 
-		go func() {
-			pipeReader, pipeWriter := io.Pipe()
-			defer pipeReader.Close()
-			defer pipeWriter.Close()
-
-			devzeroCmd.Stdout = pipeWriter
-			ddCmd.Stdin = pipeReader
-
-			ddCmd.Stdout = os.Stdout
-			ddCmd.Stderr = os.Stderr
-
-			if err := devzeroCmd.Start(); err != nil {
-				log.Err(err).Msgf("failed to start devzero")
-			}
-
-			if err := ddCmd.Start(); err != nil {
-				log.Err(err).Msgf("failed to start dd")
-			}
-
-			if err := ddCmd.Wait(); err != nil {
-				log.Err(err).Msg("dd failed executing: might have been stopped forcefully")
-			}
-
-			if err := devzeroCmd.Process.Kill(); err != nil {
-				log.Err(err).Msg("failed to stop devzero")
-			}
-
-			devzeroCmd.Wait()
-		}()
+		go pipeDevzeroIntoDd(devzeroCmd, ddCmd)
 	}
 
 	return &action_kit_api.StartResult{
@@ -456,21 +428,16 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 func (a *fillDiskAction) Stop(_ context.Context, state *FillDiskActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
 
-	err := os.Remove(state.StressOpts.FilePath)
-
-	if err != nil {
+	// dd has to end before its file is removed. The file is missing when the start failed.
+	if err := utils.StopProcess("coreutils"); err != nil {
 		return nil, err
 	}
 
-	err = utils.StopProcess("coreutils")
-
-	if err != nil {
+	if err := utils.StopProcess("devzero"); err != nil {
 		return nil, err
 	}
 
-	err = utils.StopProcess("devzero")
-
-	if err != nil {
+	if err := os.Remove(state.StressOpts.FilePath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 
@@ -482,4 +449,38 @@ func (a *fillDiskAction) Stop(_ context.Context, state *FillDiskActionState) (*a
 	return &action_kit_api.StopResult{
 		Messages: &messages,
 	}, nil
+}
+
+// pipeDevzeroIntoDd runs dd with the output of devzero as input until dd ends. If one of them does not start, the
+// other one is not left running.
+func pipeDevzeroIntoDd(devzeroCmd, ddCmd *exec.Cmd) {
+	pipeReader, pipeWriter := io.Pipe()
+	defer pipeReader.Close()
+	defer pipeWriter.Close()
+
+	devzeroCmd.Stdout = pipeWriter
+	ddCmd.Stdin = pipeReader
+	ddCmd.Stdout = os.Stdout
+	ddCmd.Stderr = os.Stderr
+
+	if err := devzeroCmd.Start(); err != nil {
+		log.Err(err).Msg("failed to start devzero")
+		return
+	}
+	defer func() {
+		if err := devzeroCmd.Process.Kill(); err != nil {
+			log.Err(err).Msg("failed to stop devzero")
+		}
+		// Unblocks the copy of devzero's output into the pipe, which nobody reads once dd ended.
+		_ = pipeReader.Close()
+		_ = devzeroCmd.Wait()
+	}()
+
+	if err := ddCmd.Start(); err != nil {
+		log.Err(err).Msg("failed to start dd")
+		return
+	}
+	if err := ddCmd.Wait(); err != nil {
+		log.Err(err).Msg("dd failed executing: might have been stopped forcefully")
+	}
 }

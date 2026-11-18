@@ -314,11 +314,34 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start wdna.exe: %w", err)
 	}
+	awaitCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 	go func() {
-		log.Debug().Err(cmd.Wait()).Msg("wdna.exe exited")
+		err := cmd.Wait()
+		log.Debug().Err(err).Msg("wdna.exe exited")
+		cancel(wdnaExitError(err))
 	}()
 
-	return utils.AwaitServiceRunning(winDivertServiceName, winDivertServiceTimeout)
+	if err := utils.AwaitServiceRunning(awaitCtx, winDivertServiceName, winDivertServiceTimeout); err != nil {
+		// Otherwise wdna could still apply the attack once the service runs, with nobody left to stop it.
+		_ = cmd.Process.Kill()
+		return err
+	}
+	return nil
+}
+
+// statusDllNotFound is the exit code of a process that Windows could not start because a DLL is missing.
+const statusDllNotFound = 0xC0000135
+
+func wdnaExitError(err error) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && uint32(exitErr.ExitCode()) == statusDllNotFound {
+		return errors.New("wdna.exe could not start because a DLL is missing, e.g. VCRUNTIME140.dll of the Microsoft Visual C++ Redistributable")
+	}
+	if err == nil {
+		return errors.New("wdna.exe exited before the WinDivert service started")
+	}
+	return fmt.Errorf("wdna.exe exited before the WinDivert service started: %w", err)
 }
 
 func (o *WinDivertOpts) args(filterFile string) []string {

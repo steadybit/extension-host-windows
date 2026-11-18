@@ -6,6 +6,7 @@ package network
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -60,6 +61,11 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		if err := pushActiveFw(opts); err != nil {
 			return err
 		}
+	} else if !isActiveFw(opts) && activeFw() {
+		// This attack is not running, e.g. its start failed and was reverted, but another one started since. Reverting
+		// would stop that one, as both share wdna. Without any active attack, e.g. after a restart, revert anyway.
+		log.Info().Str("attack", opts.String()).Msg("attack is not active, skipping revert")
+		return nil
 	}
 
 	var err error
@@ -78,17 +84,49 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		err = errors.Join(err, wdErr)
 	}
 
-	if mode == ModeDelete {
+	if mode == ModeDelete || err != nil {
 		popActiveFw("windows", opts)
 	}
 
+	// Whether the platform calls stop after a failed start is not guaranteed, so the start leaves nothing behind; a
+	// later stop finds nothing to revert, which succeeds as well. An identical attack that is still running shares the
+	// policies and wdna, so it is left alone.
+	if mode == ModeAdd && err != nil && !activeFw() {
+		err = errors.Join(err, revertFailedStart(context.WithoutCancel(ctx), opts, qosPolicies))
+	}
+
 	return err
+}
+
+func revertFailedStart(ctx context.Context, opts WinOpts, qosPolicies []QosPolicy) error {
+	var err error
+	if len(qosPolicies) > 0 {
+		err = applyQosPolicies(ctx, qosPolicies, ModeDelete)
+	}
+	if opts.WinDivert() != nil {
+		err = errors.Join(err, stopWinDivert(ctx))
+	}
+	if err != nil {
+		return fmt.Errorf("failed to revert the failed start: %w", err)
+	}
+	return nil
 }
 
 func activeFw() bool {
 	activeFWLock.Lock()
 	defer activeFWLock.Unlock()
 	return len(activeFirewall["windows"]) > 0
+}
+
+func isActiveFw(opts WinOpts) bool {
+	activeFWLock.Lock()
+	defer activeFWLock.Unlock()
+	for _, active := range activeFirewall["windows"] {
+		if opts.String() == active.String() {
+			return true
+		}
+	}
+	return false
 }
 
 func pushActiveFw(opts WinOpts) error {
