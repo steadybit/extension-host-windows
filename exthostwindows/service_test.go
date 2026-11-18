@@ -16,44 +16,83 @@ import (
 func TestActivateWindowsServiceHandler_NotInService(t *testing.T) {
 	stopped := false
 	// tests are not executed as Windows service, so this must be a no-op
-	ActivateWindowsServiceHandler(func() { stopped = true })
+	assert.False(t, ActivateWindowsServiceHandler(func() { stopped = true }))
 	assert.False(t, stopped)
 }
 
-func receiveStatus(t *testing.T, statuses <-chan svc.Status) svc.Status {
+func receive[T any](t *testing.T, ch <-chan T) T {
 	t.Helper()
 	select {
-	case status := <-statuses:
-		return status
+	case v := <-ch:
+		return v
 	case <-time.After(5 * time.Second):
-		t.Fatal("no service status received")
-		return svc.Status{}
+		t.Fatal("nothing received")
+		var zero T
+		return zero
 	}
 }
 
-func TestExtensionService_Execute(t *testing.T) {
-	s := &extensionService{stopHandler: func() { t.Error("stop handler must not be called") }}
+// startExecute runs Execute until it reported RUNNING, or only START_PENDING if running is false.
+func startExecute(t *testing.T, stopHandler func(), running bool) (*extensionService, chan svc.ChangeRequest, chan svc.Status, <-chan uint32) {
+	s := &extensionService{stopHandler: stopHandler, ready: make(chan struct{}), failed: make(chan struct{})}
 	changeRequests := make(chan svc.ChangeRequest)
 	statuses := make(chan svc.Status, 1)
+	done := make(chan uint32, 1)
+	go func() {
+		ssec, errno := s.Execute(nil, changeRequests, statuses)
+		assert.False(t, ssec)
+		done <- errno
+	}()
+	assert.Equal(t, svc.Status{State: svc.StartPending, WaitHint: waitHint}, receive(t, statuses))
+	if running {
+		close(s.ready)
+		assert.Equal(t, svc.Status{State: svc.Running, Accepts: svc.AcceptStop | svc.AcceptShutdown}, receive(t, statuses))
+	}
+	return s, changeRequests, statuses, done
+}
 
-	// Execute never returns for non-stop requests (stop terminates the process via log.Fatal)
-	go s.Execute(nil, changeRequests, statuses)
+func TestExtensionService_Execute(t *testing.T) {
+	s, changeRequests, statuses, _ := startExecute(t, func() { t.Error("stop handler must not be called") }, false)
 
-	assert.Equal(t, svc.StartPending, receiveStatus(t, statuses).State)
-	running := receiveStatus(t, statuses)
-	assert.Equal(t, svc.Running, running.State)
-	assert.Equal(t, svc.AcceptStop|svc.AcceptShutdown, running.Accepts)
+	pending := svc.Status{State: svc.StartPending, CheckPoint: 42}
+	changeRequests <- svc.ChangeRequest{Cmd: svc.Interrogate, CurrentStatus: pending}
+	assert.Equal(t, pending, receive(t, statuses))
 
-	current := svc.Status{State: svc.Running, Accepts: svc.AcceptStop, CheckPoint: 42}
-	changeRequests <- svc.ChangeRequest{Cmd: svc.Interrogate, CurrentStatus: current}
-	assert.Equal(t, current, receiveStatus(t, statuses))
+	close(s.ready)
+	assert.Equal(t, svc.Running, receive(t, statuses).State)
 
-	// unexpected requests are only logged
+	// unexpected requests are only logged: the next status is the Interrogate answer
 	changeRequests <- svc.ChangeRequest{Cmd: svc.Pause}
-	select {
-	case status := <-statuses:
-		t.Fatalf("unexpected status %+v", status)
-	case <-time.After(100 * time.Millisecond):
+	running := svc.Status{State: svc.Running, CheckPoint: 43}
+	changeRequests <- svc.ChangeRequest{Cmd: svc.Interrogate, CurrentStatus: running}
+	assert.Equal(t, running, receive(t, statuses))
+}
+
+func TestExtensionService_Execute_Stop(t *testing.T) {
+	for name, cmd := range map[string]svc.Cmd{"stop": svc.Stop, "shutdown": svc.Shutdown} {
+		t.Run(name, func(t *testing.T) {
+			stopHandlerCalled := false
+			_, changeRequests, statuses, done := startExecute(t, func() { stopHandlerCalled = true }, true)
+
+			changeRequests <- svc.ChangeRequest{Cmd: cmd}
+
+			assert.Equal(t, svc.StopPending, receive(t, statuses).State)
+			assert.Zero(t, receive(t, done))
+			assert.True(t, stopHandlerCalled)
+		})
+	}
+}
+
+func TestExtensionService_Execute_Failed(t *testing.T) {
+	for name, running := range map[string]bool{"starting": false, "running": true} {
+		t.Run(name, func(t *testing.T) {
+			s, _, statuses, done := startExecute(t, func() { t.Error("stop handler must not be called") }, running)
+
+			close(s.failed)
+
+			assert.Equal(t, fatalExitCode, receive(t, done))
+			assert.Empty(t, statuses)
+		})
 	}
 }
 
