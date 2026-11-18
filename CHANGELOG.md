@@ -1,8 +1,21 @@
 # Changelog
 
-## Unreleased
+## v0.4.4
 
 - **Behaviour change** — the extension only accepts connections from the same host (`localhost`) by default. An agent on another host needs `STEADYBIT_EXTENSION_BIND_ADDRESS=0.0.0.0`, see "Accepting connections from other hosts" in the README.
+- build(deps): bump the steadybit group with 2 updates
+- ci: CLA check with a GitHub App token (#229)
+- ci: SonarQube Cloud analysis without a stored token (#232)
+- feat: bind the extension to localhost by default (#230)
+- fix: dispatch the dev demo refresh by workflow file name (#235)
+- fix: reject limit bandwidth on Windows Home editions
+- perf: check and stop stress and fill attacks without PowerShell
+- perf: create, remove and list limit bandwidth policies through WMI
+- perf: only clean up QoS policies when leftovers are possible
+- perf: resolve hostnames with DnsQuery instead of Resolve-DnsName
+- perf: shift the clock and control w32time without PowerShell
+- perf: start and stop network attacks without PowerShell
+- refactor: drop the SYSTEM scheduled task wrapper and PowerShell argument escaping
 
 ## v0.4.3
 
