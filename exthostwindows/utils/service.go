@@ -4,6 +4,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -20,7 +21,7 @@ const servicePollInterval = 50 * time.Millisecond
 // A service that does not exist yields windows.ERROR_SERVICE_DOES_NOT_EXIST.
 func StopService(name string, timeout time.Duration) error {
 	return withService(name, func(s *mgr.Service) error {
-		return awaitServiceState(s, svc.Stopped, timeout, func(state svc.State) {
+		return awaitServiceState(context.Background(), s, svc.Stopped, timeout, func(state svc.State) {
 			if state == svc.Running || state == svc.Paused {
 				if _, err := s.Control(svc.Stop); err != nil {
 					log.Debug().Err(err).Str("service", name).Msg("failed to stop service, retrying")
@@ -33,7 +34,7 @@ func StopService(name string, timeout time.Duration) error {
 // StartService starts the given Windows service and waits until it is running. A running service is left as is.
 func StartService(name string, timeout time.Duration) error {
 	return withService(name, func(s *mgr.Service) error {
-		return awaitServiceState(s, svc.Running, timeout, func(state svc.State) {
+		return awaitServiceState(context.Background(), s, svc.Running, timeout, func(state svc.State) {
 			if state == svc.Stopped {
 				if err := s.Start(); err != nil {
 					log.Debug().Err(err).Str("service", name).Msg("failed to start service, retrying")
@@ -44,7 +45,8 @@ func StartService(name string, timeout time.Duration) error {
 }
 
 // AwaitServiceRunning waits until the given service exists and is running, e.g. a driver service installed on demand.
-func AwaitServiceRunning(name string, timeout time.Duration) error {
+// It stops waiting when ctx ends, e.g. because the process that installs the service exited.
+func AwaitServiceRunning(ctx context.Context, name string, timeout time.Duration) error {
 	m, err := mgr.Connect()
 	if err != nil {
 		return err
@@ -56,12 +58,14 @@ func AwaitServiceRunning(name string, timeout time.Duration) error {
 		s, err := m.OpenService(name)
 		if err == nil {
 			defer func() { _ = s.Close() }()
-			return awaitServiceState(s, svc.Running, time.Until(end), nil)
+			return awaitServiceState(ctx, s, svc.Running, time.Until(end), nil)
 		}
 		if !errors.Is(err, windows.ERROR_SERVICE_DOES_NOT_EXIST) || time.Now().After(end) {
 			return err
 		}
-		time.Sleep(servicePollInterval)
+		if err := pollWait(ctx); err != nil {
+			return err
+		}
 	}
 }
 
@@ -82,7 +86,7 @@ func withService(name string, fn func(s *mgr.Service) error) error {
 }
 
 // awaitServiceState polls until the service reaches the wanted state. onState, if set, can act on every other state.
-func awaitServiceState(s *mgr.Service, wanted svc.State, timeout time.Duration, onState func(svc.State)) error {
+func awaitServiceState(ctx context.Context, s *mgr.Service, wanted svc.State, timeout time.Duration, onState func(svc.State)) error {
 	end := time.Now().Add(timeout)
 	for time.Now().Before(end) {
 		status, err := s.Query()
@@ -95,7 +99,18 @@ func awaitServiceState(s *mgr.Service, wanted svc.State, timeout time.Duration, 
 				onState(status.State)
 			}
 		}
-		time.Sleep(servicePollInterval)
+		if err := pollWait(ctx); err != nil {
+			return err
+		}
 	}
 	return fmt.Errorf("service %s did not reach state %d within %s", s.Name, wanted, timeout)
+}
+
+func pollWait(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	case <-time.After(servicePollInterval):
+		return nil
+	}
 }
