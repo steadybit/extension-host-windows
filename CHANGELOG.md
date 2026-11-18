@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.5.1
+
+- chore: list the Visual C++ runtime in the third-party licenses
+- ci: remove the e2e workflow
+- fix: do not crash or hang when devzero or dd fails to start in fill disk
+- fix: fail on network interfaces that do not exist on the host
+- fix: leave a running network attack alone when a late stop of a failed start arrives
+- fix: restart the time service when time travel fails to shift the clock
+- fix: revert what a failed network attack start applied
+- fix: ship the Visual C++ runtime in the extension zip, too
+- fix: ship the Visual C++ runtime with wdna and coreutils
+- fix: stop fill disk after a failed start and end dd before removing its file
+
 ## v0.5.0
 
 - **Behaviour change** — the extension only accepts connections from the same host (`localhost`) by default. An agent on another host needs `STEADYBIT_EXTENSION_BIND_ADDRESS=0.0.0.0`, see "Accepting connections from other hosts" in the README.
