@@ -21,7 +21,8 @@ func Test_LimitBandwidth_create_one_policy_per_ip(t *testing.T) {
 	_, ipNet2, _ := net.ParseCIDR("1.1.1.2/32")
 
 	limitBandwidthOpts := LimitBandwidthOpts{
-		Bandwidth: "100MB",
+		Bandwidth:     "100MB",
+		BitsPerSecond: 100_000_000,
 		IncludeCidrs: []net.IPNet{
 			*ipNet1, *ipNet2,
 		},
@@ -37,14 +38,13 @@ func Test_LimitBandwidth_create_one_policy_per_ip(t *testing.T) {
 	defer func() {
 		err := Revert(t.Context(), &limitBandwidthOpts)
 		require.NoError(t, err)
-		policies, err := listSteadybitQosPolicyNames(t.Context())
-		require.NoError(t, err)
+		policies := qosPolicyNames(t)
 		require.NotContains(t, policies, expectedPolicyName1)
 		require.NotContains(t, policies, expectedPolicyName2)
 	}()
 
-	policies, err := listSteadybitQosPolicyNames(t.Context())
+	policies, err := listSteadybitQosPolicies(t.Context())
 	require.NoError(t, err)
-	require.Contains(t, policies, expectedPolicyName1)
-	require.Contains(t, policies, expectedPolicyName2)
+	require.Contains(t, policies, QosPolicy{Name: expectedPolicyName1, BitsPerSecond: 100_000_000, DstPrefix: "1.1.1.1", DstPortFrom: 9876, DstPortTo: 9876})
+	require.Contains(t, policies, QosPolicy{Name: expectedPolicyName2, BitsPerSecond: 100_000_000, DstPrefix: "1.1.1.2", DstPortFrom: 9876, DstPortTo: 9876})
 }

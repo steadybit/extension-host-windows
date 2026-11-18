@@ -11,7 +11,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	aku "github.com/steadybit/action-kit/go/action_kit_commons/utils"
-	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 )
 
 var (
@@ -33,8 +32,8 @@ func Revert(ctx context.Context, opts WinOpts) error {
 	return generateAndRunCommands(ctx, opts, ModeDelete)
 }
 
-// CleanupQosPolicies removes leftover Steadybit QoS policies. It only lists them when they may exist, as listing
-// starts PowerShell and holds the lock that network attacks wait for.
+// CleanupQosPolicies removes leftover Steadybit QoS policies. It only looks for them when they may exist, as it holds
+// the lock that network attacks wait for.
 func CleanupQosPolicies() {
 	if qosPoliciesClean.Load() {
 		return
@@ -52,10 +51,7 @@ func CleanupQosPolicies() {
 }
 
 func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error {
-	qosCommands, err := opts.QoSCommands(mode)
-	if err != nil {
-		return err
-	}
+	qosPolicies := opts.QoSPolicies()
 
 	runLock.LockKey("windows")
 	defer func() { _ = runLock.UnlockKey("windows") }()
@@ -66,11 +62,10 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		}
 	}
 
-	if len(qosCommands) > 0 {
+	var err error
+	if len(qosPolicies) > 0 {
 		qosPoliciesClean.Store(false)
-		if _, qosErr := executeQoSCommands(ctx, qosCommands); qosErr != nil {
-			err = errors.Join(err, qosErr)
-		}
+		err = applyQosPolicies(ctx, qosPolicies, mode)
 	}
 
 	if attack := opts.WinDivert(); attack != nil {
@@ -124,10 +119,4 @@ func popActiveFw(id string, opts WinOpts) {
 			return
 		}
 	}
-}
-
-func executeQoSCommands(ctx context.Context, cmds []string) (string, error) {
-	logCurrentQoSRules(ctx, "before")
-	defer logCurrentQoSRules(ctx, "after")
-	return utils.ExecutePowershellCommand(ctx, cmds)
 }

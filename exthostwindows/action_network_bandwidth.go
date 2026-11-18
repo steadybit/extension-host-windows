@@ -6,7 +6,9 @@ package exthostwindows
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -93,6 +95,8 @@ func getNetworkLimitBandwidthDescription() action_kit_api.ActionDescription {
 	}
 }
 
+var isWindowsHomeEdition = utils.IsWindowsHomeEdition
+
 func limitBandwidth() networkOptsProvider {
 	return func(ctx context.Context, request action_kit_api.PrepareActionRequestBody) (network.WinOpts, action_kit_api.Messages, error) {
 		_, err := CheckTargetHostname(request.Target.Attributes)
@@ -100,36 +104,23 @@ func limitBandwidth() networkOptsProvider {
 			return nil, nil, err
 		}
 
+		if isWindowsHomeEdition() {
+			return nil, nil, errors.New("limit bandwidth needs Windows policy-based QoS, which Windows Home editions do not apply")
+		}
+
 		parsedDuration := extutil.ToUInt64(request.Config["duration"])
 		if parsedDuration == 0 {
 			return nil, nil, fmt.Errorf("duration is required")
 		}
 
-		bandwidth := extutil.ToString(request.Config["bandwidth"])
-		bandwidth, err = sanitizeBandwidthAttribute(bandwidth)
+		bandwidth, bitsPerSecond, err := parseBandwidth(extutil.ToString(request.Config["bandwidth"]))
 		if err != nil {
 			return nil, nil, err
 		}
 
-		ipsAndHosts := append(
-			extutil.ToStringArray(request.Config["ip"]),
-			extutil.ToStringArray(request.Config["hostname"])...,
-		)
-		if len(ipsAndHosts) == 0 {
-			return nil, nil, fmt.Errorf("hostname or IP required")
-		}
-
-		includeCidrs, err := utils.MapToNetworks(ctx, ipsAndHosts...)
+		includeCidrs, portRange, err := bandwidthTargets(ctx, request.Config)
 		if err != nil {
 			return nil, nil, err
-		}
-
-		portRange := akn.PortRangeAny
-		if portRangeParameter := extutil.ToString(request.Config["port"]); portRangeParameter != "" {
-			portRange, err = akn.ParsePortRange(portRangeParameter)
-			if err != nil {
-				return nil, nil, err
-			}
 		}
 
 		err = validateRestrictedEndpoints(request, includeCidrs, portRange)
@@ -138,11 +129,36 @@ func limitBandwidth() networkOptsProvider {
 		}
 
 		return &network.LimitBandwidthOpts{
-			Bandwidth:    bandwidth,
-			IncludeCidrs: includeCidrs,
-			PortRange:    portRange,
+			Bandwidth:     bandwidth,
+			BitsPerSecond: bitsPerSecond,
+			IncludeCidrs:  includeCidrs,
+			PortRange:     portRange,
 		}, nil, nil
 	}
+}
+
+func bandwidthTargets(ctx context.Context, config map[string]any) ([]net.IPNet, akn.PortRange, error) {
+	ipsAndHosts := append(
+		extutil.ToStringArray(config["ip"]),
+		extutil.ToStringArray(config["hostname"])...,
+	)
+	if len(ipsAndHosts) == 0 {
+		return nil, akn.PortRange{}, fmt.Errorf("hostname or IP required")
+	}
+
+	includeCidrs, err := utils.MapToNetworks(ctx, ipsAndHosts...)
+	if err != nil {
+		return nil, akn.PortRange{}, err
+	}
+
+	portRange := akn.PortRangeAny
+	if portRangeParameter := extutil.ToString(config["port"]); portRangeParameter != "" {
+		portRange, err = akn.ParsePortRange(portRangeParameter)
+		if err != nil {
+			return nil, akn.PortRange{}, err
+		}
+	}
+	return includeCidrs, portRange, nil
 }
 
 func validateRestrictedEndpoints(request action_kit_api.PrepareActionRequestBody, includeCidrs []net.IPNet, portRange akn.PortRange) error {
@@ -163,31 +179,45 @@ func validateRestrictedEndpoints(request action_kit_api.PrepareActionRequestBody
 	return nil
 }
 
-func sanitizeBandwidthAttribute(bandwidth string) (string, error) {
-	suffixArray := map[string]string{"tbps": "TB", "gbps": "GB", "mbps": "MB", "kbps": "KB", "bps": "", "tbit": "TB", "gbit": "GB", "mbit": "MB", "kbit": "KB", "bit": ""}
-	orderedKeys := []string{"tbps", "gbps", "mbps", "kbps", "bps", "tbit", "gbit", "mbit", "kbit", "bit"}
+// bandwidthUnits are the units of a bitrate parameter, the byte based ones before the bit based ones so that "mbps"
+// is not taken for "bps". nameUnit keeps the policy names of earlier versions, so that a running attack can still be
+// reverted after an update.
+var bandwidthUnits = []struct {
+	suffix   string
+	bytes    bool
+	scale    uint64
+	nameUnit string
+}{
+	{"tbps", true, 1_000_000_000_000, "TB"}, {"gbps", true, 1_000_000_000, "GB"}, {"mbps", true, 1_000_000, "MB"}, {"kbps", true, 1_000, "KB"}, {"bps", true, 1, ""},
+	{"tbit", false, 1_000_000_000_000, "TB"}, {"gbit", false, 1_000_000_000, "GB"}, {"mbit", false, 1_000_000, "MB"}, {"kbit", false, 1_000, "KB"}, {"bit", false, 1, ""},
+}
 
-	for _, key := range orderedKeys {
-		if strings.Contains(bandwidth, key) {
-			numericStr := strings.Replace(bandwidth, key, "", 1)
-			numeric, err := strconv.ParseUint(numericStr, 10, 64)
-			if err != nil {
-				return "", err
-			}
-
-			if strings.Contains(key, "bit") {
-				return fmt.Sprintf("%d%s", numeric, suffixArray[key]), nil
-
-			} else if strings.Contains(key, "bps") {
-				numeric = 8 * numeric
-				return fmt.Sprintf("%d%s", numeric, suffixArray[key]), nil
-			} else {
-				return "", fmt.Errorf("invalid network bandwidth")
-			}
+// parseBandwidth converts a bitrate parameter like "1024kbit" into bits per second and the name used in the QoS
+// policy names ("1024KB").
+func parseBandwidth(bandwidth string) (string, uint64, error) {
+	for _, unit := range bandwidthUnits {
+		if !strings.Contains(bandwidth, unit.suffix) {
+			continue
 		}
+		value, err := strconv.ParseUint(strings.Replace(bandwidth, unit.suffix, "", 1), 10, 64)
+		if err != nil {
+			return "", 0, err
+		}
+		if unit.bytes {
+			if value > math.MaxUint64/8 {
+				return "", 0, fmt.Errorf("invalid network bandwidth %s: too large", bandwidth)
+			}
+			value *= 8
+		}
+		if value > math.MaxUint64/unit.scale {
+			return "", 0, fmt.Errorf("invalid network bandwidth %s: too large", bandwidth)
+		}
+		if value*unit.scale < 8 {
+			return "", 0, fmt.Errorf("windows qos policy does not support rate settings below 8bit/s. (%s)", bandwidth)
+		}
+		return fmt.Sprintf("%d%s", value, unit.nameUnit), value * unit.scale, nil
 	}
-
-	return "", fmt.Errorf("invalid network bandwidth")
+	return "", 0, fmt.Errorf("invalid network bandwidth")
 }
 
 func limitBandwidthDecode(data json.RawMessage) (network.WinOpts, error) {

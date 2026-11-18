@@ -15,8 +15,8 @@ type CorruptPackagesOpts struct {
 	Duration   time.Duration
 }
 
-func (o *CorruptPackagesOpts) QoSCommands(_ Mode) ([]string, error) {
-	return nil, nil
+func (o *CorruptPackagesOpts) QoSPolicies() []QosPolicy {
+	return nil
 }
 
 func (o *CorruptPackagesOpts) WinDivert() *WinDivertOpts {

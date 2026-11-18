@@ -5,57 +5,38 @@ package network
 
 import (
 	"fmt"
-	"github.com/steadybit/action-kit/go/action_kit_commons/network"
-	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"net"
-	"regexp"
 	"strings"
+
+	"github.com/steadybit/action-kit/go/action_kit_commons/network"
 )
 
 type LimitBandwidthOpts struct {
-	Bandwidth    string
-	IncludeCidrs []net.IPNet
-	PortRange    network.PortRange
+	// Bandwidth names the limit in the policy names, e.g. "1024KB" for 1024kbit.
+	Bandwidth     string
+	BitsPerSecond uint64
+	IncludeCidrs  []net.IPNet
+	PortRange     network.PortRange
 }
 
 func (o *LimitBandwidthOpts) WinDivert() *WinDivertOpts {
 	return nil
 }
 
-func (o *LimitBandwidthOpts) QoSCommands(mode Mode) ([]string, error) {
-	bandwidth, err := o.parseBandwidth()
-	if err != nil {
-		return nil, err
-	}
-
-	var cmds []string
+func (o *LimitBandwidthOpts) QoSPolicies() []QosPolicy {
+	policies := make([]QosPolicy, 0, len(o.IncludeCidrs))
 	for i, includeCidr := range o.IncludeCidrs {
-		if mode == ModeAdd {
-			additionalParameters := ""
-			if o.PortRange.From != 0 && o.PortRange.To != 0 {
-				additionalParameters = fmt.Sprintf("%s -IPDstPortStartMatchCondition %d -IPDstPortEndMatchCondition %d", additionalParameters, o.PortRange.From, o.PortRange.To)
-			}
-			netQosPolicyCommand := fmt.Sprintf("New-NetQosPolicy -Name %s%s_%d -Precedence 255 -Confirm:$false -ThrottleRateActionBitsPerSecond %s -IPDstPrefixMatchCondition '%s' %s",
-				qosPolicyPrefix, bandwidth, i, bandwidth, includeCidr.String(), additionalParameters)
-			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
-		} else {
-			netQosPolicyCommand := fmt.Sprintf("Remove-NetQosPolicy -Name %s%s_%d -Confirm:$false", qosPolicyPrefix, bandwidth, i)
-			cmds = append(cmds, utils.BuildSystemCommandFor(netQosPolicyCommand)...)
+		policy := QosPolicy{
+			Name:          fmt.Sprintf("%s%s_%d", qosPolicyPrefix, o.Bandwidth, i),
+			BitsPerSecond: o.BitsPerSecond,
+			DstPrefix:     includeCidr.String(),
 		}
+		if o.PortRange.From != 0 && o.PortRange.To != 0 {
+			policy.DstPortFrom, policy.DstPortTo = uint16(o.PortRange.From), uint16(o.PortRange.To)
+		}
+		policies = append(policies, policy)
 	}
-	return cmds, nil
-}
-
-func (o *LimitBandwidthOpts) parseBandwidth() (string, error) {
-	expression, err := regexp.Compile("^[0-7]$")
-	if err != nil {
-		return "", err
-	}
-	if expression.MatchString(o.Bandwidth) {
-		return "", fmt.Errorf("windows qos policy does not support rate settings below 8bit/s. (%s)", o.Bandwidth)
-	}
-	bandwidth := utils.SanitizePowershellArg(o.Bandwidth)
-	return bandwidth, nil
+	return policies
 }
 
 func (o *LimitBandwidthOpts) String() string {

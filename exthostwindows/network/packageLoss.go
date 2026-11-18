@@ -15,8 +15,8 @@ type PackageLossOpts struct {
 	Duration time.Duration
 }
 
-func (o *PackageLossOpts) QoSCommands(_ Mode) ([]string, error) {
-	return nil, nil
+func (o *PackageLossOpts) QoSPolicies() []QosPolicy {
+	return nil
 }
 
 func (o *PackageLossOpts) WinDivert() *WinDivertOpts {
