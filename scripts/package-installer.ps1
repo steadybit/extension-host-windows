@@ -87,6 +87,20 @@ Copy-Item "$artifactPath\DiskSpd\x86\diskspd.exe" $artifactPath
 
 Pop-Location
 
+# wdna.exe and coreutils.exe need vcruntime140.dll, which Windows does not include. It is installed next to them
+# (app-local deployment), taken from the Visual C++ redistributable files of the Visual Studio on the build machine.
+Write-Output "Adding the Visual C++ runtime"
+$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+$vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+$vcRuntime = Get-ChildItem "$vsPath\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT\vcruntime140.dll" |
+    Sort-Object { [version]$_.VersionInfo.FileVersion } -Descending |
+    Select-Object -First 1
+if (-not $vcRuntime) {
+    Write-Error "vcruntime140.dll not found in the Visual Studio installation $vsPath" -ErrorAction Stop
+}
+Write-Output "Using $($vcRuntime.FullName), version $($vcRuntime.VersionInfo.FileVersion)"
+Copy-Item $vcRuntime.FullName $artifactPath
+
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath
 msbuild -Restore WindowsHostExtensionInstaller.sln /p:Configuration=Release /m /p:OutDir=..\..\dist
