@@ -4,6 +4,9 @@
 package network
 
 import (
+	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -90,4 +93,26 @@ type qosOpts struct {
 
 func (o *qosOpts) WinDivert() *WinDivertOpts { return nil }
 func (o *qosOpts) QoSPolicies() []QosPolicy  { return o.policies }
-func (o *qosOpts) String() string            { return "qosOpts" }
+func (o *qosOpts) String() string {
+	var sb strings.Builder
+	for _, p := range o.policies {
+		sb.WriteString(fmt.Sprintf("%s=%d ", p.Name, p.BitsPerSecond))
+	}
+	return sb.String()
+}
+
+func TestRevertOfInactiveAttackKeepsOtherAttack(t *testing.T) {
+	other := &qosOpts{policies: []QosPolicy{{Name: qosPolicyPrefix + "TEST_OTHER_ATTACK", BitsPerSecond: 8_000_000, DstPrefix: "192.0.2.1/32"}}}
+	require.NoError(t, Apply(t.Context(), other))
+	t.Cleanup(func() { _ = Revert(context.Background(), other) })
+
+	// e.g. the stop of an attack whose start failed and was reverted, arriving after another attack started
+	inactive := &qosOpts{policies: []QosPolicy{{Name: qosPolicyPrefix + "TEST_OTHER_ATTACK", BitsPerSecond: 16_000_000, DstPrefix: "192.0.2.2/32"}}}
+	require.NoError(t, Revert(t.Context(), inactive))
+
+	assert.Equal(t, []string{qosPolicyPrefix + "TEST_OTHER_ATTACK"}, qosPolicyNames(t))
+	assert.True(t, activeFw())
+
+	require.NoError(t, Revert(t.Context(), other))
+	assert.Empty(t, qosPolicyNames(t))
+}

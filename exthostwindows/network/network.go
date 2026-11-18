@@ -61,6 +61,11 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		if err := pushActiveFw(opts); err != nil {
 			return err
 		}
+	} else if !isActiveFw(opts) && activeFw() {
+		// This attack is not running, e.g. its start failed and was reverted, but another one started since. Reverting
+		// would stop that one, as both share wdna. Without any active attack, e.g. after a restart, revert anyway.
+		log.Info().Str("attack", opts.String()).Msg("attack is not active, skipping revert")
+		return nil
 	}
 
 	var err error
@@ -111,6 +116,17 @@ func activeFw() bool {
 	activeFWLock.Lock()
 	defer activeFWLock.Unlock()
 	return len(activeFirewall["windows"]) > 0
+}
+
+func isActiveFw(opts WinOpts) bool {
+	activeFWLock.Lock()
+	defer activeFWLock.Unlock()
+	for _, active := range activeFirewall["windows"] {
+		if opts.String() == active.String() {
+			return true
+		}
+	}
+	return false
 }
 
 func pushActiveFw(opts WinOpts) error {
