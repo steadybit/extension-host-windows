@@ -16,7 +16,7 @@ import (
 func TestActivateWindowsServiceHandler_NotInService(t *testing.T) {
 	stopped := false
 	// tests are not executed as Windows service, so this must be a no-op
-	ActivateWindowsServiceHandler(func() { stopped = true })
+	assert.False(t, ActivateWindowsServiceHandler(func() { stopped = true }))
 	assert.False(t, stopped)
 }
 

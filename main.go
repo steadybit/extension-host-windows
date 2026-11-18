@@ -5,6 +5,9 @@
 package main
 
 import (
+	"context"
+	"time"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -29,19 +32,25 @@ func main() {
 	// operator debugging a slow or timing-out action can see what happened inside
 	// this extension. Off, and free, until OTEL_EXPORTER_OTLP_ENDPOINT is set —
 	// see the extension-kit README for the full set of variables.
-	extotel.InitOpenTelemetry()
+	shutdownTracing := extotel.InitOpenTelemetry()
 
 	// Register a QoS policy cleanup routine as additional safeguard.
 	stopQosCleanup := exthostwindows.RegisterQosPolicyCleanup()
 	extensionRegistry := exthostwindows.NewExtensionRegistry("Extension Host Windows", 0, []string{"ACTION", "DISCOVERY"})
 
 	// Register Windows Service early during startup to log messages as Windows application events
-	exthostwindows.ActivateWindowsServiceHandler(func() {
+	isService := exthostwindows.ActivateWindowsServiceHandler(func() {
+		action_kit_sdk.StopAllActiveActions("Windows service stopped")
 		err := extensionRegistry.RemoveLocalDiscovery()
 		if err != nil {
 			log.Error().Err(err).Msg("unable to remove local discovery from the Windows registry")
 		}
 		stopQosCleanup()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTracing(ctx); err != nil {
+			log.Warn().Err(err).Msg("OpenTelemetry shutdown failed")
+		}
 	})
 
 	extbuild.PrintBuildInformation()
@@ -79,7 +88,11 @@ func main() {
 
 	exthttp.RegisterRevisionedHandler("/", getExtensionList)
 
-	extsignals.ActivateSignalHandlers()
+	if !isService {
+		// A service is stopped by the SCM, and the stop handler above does what the
+		// signal handlers would; their exit on SIGTERM would preempt the SCM.
+		extsignals.ActivateSignalHandlers()
+	}
 
 	action_kit_sdk.RegisterCoverageEndpoints()
 

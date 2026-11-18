@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -39,14 +41,14 @@ const fatalExitCode = uint32(windows.ERROR_INTERNAL_ERROR)
 // manager has been told that the service stopped, also on a later log.Fatal. Exiting any
 // earlier, e.g. by returning from main, makes the SCM report the service as
 // "terminated unexpectedly" (error 1067). The service reports RUNNING once the
-// extension serves HTTP.
-func ActivateWindowsServiceHandler(stopHandler func()) {
+// extension serves HTTP. It returns whether the process runs as a service.
+func ActivateWindowsServiceHandler(stopHandler func()) (isService bool) {
 	isInService, err := svc.IsWindowsService()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to detect if executed as Windows service")
 	}
 	if !isInService {
-		return
+		return false
 	}
 
 	// Attach the file/event-log writer synchronously, before returning to the
@@ -57,6 +59,11 @@ func ActivateWindowsServiceHandler(stopHandler func()) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting as Windows service")
 	}
+
+	// Go turns the console CTRL_SHUTDOWN_EVENT into SIGTERM. While SIGTERM is
+	// notified, Go's console handler blocks instead of letting Windows end the
+	// process, so the SCM's shutdown control can run the stop handler.
+	signal.Notify(make(chan os.Signal, 1), syscall.SIGTERM)
 
 	go func() {
 		exthttp.WaitForServe()
@@ -83,6 +90,7 @@ func ActivateWindowsServiceHandler(stopHandler func()) {
 			os.Exit(0)
 		}
 	}()
+	return true
 }
 
 type extensionService struct {
