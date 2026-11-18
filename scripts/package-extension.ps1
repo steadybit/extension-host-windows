@@ -12,8 +12,11 @@ Write-Output "Downloading WinDivert release"
 $winDivertPath = "$distPath\WinDivert"
 $releaseVersion = if ($env:STEADYBIT_WINDIVERT_VERSION) { $env:STEADYBIT_WINDIVERT_VERSION } else { "latest" }
 & "$scriptPath\download-windivert.ps1" -DownloadDir "$winDivertPath" -ReleaseVersion "$releaseVersion"
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path "$winDivertPath\wdna.exe")) {
-  Write-Error "Downloading WinDivert failed, the extension would ship without it" -ErrorAction Stop
+# $LASTEXITCODE stays unset when the download succeeds, so the files are what tells success.
+foreach ($file in "wdna.exe", "wdna_shutdown.exe", "WinDivert.dll", "WinDivert64.sys") {
+  if (-not (Test-Path "$winDivertPath\$file")) {
+    Write-Error "Downloading WinDivert failed: $file is missing, the extension would ship without it" -ErrorAction Stop
+  }
 }
 
 # Create a temp location for the extraction
