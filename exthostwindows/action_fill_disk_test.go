@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -272,4 +273,10 @@ func TestPipeDevzeroIntoDd(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestActionFillDisk_Stop_afterFailedStart(t *testing.T) {
+	state := FillDiskActionState{StressOpts: FillDiskOpts{Method: OverTime, FilePath: filepath.Join(t.TempDir(), "never-created")}}
+	_, err := (&fillDiskAction{}).Stop(context.Background(), &state)
+	assert.NoError(t, err)
 }

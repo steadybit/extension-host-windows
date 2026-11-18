@@ -428,21 +428,16 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 func (a *fillDiskAction) Stop(_ context.Context, state *FillDiskActionState) (*action_kit_api.StopResult, error) {
 	messages := make([]action_kit_api.Message, 0)
 
-	err := os.Remove(state.StressOpts.FilePath)
-
-	if err != nil {
+	// dd has to end before its file is removed. The file is missing when the start failed.
+	if err := utils.StopProcess("coreutils"); err != nil {
 		return nil, err
 	}
 
-	err = utils.StopProcess("coreutils")
-
-	if err != nil {
+	if err := utils.StopProcess("devzero"); err != nil {
 		return nil, err
 	}
 
-	err = utils.StopProcess("devzero")
-
-	if err != nil {
+	if err := os.Remove(state.StressOpts.FilePath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 
