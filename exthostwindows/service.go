@@ -10,9 +10,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/steadybit/extension-kit/exthttp"
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -22,13 +26,20 @@ var serviceName = "SteadybitExtensionHostWindows"
 var applicationDataPath = filepath.Join(os.Getenv("ProgramData"), "Steadybit GmbH")
 var logFilePath = filepath.Join(applicationDataPath, "extension-host-windows.log")
 
-// stopWaitHint is in milliseconds; the stop handler may wait for a running QoS policy cleanup.
-const stopWaitHint = 30_000
+// waitHint is in milliseconds. Startup includes WMI queries; stopping rolls back
+// running actions.
+const waitHint = 30_000
 
-// ActivateWindowsServiceHandler exits the process once the service control manager
-// has been told that the service stopped. Exiting any earlier, e.g. by returning
-// from main, makes the SCM report every stop and restart as "terminated
-// unexpectedly" (error 1067).
+// fatalExitCode is reported when the extension fails with log.Fatal. The SCM logs it
+// as "An internal error occurred."; a service-specific code would be rendered with
+// an unrelated system message (1 reads "Incorrect function.").
+const fatalExitCode = uint32(windows.ERROR_INTERNAL_ERROR)
+
+// ActivateWindowsServiceHandler exits the process only after the service control
+// manager has been told that the service stopped, also on a later log.Fatal. Exiting any
+// earlier, e.g. by returning from main, makes the SCM report the service as
+// "terminated unexpectedly" (error 1067). The service reports RUNNING once the
+// extension serves HTTP.
 func ActivateWindowsServiceHandler(stopHandler func()) {
 	isInService, err := svc.IsWindowsService()
 	if err != nil {
@@ -48,15 +59,37 @@ func ActivateWindowsServiceHandler(stopHandler func()) {
 	}
 
 	go func() {
+		exthttp.WaitForServe()
+		close(service.ready)
+	}()
+
+	zerolog.FatalExitFunc = func() {
+		service.fail()
+		// The goroutine below exits once SERVICE_STOPPED is reported. That never
+		// happens if log.Fatal was called on the Execute goroutine itself.
+		time.Sleep(5 * time.Second)
+		os.Exit(1)
+	}
+
+	go func() {
 		if err := service.Run(); err != nil {
-			log.Fatal().Err(err).Msg("Error starting as Windows service")
+			log.Error().Err(err).Msg("Error running as Windows service")
+			os.Exit(1)
 		}
-		os.Exit(0)
+		select {
+		case <-service.failed:
+			os.Exit(1)
+		default:
+			os.Exit(0)
+		}
 	}()
 }
 
 type extensionService struct {
 	stopHandler func()
+	ready       chan struct{}
+	failed      chan struct{}
+	fail        func()
 }
 
 func newExtensionService(stopHandler func()) (*extensionService, error) {
@@ -93,12 +126,17 @@ func newExtensionService(stopHandler func()) (*extensionService, error) {
 
 	log.Logger = log.Output(io.MultiWriter(flw, elw))
 
+	failed := make(chan struct{})
+
 	return &extensionService{
 		stopHandler: func() {
 			stopHandler()
 			_ = elog.Close()
 			_ = eventlog.Remove(serviceName)
 		},
+		ready:  make(chan struct{}),
+		failed: failed,
+		fail:   sync.OnceFunc(func() { close(failed) }),
 	}, nil
 }
 
@@ -107,22 +145,28 @@ func (s *extensionService) Run() error {
 }
 
 func (s *extensionService) Execute(_ []string, changeRequests <-chan svc.ChangeRequest, statuses chan<- svc.Status) (bool, uint32) {
-	statuses <- svc.Status{State: svc.StartPending}
-	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
-	statuses <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+	statuses <- svc.Status{State: svc.StartPending, WaitHint: waitHint}
+	ready := s.ready
 	for {
-		changeRequest := <-changeRequests
-		switch changeRequest.Cmd {
-		case svc.Interrogate:
-			statuses <- changeRequest.CurrentStatus
-		case svc.Stop, svc.Shutdown:
-			statuses <- svc.Status{State: svc.StopPending, WaitHint: stopWaitHint}
-			log.Info().Msg("Received Windows service stop command")
-			s.stopHandler()
-			// svc.Run reports SERVICE_STOPPED once Execute has returned.
-			return false, 0
-		default:
-			log.Info().Msgf("Unexpected control request: cmd %d", changeRequest.Cmd)
+		select {
+		case <-ready:
+			ready = nil
+			statuses <- svc.Status{State: svc.Running, Accepts: svc.AcceptStop | svc.AcceptShutdown}
+		case <-s.failed:
+			// svc.Run reports SERVICE_STOPPED with this exit code once Execute has returned.
+			return false, fatalExitCode
+		case changeRequest := <-changeRequests:
+			switch changeRequest.Cmd {
+			case svc.Interrogate:
+				statuses <- changeRequest.CurrentStatus
+			case svc.Stop, svc.Shutdown:
+				statuses <- svc.Status{State: svc.StopPending, WaitHint: waitHint}
+				log.Info().Msg("Received Windows service stop command")
+				s.stopHandler()
+				return false, 0
+			default:
+				log.Info().Msgf("Unexpected control request: cmd %d", changeRequest.Cmd)
+			}
 		}
 	}
 }
