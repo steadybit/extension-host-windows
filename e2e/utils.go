@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/steadybit/discovery-kit/go/discovery_kit_api"
-	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 )
 
 func findExtensionArtifact(dir string) (string, error) {
@@ -45,6 +44,9 @@ func findFileWithExtension(dir string, extension string) (string, error) {
 		}
 		return nil
 	})
+	if err == nil && artifact == "" {
+		err = fmt.Errorf("no %s file found in %s", extension, dir)
+	}
 	return artifact, err
 }
 
@@ -54,12 +56,11 @@ func extractArtifact(artifact string) (string, error) {
 		return "", err
 	}
 
-	cmd := utils.PowershellCommand("Expand-Archive", "-Path", artifact, "-DestinationPath", tmpDir, "-Force")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to extract archive: %w, output: %s", err, string(output))
+	// Not Expand-Archive: on a GitHub Windows runner it extracted nothing without
+	// failing (PR #243), see also scripts/download-windivert.ps1.
+	if err := extractZip(artifact, tmpDir); err != nil {
+		return "", fmt.Errorf("failed to extract archive: %w", err)
 	}
-
 	return tmpDir, nil
 }
 
