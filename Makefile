@@ -23,6 +23,7 @@ else
 	powershell -Command "echo 'github.com/steadybit/WinDivert,https://github.com/steadybit/WinDivert/blob/main/LICENSE,LGPLv3' >> licenses\THIRD-PARTY-LICENSES.csv"
 	powershell -Command "echo 'github.com/uutils/coreutils,https://github.com/uutils/coreutils/blob/main/LICENSE,MIT' >> licenses\THIRD-PARTY-LICENSES.csv"
 	powershell -Command "echo 'github.com/microsoft/diskspd,https://github.com/microsoft/diskspd/blob/master/LICENSE,MIT' >> licenses\THIRD-PARTY-LICENSES.csv"
+	powershell -Command "echo 'Microsoft Visual C++ Runtime (vcruntime140.dll),https://visualstudio.microsoft.com/license-terms/vs2022-cruntime/,Microsoft Software License Terms' >> licenses\THIRD-PARTY-LICENSES.csv"
 endif
 
 # ==================================================================================== #
