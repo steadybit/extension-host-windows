@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.1
+## Unreleased
 
 - chore: list the Visual C++ runtime in the third-party licenses
 - ci: remove the e2e workflow

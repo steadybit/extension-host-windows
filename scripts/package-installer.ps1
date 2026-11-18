@@ -90,6 +90,9 @@ Pop-Location
 Write-Output "Running MSBuild in: $solutionPath"
 Push-Location $solutionPath
 msbuild -Restore WindowsHostExtensionInstaller.sln /p:Configuration=Release /m /p:OutDir=..\..\dist
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "MSBuild failed with exit code $LASTEXITCODE" -ErrorAction Stop
+}
 Pop-Location
 
 
