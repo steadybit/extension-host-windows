@@ -57,12 +57,9 @@ var durationParamter = action_kit_api.ActionParameter{
 var networkInterfaceParameter = action_kit_api.ActionParameter{
 	Name:  "networkInterface",
 	Label: "Network Interface",
-	Description: new("Restrict the attack to these network interfaces. All interfaces are affected if none is specified. " +
-		"Expects the interface name (alias) exactly as Windows shows it, e.g. Ethernet, Ethernet 2, Wi-Fi or vEthernet (WSL). " +
-		"Enter names containing spaces or parentheses as they are, without quotes; upper and lower case do not matter. " +
-		"The names are listed in the host.nic attribute of the target. On the host, get them with the PowerShell command " +
-		"Get-NetIPInterface | Select-Object InterfaceAlias -Unique (or Get-NetAdapter, which omits the loopback interface). " +
-		"Localhost traffic flows through Loopback Pseudo-Interface 1."),
+	// Kept short for the tooltip, the README has the details.
+	Description: new("Interface names as Windows shows them, e.g. Ethernet 2 or vEthernet (WSL), without quotes. " +
+		"See the host.nic attribute of the target, or run Get-NetAdapter on the host. All interfaces if none specified."),
 	Type:     action_kit_api.ActionParameterTypeStringArray,
 	Required: new(false),
 	Options: new([]action_kit_api.ParameterOption{
@@ -127,7 +124,7 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 	{
 		Name:        "excludePort",
 		Label:       "Exclude Ports",
-		Description: new("Exclude traffic to/from these ports or port ranges (e.g. 3389 or 8000-8100) from being affected, whatever the address. Excludes always take precedence over the include restrictions above (hostnames, IPs/CIDRs, ports), e.g. affect all traffic except RDP on port 3389."),
+		Description: new("Exclude traffic to/from these ports or port ranges (e.g. 3389 or 8000-8100) on any address. Excludes always take precedence over the include restrictions above."),
 		Type:        action_kit_api.ActionParameterTypeStringArray,
 		Required:    new(false),
 		Advanced:    new(true),
