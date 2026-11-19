@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.2
+
+- fix: let a fatal error during a service stop wait for the action rollback
+- fix: report startup readiness and fatal errors to the Windows SCM
+- fix: roll back running actions when the Windows service stops
+- fix: stop the Windows service without error 1067
+
 ## v0.5.1
 
 - chore: list the Visual C++ runtime in the third-party licenses
