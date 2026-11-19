@@ -91,6 +91,14 @@ func addressFields(family Family) (dst, src string) {
 const openGroup string = " and ("
 const closeGroup string = ")"
 
+// WinDivert filter fields of the tcp and udp ports.
+const (
+	tcpDstPort = "tcp.DstPort"
+	tcpSrcPort = "tcp.SrcPort"
+	udpDstPort = "udp.DstPort"
+	udpSrcPort = "udp.SrcPort"
+)
+
 func buildWinDivertFilter(f Filter) (string, error) {
 	var sb strings.Builder
 
@@ -140,8 +148,8 @@ func writeExcludePortsFilter(sb *strings.Builder, portRanges []akn.PortRange) {
 	clauses := make([]string, len(portRanges))
 	for i, portRange := range portRanges {
 		clauses[i] = fmt.Sprintf("(( not tcp or ( %s and %s )) and ( not udp or ( %s and %s )))",
-			portOutside("tcp.DstPort", portRange), portOutside("tcp.SrcPort", portRange),
-			portOutside("udp.DstPort", portRange), portOutside("udp.SrcPort", portRange))
+			portOutside(tcpDstPort, portRange), portOutside(tcpSrcPort, portRange),
+			portOutside(udpDstPort, portRange), portOutside(udpSrcPort, portRange))
 	}
 	sb.WriteString(strings.Join(clauses, " and "))
 	sb.WriteString(closeGroup)
@@ -202,9 +210,9 @@ func writeIncludeFilter(sb *strings.Builder, filter Filter) error {
 			return err
 		}
 
-		sb.WriteString(includeClause(dstAddr, "tcp.DstPort", "udp.DstPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(includeClause(dstAddr, tcpDstPort, udpDstPort, ran.PortRange, startIp, endIp))
 		sb.WriteString(" or ")
-		sb.WriteString(includeClause(srcAddr, "tcp.SrcPort", "udp.SrcPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(includeClause(srcAddr, tcpSrcPort, udpSrcPort, ran.PortRange, startIp, endIp))
 
 		if i < len(filter.Include)-1 {
 			sb.WriteString(" or ")
@@ -228,9 +236,9 @@ func writeExcludeFilter(sb *strings.Builder, filter Filter) error {
 			return err
 		}
 
-		sb.WriteString(excludeClause(dstAddr, "tcp.DstPort", "udp.DstPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(excludeClause(dstAddr, tcpDstPort, udpDstPort, ran.PortRange, startIp, endIp))
 		sb.WriteString(" and ")
-		sb.WriteString(excludeClause(srcAddr, "tcp.SrcPort", "udp.SrcPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(excludeClause(srcAddr, tcpSrcPort, udpSrcPort, ran.PortRange, startIp, endIp))
 
 		if i < len(filter.Exclude)-1 {
 			sb.WriteString(" and ")
