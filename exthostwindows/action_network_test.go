@@ -96,23 +96,20 @@ func Test_mapToNetworkFilter_excludePort(t *testing.T) {
 		"excludePort": []any{"3389", "8000-8100", ""},
 	}, nil)
 	require.NoError(t, err)
+	require.Equal(t, []akn.PortRange{{From: 3389, To: 3389}, {From: 8000, To: 8100}}, filter.ExcludePorts)
 
-	var parameterExcludes []string
-	for _, e := range filter.Exclude {
-		if e.Comment == "parameters" {
-			parameterExcludes = append(parameterExcludes, e.String())
-		}
-	}
-	// every address of both families, restricted to the excluded ports
-	require.ElementsMatch(t, []string{
-		"0.0.0.0/0 3389 # parameters",
-		"0.0.0.0/0 8000-8100 # parameters",
-		"::/0 3389 # parameters",
-		"::/0 8000-8100 # parameters",
-	}, parameterExcludes)
+	filter, _, err = mapToNetworkFilter(context.Background(), map[string]any{}, nil)
+	require.NoError(t, err)
+	require.Empty(t, filter.ExcludePorts)
 
 	_, _, err = mapToNetworkFilter(context.Background(), map[string]any{"excludePort": []any{"not-a-port"}}, nil)
 	require.Error(t, err)
+
+	// would spare everything and turn the attack into a no-op
+	for _, all := range []string{"*", "1-65534"} {
+		_, _, err = mapToNetworkFilter(context.Background(), map[string]any{"excludePort": []any{"3389", all}}, nil)
+		require.ErrorContains(t, err, "excluding all ports")
+	}
 }
 
 func Test_resolveInterfaceIndexes(t *testing.T) {
@@ -122,6 +119,7 @@ func Test_resolveInterfaceIndexes(t *testing.T) {
 		{Index: 12, Name: "Ethernet 2"},
 		{Index: 23, Name: "vEthernet (WSL (Hyper-V firewall))"},
 		{Index: 31, Name: "Wi-Fi"},
+		{Index: 40, Name: "Äthernet"},
 	}
 
 	tests := []struct {
@@ -137,9 +135,12 @@ func Test_resolveInterfaceIndexes(t *testing.T) {
 		{name: "case and surrounding whitespace are ignored", names: []string{" ethernet 2 ", "WI-FI"}, want: []int{12, 31}},
 		{name: "duplicates are reported once", names: []string{"Ethernet", "ethernet"}, want: []int{7}},
 		{name: "loopback", names: []string{"Loopback Pseudo-Interface 1"}, want: []int{1}},
-		{name: "empty entries are skipped", names: []string{"", "  "}, want: nil},
+		{name: "empty entries are skipped", names: []string{"", "Ethernet"}, want: []int{7}},
+		{name: "only empty entries", names: []string{""}, want: nil},
+		{name: "a blank entry is not skipped", names: []string{"  "}, wantErr: `network interface "  " not found`},
+		{name: "case is folded for non-ASCII letters", names: []string{"ÄTHERNET"}, want: []int{40}},
 		{name: "unknown name lists the available ones", names: []string{"Ethernet 3"},
-			wantErr: `network interface "Ethernet 3" not found, available: "Loopback Pseudo-Interface 1", "Ethernet", "Ethernet 2", "vEthernet (WSL (Hyper-V firewall))", "Wi-Fi"`},
+			wantErr: `network interface "Ethernet 3" not found, available: "Loopback Pseudo-Interface 1", "Ethernet", "Ethernet 2", "vEthernet (WSL (Hyper-V firewall))", "Wi-Fi", "Äthernet"`},
 		{name: "quoted name is not accepted", names: []string{`"Ethernet 2"`}, wantErr: "not found"},
 	}
 

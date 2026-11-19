@@ -6,6 +6,7 @@ package exthostwindows
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"slices"
@@ -255,16 +256,13 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]any, restri
 	}
 	excludes = append(excludes, userExcludes...)
 
-	excludePortRanges, err := utils.ParsePortRanges(extutil.ToStringArray(actionConfig["excludePort"]))
+	excludePorts, err := utils.ParsePortRanges(extutil.ToStringArray(actionConfig["excludePort"]))
 	if err != nil {
 		return network.Filter{}, nil, err
 	}
-	// An excluded port is spared on every address.
-	portExcludes := akn.NewNetWithPortRanges(akn.NetAny, excludePortRanges...)
-	for i := range portExcludes {
-		portExcludes[i].Comment = "parameters"
+	if slices.Contains(excludePorts, akn.PortRangeAny) {
+		return network.Filter{}, nil, errors.New("excluding all ports would spare all tcp and udp traffic from the attack, exclude specific ports or port ranges instead")
 	}
-	excludes = append(excludes, portExcludes...)
 
 	excludes = append(excludes, akn.ComputeExcludesForOwnIpAndPorts(config.Config.Port, config.Config.HealthPort)...)
 
@@ -287,6 +285,7 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]any, restri
 	return network.Filter{
 		Include:          includes,
 		Exclude:          excludes,
+		ExcludePorts:     excludePorts,
 		InterfaceIndexes: interfaceIndexes,
 	}, messages, nil
 }
@@ -353,27 +352,25 @@ func networkInterfaceIndexes(names []string) ([]int, error) {
 
 // resolveInterfaceIndexes maps interface names to their indexes. Windows interface names (aliases) commonly contain
 // spaces and parentheses, e.g. "Ethernet 2" or "vEthernet (WSL)"; they are matched as a whole. Like Windows itself,
-// the match ignores case, and surrounding whitespace is dropped.
+// the match ignores case, and surrounding whitespace is dropped. Only an empty entry is skipped, as the platform
+// sends it for an unset parameter; a blank one is a mistake, and skipping it would attack every interface.
 func resolveInterfaceIndexes(names []string, ifaces []net.Interface) ([]int, error) {
-	indexByName := make(map[string]int, len(ifaces))
-	for _, iface := range ifaces {
-		indexByName[strings.ToLower(iface.Name)] = iface.Index
-	}
-
 	var indexes []int
 	var missing []string
 	for _, name := range names {
-		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
 		}
-		index, ok := indexByName[strings.ToLower(name)]
-		if !ok {
+		trimmed := strings.TrimSpace(name)
+		i := slices.IndexFunc(ifaces, func(iface net.Interface) bool {
+			return strings.EqualFold(iface.Name, trimmed)
+		})
+		if i < 0 {
 			missing = append(missing, strconv.Quote(name))
 			continue
 		}
-		if !slices.Contains(indexes, index) {
-			indexes = append(indexes, index)
+		if !slices.Contains(indexes, ifaces[i].Index) {
+			indexes = append(indexes, ifaces[i].Index)
 		}
 	}
 	if len(missing) > 0 {

@@ -125,7 +125,33 @@ func buildWinDivertFilter(f Filter) (string, error) {
 		}
 	}
 
+	if len(f.ExcludePorts) > 0 {
+		writeExcludePortsFilter(&sb, f.ExcludePorts)
+	}
+
 	return sb.String(), nil
+}
+
+// writeExcludePortsFilter spares the tcp/udp packets to or from the given ports, whatever their address. It tests no
+// addresses, which keeps the clause short: WinDivert limits the length of a filter. Portless protocols (e.g. ICMP)
+// stay subject to the attack, see excludeClause.
+func writeExcludePortsFilter(sb *strings.Builder, portRanges []akn.PortRange) {
+	sb.WriteString(openGroup)
+	clauses := make([]string, len(portRanges))
+	for i, portRange := range portRanges {
+		clauses[i] = fmt.Sprintf("(( not tcp or ( %s and %s )) and ( not udp or ( %s and %s )))",
+			portOutside("tcp.DstPort", portRange), portOutside("tcp.SrcPort", portRange),
+			portOutside("udp.DstPort", portRange), portOutside("udp.SrcPort", portRange))
+	}
+	sb.WriteString(strings.Join(clauses, " and "))
+	sb.WriteString(closeGroup)
+}
+
+func portOutside(portField string, portRange akn.PortRange) string {
+	if portRange.From == portRange.To {
+		return fmt.Sprintf("%s != %d", portField, portRange.From)
+	}
+	return fmt.Sprintf("( %s < %d or %s > %d )", portField, portRange.From, portField, portRange.To)
 }
 
 func writeDirectionFilter(sb *strings.Builder, direction Direction) {

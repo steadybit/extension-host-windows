@@ -429,12 +429,13 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 	}
 
 	tests := []struct {
-		name       string
-		ip         []string
-		hostname   []string
-		port       []string
-		interfaces []string
-		wantedDrop bool
+		name        string
+		ip          []string
+		hostname    []string
+		port        []string
+		excludePort []string
+		interfaces  []string
+		wantedDrop  bool
 	}{
 		{
 			name:       "should blackhole all traffic",
@@ -449,6 +450,28 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 			name:       "should blackhole other port traffic",
 			port:       []string{"12345"},
 			wantedDrop: false,
+		},
+		{
+			// 53 keeps the name resolution working
+			name:        "should not blackhole excluded ports",
+			excludePort: []string{"53", "80", "443"},
+			wantedDrop:  false,
+		},
+		{
+			name:        "should not blackhole excluded port range",
+			excludePort: []string{"53-443"},
+			wantedDrop:  false,
+		},
+		{
+			name:        "should blackhole when another port is excluded",
+			excludePort: []string{"12345"},
+			wantedDrop:  true,
+		},
+		{
+			name:        "should not blackhole included port when it is excluded, too",
+			port:        []string{"80"},
+			excludePort: []string{"80"},
+			wantedDrop:  false,
 		},
 		{
 			name:       "should blackhole traffic to ip",
@@ -508,9 +531,11 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 			Ip           []string `json:"ip"`
 			Hostname     []string `json:"hostname"`
 			Port         []string `json:"port"`
+			ExcludePort  []string `json:"excludePort"`
 			NetInterface []string `json:"networkInterface"`
 		}{
 			Duration:     30000,
+			ExcludePort:  tt.excludePort,
 			Ip:           tt.ip,
 			Hostname:     tt.hostname,
 			Port:         tt.port,
@@ -939,10 +964,17 @@ func testUnknownNetworkInterface(t *testing.T, l Environment, e Extension) {
 	}
 }
 
+// padAndUpperCase only changes ASCII letters: upper-casing does not round-trip for every letter of a localized name.
 func padAndUpperCase(names []string) []string {
 	result := make([]string, 0, len(names))
 	for _, name := range names {
-		result = append(result, " "+strings.ToUpper(name)+" ")
+		upper := strings.Map(func(r rune) rune {
+			if r >= 'a' && r <= 'z' {
+				return r - 'a' + 'A'
+			}
+			return r
+		}, name)
+		result = append(result, " "+upper+" ")
 	}
 	return result
 }
