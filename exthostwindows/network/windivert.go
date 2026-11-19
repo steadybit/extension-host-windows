@@ -305,6 +305,7 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 	}
 	removeWinDivertFilterFile()
 	activeFilterFile = filterFile
+	log.Info().Str("filterFile", filterFile).Strs("args", opts.args(filterFile)).Msg("starting wdna.exe")
 
 	// Not bound to ctx: wdna has to outlive the request that started the attack.
 	cmd := exec.Command("wdna.exe", opts.args(filterFile)...) //NOSONAR arguments are passed without a shell
