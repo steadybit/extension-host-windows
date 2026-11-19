@@ -109,13 +109,16 @@ Restart-Service SteadybitWindowsHostExtension
 # follow the extension log
 Get-Content "$env:ProgramData\Steadybit GmbH\extension-host-windows.log" -Wait -Tail 50
 # the latest entries of the Windows application event log
-Get-EventLog -LogName Application -Source SteadybitExtensionHostWindows -Newest 20 | Format-List TimeGenerated, EntryType, Message
+Get-WinEvent -FilterHashtable @{ LogName = "Application"; ProviderName = "SteadybitExtensionHostWindows" } -MaxEvents 20 | Format-List TimeCreated, LevelDisplayName, Message
 ```
 
-For more details, raise the log level to `debug` (or `trace`) and restart the service. Remove the variable again afterwards:
+For more details, raise the log level to `debug` (or `trace`) and restart the service:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("STEADYBIT_LOG_LEVEL", "debug", "Machine")
+Restart-Service SteadybitWindowsHostExtension
+# afterwards, back to the default level
+[Environment]::SetEnvironmentVariable("STEADYBIT_LOG_LEVEL", $null, "Machine")
 Restart-Service SteadybitWindowsHostExtension
 ```
 
@@ -131,7 +134,8 @@ sc.exe query windivert
 # which traffic does the attack match? The extension logs "starting wdna.exe" with the mode, the duration and the
 # path of the filter file, which contains the WinDivert filter (https://reqrypt.org/windivert-doc.html#filter_language)
 Select-String "starting wdna.exe" "$env:ProgramData\Steadybit GmbH\extension-host-windows.log" | Select-Object -Last 1
-Get-Content <path of the filter file from the log line above>
+# print the filter, with the path from the log line above. The file only exists while the attack is running
+Get-Content "C:\path\from\the\log\wdna-filter-123456.txt"
 # end a network attack by hand, in case one is left over (the installer adds wdna_shutdown.exe to the PATH)
 wdna_shutdown.exe
 sc.exe stop windivert
