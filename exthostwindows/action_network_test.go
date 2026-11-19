@@ -8,6 +8,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/require"
 )
@@ -87,5 +88,77 @@ func Test_mapToNetworkFilter_networkInterface(t *testing.T) {
 	require.Empty(t, filter.InterfaceIndexes)
 
 	_, _, err = mapToNetworkFilter(context.Background(), map[string]any{"networkInterface": []any{ifaces[0].Name, "no-such-nic"}}, nil)
-	require.ErrorContains(t, err, "network interface no-such-nic not found")
+	require.ErrorContains(t, err, `network interface "no-such-nic" not found`)
+}
+
+func Test_mapToNetworkFilter_excludePort(t *testing.T) {
+	filter, _, err := mapToNetworkFilter(context.Background(), map[string]any{
+		"excludePort": []any{"3389", "8000-8100", ""},
+	}, nil)
+	require.NoError(t, err)
+
+	var parameterExcludes []string
+	for _, e := range filter.Exclude {
+		if e.Comment == "parameters" {
+			parameterExcludes = append(parameterExcludes, e.String())
+		}
+	}
+	// every address of both families, restricted to the excluded ports
+	require.ElementsMatch(t, []string{
+		"0.0.0.0/0 3389 # parameters",
+		"0.0.0.0/0 8000-8100 # parameters",
+		"::/0 3389 # parameters",
+		"::/0 8000-8100 # parameters",
+	}, parameterExcludes)
+
+	_, _, err = mapToNetworkFilter(context.Background(), map[string]any{"excludePort": []any{"not-a-port"}}, nil)
+	require.Error(t, err)
+}
+
+func Test_resolveInterfaceIndexes(t *testing.T) {
+	ifaces := []net.Interface{
+		{Index: 1, Name: "Loopback Pseudo-Interface 1"},
+		{Index: 7, Name: "Ethernet"},
+		{Index: 12, Name: "Ethernet 2"},
+		{Index: 23, Name: "vEthernet (WSL (Hyper-V firewall))"},
+		{Index: 31, Name: "Wi-Fi"},
+	}
+
+	tests := []struct {
+		name    string
+		names   []string
+		want    []int
+		wantErr string
+	}{
+		{name: "none", names: nil, want: nil},
+		{name: "name with spaces", names: []string{"Ethernet 2"}, want: []int{12}},
+		{name: "name with parentheses", names: []string{"vEthernet (WSL (Hyper-V firewall))"}, want: []int{23}},
+		{name: "a name with spaces does not match its prefix", names: []string{"Ethernet"}, want: []int{7}},
+		{name: "case and surrounding whitespace are ignored", names: []string{" ethernet 2 ", "WI-FI"}, want: []int{12, 31}},
+		{name: "duplicates are reported once", names: []string{"Ethernet", "ethernet"}, want: []int{7}},
+		{name: "loopback", names: []string{"Loopback Pseudo-Interface 1"}, want: []int{1}},
+		{name: "empty entries are skipped", names: []string{"", "  "}, want: nil},
+		{name: "unknown name lists the available ones", names: []string{"Ethernet 3"},
+			wantErr: `network interface "Ethernet 3" not found, available: "Loopback Pseudo-Interface 1", "Ethernet", "Ethernet 2", "vEthernet (WSL (Hyper-V firewall))", "Wi-Fi"`},
+		{name: "quoted name is not accepted", names: []string{`"Ethernet 2"`}, wantErr: "not found"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveInterfaceIndexes(tt.names, ifaces)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_networkInterfaceParameter_suggestsDiscoveredInterfaces(t *testing.T) {
+	require.NotNil(t, networkInterfaceParameter.Options)
+	require.Equal(t, []action_kit_api.ParameterOption{
+		action_kit_api.ParameterOptionsFromTargetAttribute{Attribute: hostNicAttribute},
+	}, *networkInterfaceParameter.Options)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"net"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
@@ -56,7 +57,7 @@ func getNetworkBlackholeDescription() action_kit_api.ActionDescription {
 				DefaultValue: new("true"),
 				Advanced:     new(true),
 				Group:        new(groupTrafficFilter),
-				Order:        new(107),
+				Order:        new(108),
 			},
 		),
 	}
@@ -116,7 +117,10 @@ func blockLocalhostFromConfig(config map[string]any) bool {
 func selectsLoopbackInterface(interfaces []string) bool {
 	loopback := akn.GetLoopbackNetworkInterfaces()
 	return slices.ContainsFunc(interfaces, func(name string) bool {
-		return slices.Contains(loopback, name)
+		return slices.ContainsFunc(loopback, func(l string) bool {
+			// matched like resolveInterfaceIndexes does
+			return strings.EqualFold(l, strings.TrimSpace(name))
+		})
 	})
 }
 

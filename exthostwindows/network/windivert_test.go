@@ -420,3 +420,21 @@ func TestWinDivertBuildFilterIncludesLoopbackByDefault(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "true", filter)
 }
+
+// An excluded port without an address (the "Exclude Ports" parameter) is an exclude on every address of both families.
+func TestWinDivertBuildFilterExcludePortOnAnyAddress(t *testing.T) {
+	f := Filter{
+		Direction: DirectionAll,
+		Exclude:   akn.NewNetWithPortRanges(akn.NetAny, akn.PortRange{From: 3389, To: 3389}),
+	}
+
+	filter, err := buildWinDivertFilter(f)
+	require.NoError(t, err)
+
+	assert.Equal(t, "true and ("+
+		"(( ip.DstAddr >= 0.0.0.0 and ip.DstAddr <= 255.255.255.255 )? (( not tcp or tcp.DstPort != 3389 ) and ( not udp or udp.DstPort != 3389 )): true)"+
+		" and (( ip.SrcAddr >= 0.0.0.0 and ip.SrcAddr <= 255.255.255.255 )? (( not tcp or tcp.SrcPort != 3389 ) and ( not udp or udp.SrcPort != 3389 )): true)"+
+		" and (( ipv6.DstAddr >= :: and ipv6.DstAddr <= ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff )? (( not tcp or tcp.DstPort != 3389 ) and ( not udp or udp.DstPort != 3389 )): true)"+
+		" and (( ipv6.SrcAddr >= :: and ipv6.SrcAddr <= ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff )? (( not tcp or tcp.SrcPort != 3389 ) and ( not udp or udp.SrcPort != 3389 )): true)"+
+		")", filter)
+}

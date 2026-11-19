@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,13 +54,21 @@ var durationParamter = action_kit_api.ActionParameter{
 }
 
 var networkInterfaceParameter = action_kit_api.ActionParameter{
-	Name:        "networkInterface",
-	Label:       "Network Interface",
-	Description: new("Target Network Interface which should be affected. All if none specified."),
-	Type:        action_kit_api.ActionParameterTypeStringArray,
-	Required:    new(false),
-	Group:       new(groupTrafficFilter),
-	Order:       new(106),
+	Name:  "networkInterface",
+	Label: "Network Interface",
+	Description: new("Restrict the attack to these network interfaces. All interfaces are affected if none is specified. " +
+		"Expects the interface name (alias) exactly as Windows shows it, e.g. Ethernet, Ethernet 2, Wi-Fi or vEthernet (WSL). " +
+		"Enter names containing spaces or parentheses as they are, without quotes; upper and lower case do not matter. " +
+		"The names are listed in the host.nic attribute of the target. On the host, get them with the PowerShell command " +
+		"Get-NetIPInterface | Select-Object InterfaceAlias -Unique (or Get-NetAdapter, which omits the loopback interface). " +
+		"Localhost traffic flows through Loopback Pseudo-Interface 1."),
+	Type:     action_kit_api.ActionParameterTypeStringArray,
+	Required: new(false),
+	Options: new([]action_kit_api.ParameterOption{
+		action_kit_api.ParameterOptionsFromTargetAttribute{Attribute: hostNicAttribute},
+	}),
+	Group: new(groupTrafficFilter),
+	Order: new(107),
 }
 
 var commonNetworkParameters = []action_kit_api.ActionParameter{
@@ -112,6 +122,16 @@ var commonNetworkParameters = []action_kit_api.ActionParameter{
 		Advanced:    new(true),
 		Group:       new(groupTrafficFilter),
 		Order:       new(105),
+	},
+	{
+		Name:        "excludePort",
+		Label:       "Exclude Ports",
+		Description: new("Exclude traffic to/from these ports or port ranges (e.g. 3389 or 8000-8100) from being affected, whatever the address. Excludes always take precedence over the include restrictions above (hostnames, IPs/CIDRs, ports), e.g. affect all traffic except RDP on port 3389."),
+		Type:        action_kit_api.ActionParameterTypeStringArray,
+		Required:    new(false),
+		Advanced:    new(true),
+		Group:       new(groupTrafficFilter),
+		Order:       new(106),
 	},
 }
 
@@ -235,6 +255,17 @@ func mapToNetworkFilter(ctx context.Context, actionConfig map[string]any, restri
 	}
 	excludes = append(excludes, userExcludes...)
 
+	excludePortRanges, err := utils.ParsePortRanges(extutil.ToStringArray(actionConfig["excludePort"]))
+	if err != nil {
+		return network.Filter{}, nil, err
+	}
+	// An excluded port is spared on every address.
+	portExcludes := akn.NewNetWithPortRanges(akn.NetAny, excludePortRanges...)
+	for i := range portExcludes {
+		portExcludes[i].Comment = "parameters"
+	}
+	excludes = append(excludes, portExcludes...)
+
 	excludes = append(excludes, akn.ComputeExcludesForOwnIpAndPorts(config.Config.Port, config.Config.HealthPort)...)
 
 	messages := []action_kit_api.Message{} // make sure messages is not nil
@@ -317,28 +348,38 @@ func networkInterfaceIndexes(names []string) ([]int, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list network interfaces: %w", err)
 	}
+	return resolveInterfaceIndexes(names, ifaces)
+}
+
+// resolveInterfaceIndexes maps interface names to their indexes. Windows interface names (aliases) commonly contain
+// spaces and parentheses, e.g. "Ethernet 2" or "vEthernet (WSL)"; they are matched as a whole. Like Windows itself,
+// the match ignores case, and surrounding whitespace is dropped.
+func resolveInterfaceIndexes(names []string, ifaces []net.Interface) ([]int, error) {
 	indexByName := make(map[string]int, len(ifaces))
 	for _, iface := range ifaces {
-		indexByName[iface.Name] = iface.Index
+		indexByName[strings.ToLower(iface.Name)] = iface.Index
 	}
 
 	var indexes []int
 	var missing []string
 	for _, name := range names {
+		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
 		}
-		index, ok := indexByName[name]
+		index, ok := indexByName[strings.ToLower(name)]
 		if !ok {
-			missing = append(missing, name)
+			missing = append(missing, strconv.Quote(name))
 			continue
 		}
-		indexes = append(indexes, index)
+		if !slices.Contains(indexes, index) {
+			indexes = append(indexes, index)
+		}
 	}
 	if len(missing) > 0 {
 		available := make([]string, 0, len(ifaces))
 		for _, iface := range ifaces {
-			available = append(available, iface.Name)
+			available = append(available, strconv.Quote(iface.Name))
 		}
 		return nil, fmt.Errorf("network interface %s not found, available: %s", strings.Join(missing, ", "), strings.Join(available, ", "))
 	}
