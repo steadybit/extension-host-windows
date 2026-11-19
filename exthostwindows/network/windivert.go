@@ -91,6 +91,14 @@ func addressFields(family Family) (dst, src string) {
 const openGroup string = " and ("
 const closeGroup string = ")"
 
+// WinDivert filter fields of the tcp and udp ports.
+const (
+	tcpDstPort = "tcp.DstPort"
+	tcpSrcPort = "tcp.SrcPort"
+	udpDstPort = "udp.DstPort"
+	udpSrcPort = "udp.SrcPort"
+)
+
 func buildWinDivertFilter(f Filter) (string, error) {
 	var sb strings.Builder
 
@@ -125,7 +133,33 @@ func buildWinDivertFilter(f Filter) (string, error) {
 		}
 	}
 
+	if len(f.ExcludePorts) > 0 {
+		writeExcludePortsFilter(&sb, f.ExcludePorts)
+	}
+
 	return sb.String(), nil
+}
+
+// writeExcludePortsFilter spares the tcp/udp packets to or from the given ports, whatever their address. It tests no
+// addresses, which keeps the clause short: WinDivert limits the length of a filter. Portless protocols (e.g. ICMP)
+// stay subject to the attack, see excludeClause.
+func writeExcludePortsFilter(sb *strings.Builder, portRanges []akn.PortRange) {
+	sb.WriteString(openGroup)
+	clauses := make([]string, len(portRanges))
+	for i, portRange := range portRanges {
+		clauses[i] = fmt.Sprintf("(( not tcp or ( %s and %s )) and ( not udp or ( %s and %s )))",
+			portOutside(tcpDstPort, portRange), portOutside(tcpSrcPort, portRange),
+			portOutside(udpDstPort, portRange), portOutside(udpSrcPort, portRange))
+	}
+	sb.WriteString(strings.Join(clauses, " and "))
+	sb.WriteString(closeGroup)
+}
+
+func portOutside(portField string, portRange akn.PortRange) string {
+	if portRange.From == portRange.To {
+		return fmt.Sprintf("%s != %d", portField, portRange.From)
+	}
+	return fmt.Sprintf("( %s < %d or %s > %d )", portField, portRange.From, portField, portRange.To)
 }
 
 func writeDirectionFilter(sb *strings.Builder, direction Direction) {
@@ -176,9 +210,9 @@ func writeIncludeFilter(sb *strings.Builder, filter Filter) error {
 			return err
 		}
 
-		sb.WriteString(includeClause(dstAddr, "tcp.DstPort", "udp.DstPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(includeClause(dstAddr, tcpDstPort, udpDstPort, ran.PortRange, startIp, endIp))
 		sb.WriteString(" or ")
-		sb.WriteString(includeClause(srcAddr, "tcp.SrcPort", "udp.SrcPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(includeClause(srcAddr, tcpSrcPort, udpSrcPort, ran.PortRange, startIp, endIp))
 
 		if i < len(filter.Include)-1 {
 			sb.WriteString(" or ")
@@ -202,9 +236,9 @@ func writeExcludeFilter(sb *strings.Builder, filter Filter) error {
 			return err
 		}
 
-		sb.WriteString(excludeClause(dstAddr, "tcp.DstPort", "udp.DstPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(excludeClause(dstAddr, tcpDstPort, udpDstPort, ran.PortRange, startIp, endIp))
 		sb.WriteString(" and ")
-		sb.WriteString(excludeClause(srcAddr, "tcp.SrcPort", "udp.SrcPort", ran.PortRange, startIp, endIp))
+		sb.WriteString(excludeClause(srcAddr, tcpSrcPort, udpSrcPort, ran.PortRange, startIp, endIp))
 
 		if i < len(filter.Exclude)-1 {
 			sb.WriteString(" and ")
@@ -305,6 +339,7 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 	}
 	removeWinDivertFilterFile()
 	activeFilterFile = filterFile
+	log.Info().Str("filterFile", filterFile).Strs("args", opts.args(filterFile)).Msg("starting wdna.exe")
 
 	// Not bound to ctx: wdna has to outlive the request that started the attack.
 	cmd := exec.Command("wdna.exe", opts.args(filterFile)...) //NOSONAR arguments are passed without a shell

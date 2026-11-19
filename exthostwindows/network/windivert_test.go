@@ -4,6 +4,7 @@
 package network
 
 import (
+	"strings"
 	"testing"
 
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -419,4 +420,32 @@ func TestWinDivertBuildFilterIncludesLoopbackByDefault(t *testing.T) {
 	filter, err := buildWinDivertFilter(Filter{Direction: DirectionAll})
 	assert.NoError(t, err)
 	assert.Equal(t, "true", filter)
+}
+
+func TestWinDivertBuildFilterExcludePorts(t *testing.T) {
+	net1, err := akn.ParseCIDR("1.1.1.1/32")
+	require.NoError(t, err)
+	f := Filter{
+		Direction:    DirectionAll,
+		Exclude:      []akn.NetWithPortRange{{Net: *net1, PortRange: akn.PortRangeAny}},
+		ExcludePorts: []akn.PortRange{{From: 3389, To: 3389}, {From: 8000, To: 8100}},
+	}
+
+	filter, err := buildWinDivertFilter(f)
+	require.NoError(t, err)
+
+	// No address tests, and portless protocols (e.g. ICMP) stay affected.
+	assert.Equal(t, "true"+
+		" and ((( ip.DstAddr == 1.1.1.1 )? false: true) and (( ip.SrcAddr == 1.1.1.1 )? false: true))"+
+		" and ("+
+		"(( not tcp or ( tcp.DstPort != 3389 and tcp.SrcPort != 3389 )) and ( not udp or ( udp.DstPort != 3389 and udp.SrcPort != 3389 )))"+
+		" and (( not tcp or ( ( tcp.DstPort < 8000 or tcp.DstPort > 8100 ) and ( tcp.SrcPort < 8000 or tcp.SrcPort > 8100 ) )) and ( not udp or ( ( udp.DstPort < 8000 or udp.DstPort > 8100 ) and ( udp.SrcPort < 8000 or udp.SrcPort > 8100 ) )))"+
+		")", filter)
+}
+
+func TestFilterStringListsExcludedPorts(t *testing.T) {
+	var sb strings.Builder
+	f := Filter{ExcludePorts: []akn.PortRange{{From: 3389, To: 3389}, {From: 8000, To: 8100}}}
+	f.writeStringForFilters(&sb)
+	assert.Contains(t, sb.String(), "but not from/to ports:\n 3389\n 8000-8100\n")
 }

@@ -87,3 +87,94 @@ In case of problems, the extension logs are always a good starting point for inv
 ### Extension can not be reached
 
 Please check if the Windows service `SteadybitWindowsHostExtension` is started correctly and (re-)start it.
+
+### Cheatsheet
+
+Run the commands in an elevated (Administrator) PowerShell on the Windows host.
+
+#### Is the extension running?
+
+```powershell
+# state of the extension service
+Get-Service SteadybitWindowsHostExtension
+# the extension answers on its API port (run on the host itself, the extension only listens on localhost by default)
+Invoke-RestMethod http://localhost:8085/
+# (re-)start it
+Restart-Service SteadybitWindowsHostExtension
+```
+
+#### What is the extension doing?
+
+```powershell
+# follow the extension log
+Get-Content "$env:ProgramData\Steadybit GmbH\extension-host-windows.log" -Wait -Tail 50
+# the latest entries of the Windows application event log
+Get-WinEvent -FilterHashtable @{ LogName = "Application"; ProviderName = "SteadybitExtensionHostWindows" } -MaxEvents 20 | Format-List TimeCreated, LevelDisplayName, Message
+```
+
+For more details, raise the log level to `debug` (or `trace`) and restart the service:
+
+```powershell
+[Environment]::SetEnvironmentVariable("STEADYBIT_LOG_LEVEL", "debug", "Machine")
+Restart-Service SteadybitWindowsHostExtension
+# afterwards, back to the default level
+[Environment]::SetEnvironmentVariable("STEADYBIT_LOG_LEVEL", $null, "Machine")
+Restart-Service SteadybitWindowsHostExtension
+```
+
+#### What is the network driver doing?
+
+The network attacks "Block Traffic", "Block DNS", "Delay Outgoing Traffic", "Drop Outgoing Traffic" and "Corrupt Outgoing Packages" are executed by `wdna.exe`, which loads the [WinDivert](https://github.com/steadybit/WinDivert) driver for the duration of the attack. Neither the process nor the driver are present while no attack is running.
+
+```powershell
+# is an attack running? wdna.exe only lives for the duration of an attack
+Get-Process wdna -ErrorAction SilentlyContinue
+# is the driver loaded? STATE is RUNNING during an attack, the service does not exist otherwise
+sc.exe query windivert
+# which traffic does the attack match? The extension logs "starting wdna.exe" with the mode, the duration and the
+# path of the filter file, which contains the WinDivert filter (https://reqrypt.org/windivert-doc.html#filter_language)
+Select-String "starting wdna.exe" "$env:ProgramData\Steadybit GmbH\extension-host-windows.log" | Select-Object -Last 1
+# print the filter, with the path from the log line above. The file only exists while the attack is running
+Get-Content "C:\path\from\the\log\wdna-filter-123456.txt"
+# end a network attack by hand, in case one is left over (the installer adds wdna_shutdown.exe to the PATH)
+wdna_shutdown.exe
+sc.exe stop windivert
+```
+
+If the driver fails to load, check whether the host accepts it:
+
+```powershell
+# pre-release versions ship a test-signed driver, which needs "testsigning Yes" (see "Pre-Release Versions")
+bcdedit.exe /enum "{current}" | Select-String testsigning
+# driver load failures reported by Windows
+Get-WinEvent -FilterHashtable @{ LogName = "System"; ProviderName = "Service Control Manager" } -MaxEvents 200 | Where-Object Message -Match "windivert"
+```
+
+"Limit Outgoing Bandwidth" does not use the driver, but Windows policy-based QoS:
+
+```powershell
+# the QoS policies of a running attack; none are left once the attack ended
+Get-NetQosPolicy -PolicyStore ActiveStore | Where-Object Name -Like "STEADYBIT_QOS_*"
+# remove leftovers by hand
+Get-NetQosPolicy -PolicyStore ActiveStore | Where-Object Name -Like "STEADYBIT_QOS_*" | Remove-NetQosPolicy -Confirm:$false
+```
+
+#### Which value does the "Network Interface" parameter expect?
+
+The name (alias) of the interface as Windows shows it, e.g. `Ethernet`, `Ethernet 2`, `Wi-Fi` or `vEthernet (WSL)`. Enter names with spaces or parentheses as they are, without quotes; upper and lower case do not matter. The names are also reported in the `host.nic` attribute of the target, and an attack with an unknown name fails listing the available ones.
+
+```powershell
+# all interface names, including the loopback interface used by localhost traffic
+Get-NetIPInterface | Select-Object InterfaceAlias, InterfaceIndex -Unique
+# the physical and virtual adapters with their state
+Get-NetAdapter | Format-Table Name, InterfaceDescription, ifIndex, Status
+```
+
+#### Sparing traffic from a network attack
+
+"Block Traffic", "Delay Outgoing Traffic", "Drop Outgoing Traffic" and "Corrupt Outgoing Packages" take excludes, which always win over the include restrictions:
+
+- **Exclude IPs/CIDRs** and **Exclude Hostnames** spare all traffic to/from these addresses, on every port.
+- **Exclude Ports** spares the traffic to/from these ports or port ranges (e.g. `3389` or `8000-8100`), on every address. Use it e.g. to keep RDP (`3389`) or WinRM (`5985-5986`) sessions alive while all other traffic is affected.
+
+Sparing a port on a single address only is not supported. "Limit Outgoing Bandwidth" and "Block DNS" have no excludes.

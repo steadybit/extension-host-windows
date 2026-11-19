@@ -61,8 +61,10 @@ var (
 )
 
 type Filter struct {
-	Include          []akn.NetWithPortRange
-	Exclude          []akn.NetWithPortRange
+	Include []akn.NetWithPortRange
+	Exclude []akn.NetWithPortRange
+	// ExcludePorts are spared on every address.
+	ExcludePorts     []akn.PortRange
 	InterfaceIndexes []int
 	Direction        Direction
 	// ExcludeLoopback leaves loopback traffic (127.0.0.0/8, ::1) untouched.
@@ -86,6 +88,14 @@ func (filter *Filter) writeStringForFilters(sb *strings.Builder) {
 		for _, exc := range filter.Exclude {
 			sb.WriteString(" ")
 			sb.WriteString(exc.String())
+			sb.WriteString("\n")
+		}
+	}
+	if len(filter.ExcludePorts) > 0 {
+		sb.WriteString("but not from/to ports:\n")
+		for _, portRange := range filter.ExcludePorts {
+			sb.WriteString(" ")
+			sb.WriteString(portRange.String())
 			sb.WriteString("\n")
 		}
 	}

@@ -39,7 +39,7 @@ func orderOf(p action_kit_api.ActionParameter) int {
 }
 
 func TestParameterGroups(t *testing.T) {
-	trafficFilter := []string{"hostname", "ip", "port", "excludeHostname", "excludeIp", "networkInterface"}
+	trafficFilter := []string{"hostname", "ip", "port", "excludeHostname", "excludeIp", "excludePort", "networkInterface"}
 
 	tests := []struct {
 		name    string
