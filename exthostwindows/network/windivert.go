@@ -361,7 +361,7 @@ func (o *WinDivertOpts) args(filterFile string) []string {
 // stopWinDivert ends wdna and stops the driver service. WinDivert marks the service for deletion right after starting
 // it, so stopping it also unloads and removes the driver; a missing service therefore counts as stopped.
 func stopWinDivert() error {
-	wdnaErr := stopWdna(wdnaStopTimeout)
+	wdnaErr := stopWdna(wdnaProcessName, wdnaMailslot, wdnaStopTimeout)
 	removeWinDivertFilterFile()
 
 	err := utils.StopService(winDivertServiceName, winDivertServiceTimeout)
@@ -374,8 +374,7 @@ func stopWinDivert() error {
 const (
 	wdnaProcessName = "wdna"
 	// The mailslot wdna reads its shutdown request from, see examples/wdna/wdna.c in steadybit/WinDivert.
-	wdnaMailslot     = `\\.\mailslot\steadybit\wdna`
-	wdnaPollInterval = 100 * time.Millisecond
+	wdnaMailslot = `\\.\mailslot\steadybit\wdna`
 	// wdna checks its mailslot once a second and then sends the packets it still holds; under heavy traffic it may
 	// not get there in time. Killing it restores the traffic but drops the packets it holds.
 	wdnaStopTimeout = 10 * time.Second
@@ -384,39 +383,60 @@ const (
 // stopWdna asks wdna to stop through its mailslot, so it sends the packets it holds, and kills it when it has not
 // exited in time: the traffic wdna diverts only flows normally again once it exits. It finds wdna by name, so it
 // also stops a wdna started before the extension restarted.
-func stopWdna(timeout time.Duration) error {
-	if err := signalWdnaShutdown(); err != nil {
-		// Expected when wdna already exited, e.g. because its duration elapsed.
+func stopWdna(processName, mailslot string, timeout time.Duration) error {
+	pids, findErr := utils.FindProcessIdsByName(processName)
+	if findErr == nil && len(pids) == 0 {
+		return nil
+	}
+	// Signalled even when listing the processes failed: wdna may still shut down on its own.
+	if err := signalWdnaShutdown(mailslot); err != nil {
 		log.Debug().Err(err).Msg("failed to signal wdna.exe to shut down")
 	}
 
-	deadline := time.Now().Add(timeout)
-	for {
-		running, err := utils.IsProcessRunning(wdnaProcessName)
-		if err != nil || !running {
-			return err
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	errs := []error{findErr}
+	for _, pid := range pids {
+		errs = append(errs, awaitExitOrKill(ctx, pid))
+	}
+	return errors.Join(errs...)
+}
+
+// awaitExitOrKill waits for the process to exit and kills it when ctx ends first. It waits on and kills through the
+// process handle, so a pid reused after the process exited is not affected.
+func awaitExitOrKill(ctx context.Context, pid int) error {
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		log.Debug().Err(err).Int("pid", pid).Msg("wdna.exe exited before it could be awaited")
+		return nil
+	}
+	exited := make(chan struct{})
+	go func() {
+		_, _ = p.Wait()
+		close(exited)
+	}()
+
+	select {
+	case <-exited:
+		return nil
+	case <-ctx.Done():
+		log.Warn().Int("pid", pid).Msg("wdna.exe did not shut down in time, killing it")
+		if err := p.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			return fmt.Errorf("failed to kill wdna.exe: %w", err)
 		}
-		if time.Now().After(deadline) {
-			log.Warn().Dur("timeout", timeout).Msg("wdna.exe did not shut down in time, killing it")
-			return utils.StopProcess(wdnaProcessName)
-		}
-		time.Sleep(wdnaPollInterval)
+		<-exited
+		return nil
 	}
 }
 
 // signalWdnaShutdown writes to the mailslot wdna reads its shutdown request from; any message ends wdna.
-func signalWdnaShutdown() error {
-	name, err := windows.UTF16PtrFromString(wdnaMailslot)
+func signalWdnaShutdown(mailslot string) error {
+	slot, err := os.OpenFile(mailslot, os.O_WRONLY, 0)
 	if err != nil {
 		return err
 	}
-	slot, err := windows.CreateFile(name, windows.GENERIC_WRITE, windows.FILE_SHARE_READ, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = windows.CloseHandle(slot) }()
-	var written uint32
-	return windows.WriteFile(slot, []byte("shutdown\x00"), &written, nil)
+	_, err = slot.Write([]byte("shutdown\x00"))
+	return errors.Join(err, slot.Close())
 }
 
 // activeFilterFile is the filter file of the running WinDivert attack. The attack state does not carry the file name

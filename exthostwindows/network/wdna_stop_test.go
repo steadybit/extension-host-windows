@@ -5,6 +5,7 @@ package network
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,50 +18,58 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// fakeWdnaEnv makes the test binary act as wdna.exe: "mailslot" exits once a shutdown request arrives on wdna's
-// mailslot, "ignore" keeps running until it is killed.
+// fakeWdnaEnv makes the test binary act as wdna: with a mailslot name as value it exits once a message arrives on that
+// mailslot, with "ignore" it keeps running until it is killed.
 const fakeWdnaEnv = "STEADYBIT_TEST_FAKE_WDNA"
 
 func TestMain(m *testing.M) {
 	if mode := os.Getenv(fakeWdnaEnv); mode != "" {
-		os.Exit(runFakeWdna(mode == "mailslot"))
+		os.Exit(runFakeWdna(mode))
 	}
 	os.Exit(m.Run())
 }
 
 func TestStopWdnaSignalsShutdown(t *testing.T) {
-	cmd := startFakeWdna(t, "mailslot")
+	name, mailslot := fakeWdnaNames()
+	cmd := startFakeWdna(t, name, mailslot)
 
 	start := time.Now()
-	require.NoError(t, stopWdna(wdnaStopTimeout))
+	require.NoError(t, stopWdna(name, mailslot, wdnaStopTimeout))
 
 	require.NoError(t, cmd.Wait(), "wdna must exit on its own, not be killed")
 	assert.Less(t, time.Since(start), wdnaStopTimeout)
 }
 
 func TestStopWdnaKillsWdnaThatDoesNotShutDown(t *testing.T) {
-	cmd := startFakeWdna(t, "ignore")
+	name, mailslot := fakeWdnaNames()
+	cmd := startFakeWdna(t, name, "ignore")
 
 	start := time.Now()
-	require.NoError(t, stopWdna(500*time.Millisecond))
+	require.NoError(t, stopWdna(name, mailslot, 500*time.Millisecond))
 
 	assert.Error(t, cmd.Wait(), "wdna must be killed")
 	assert.GreaterOrEqual(t, time.Since(start), 500*time.Millisecond)
 }
 
 func TestStopWdnaWithoutWdna(t *testing.T) {
-	require.NoError(t, stopWdna(wdnaStopTimeout))
+	name, mailslot := fakeWdnaNames()
+	require.NoError(t, stopWdna(name, mailslot, wdnaStopTimeout))
 }
 
-// startFakeWdna runs a copy of the test binary named wdna.exe, as stopWdna finds wdna by name, and waits until it
-// listens on the mailslot.
-func startFakeWdna(t *testing.T, mode string) *exec.Cmd {
+// fakeWdnaNames returns a process and mailslot name unique to the test, so it does not touch a real wdna.
+func fakeWdnaNames() (string, string) {
+	name := fmt.Sprintf("fake-wdna-%d-%d", os.Getpid(), time.Now().UnixNano())
+	return name, `\\.\mailslot\steadybit\` + name
+}
+
+// startFakeWdna runs a copy of the test binary with the given process name and waits until it is ready.
+func startFakeWdna(t *testing.T, name, mode string) *exec.Cmd {
 	t.Helper()
 	self, err := os.Executable()
 	require.NoError(t, err)
 	binary, err := os.ReadFile(self)
 	require.NoError(t, err)
-	path := filepath.Join(t.TempDir(), "wdna.exe")
+	path := filepath.Join(t.TempDir(), name+".exe")
 	require.NoError(t, os.WriteFile(path, binary, 0o755))
 
 	cmd := exec.Command(path)
@@ -68,7 +77,11 @@ func startFakeWdna(t *testing.T, mode string) *exec.Cmd {
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	require.NoError(t, cmd.Start())
-	t.Cleanup(func() { _ = cmd.Process.Kill() })
+	// Windows does not delete the executable of a running process, so the temp dir cleanup needs it gone.
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
 
 	line, _ := bufio.NewReader(stdout).ReadString('\n')
 	require.Equal(t, "ready\n", line)
@@ -77,14 +90,14 @@ func startFakeWdna(t *testing.T, mode string) *exec.Cmd {
 
 var procCreateMailslot = windows.NewLazySystemDLL("kernel32.dll").NewProc("CreateMailslotW")
 
-func runFakeWdna(listen bool) int {
-	if !listen {
+func runFakeWdna(mode string) int {
+	if mode == "ignore" {
 		_, _ = os.Stdout.WriteString("ready\n")
 		time.Sleep(time.Hour)
 		return 0
 	}
 
-	name, _ := windows.UTF16PtrFromString(wdnaMailslot)
+	name, _ := windows.UTF16PtrFromString(mode)
 	slot, _, err := procCreateMailslot.Call(uintptr(unsafe.Pointer(name)), 0, windows.INFINITE, 0)
 	if windows.Handle(slot) == windows.InvalidHandle {
 		println("failed to create the mailslot:", err.Error())

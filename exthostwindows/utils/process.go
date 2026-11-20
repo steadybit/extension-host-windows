@@ -18,20 +18,21 @@ import (
 // IsProcessRunning reports whether a process with the given name is running. Like Get-Process -Name, the name is
 // matched case-insensitively against the executable name without its ".exe" extension.
 func IsProcessRunning(processName string) (bool, error) {
-	pids, err := findProcessIdsByName(processName)
+	pids, err := FindProcessIdsByName(processName)
 	return len(pids) > 0, err
 }
 
 // StopProcess forcefully terminates all processes with the given name, see IsProcessRunning for the matching.
 func StopProcess(processName string) error {
-	pids, err := findProcessIdsByName(processName)
+	pids, err := FindProcessIdsByName(processName)
 	if err != nil {
 		return err
 	}
 	return StopProcesses(pids, true)
 }
 
-func findProcessIdsByName(processName string) ([]int, error) {
+// FindProcessIdsByName returns the pids of the processes with the given name, see IsProcessRunning for the matching.
+func FindProcessIdsByName(processName string) ([]int, error) {
 	processes, err := ps.Processes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list processes: %w", err)
