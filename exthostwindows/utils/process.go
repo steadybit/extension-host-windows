@@ -6,13 +6,14 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/go-ps"
 	"github.com/rs/zerolog/log"
 	"github.com/steadybit/extension-kit/extutil"
+	"golang.org/x/sys/windows"
 )
 
 // IsProcessRunning reports whether a process with the given name is running. Like Get-Process -Name, the name is
@@ -57,14 +58,9 @@ func StopProcesses(pids []int, force bool) error {
 
 	errs := make([]string, 0)
 	for _, pid := range pids {
-		if process, err := ps.FindProcess(pid); err == nil && process != nil {
-			log.Info().Int("pid", pid).Msg("Stopping process")
-			err := stopProcessWindows(pid, force)
-			if err != nil {
-				errs = append(errs, err.Error())
-			}
-		} else {
-			log.Info().Int("pid", pid).Msg("Process not found")
+		log.Info().Int("pid", pid).Msg("Stopping process")
+		if err := stopProcessWindows(pid, force); err != nil {
+			errs = append(errs, err.Error())
 		}
 	}
 	if len(errs) > 0 {
@@ -94,23 +90,27 @@ func stopProcessWindows(pid int, force bool) error {
 	return nil
 }
 
+const terminateWaitTimeout = 5 * time.Second
+
 // terminateProcess kills the process directly; starting taskkill.exe /F for the same effect takes up to a second.
 func terminateProcess(pid int) error {
-	p, err := os.FindProcess(pid)
-	if err != nil {
+	h, err := windows.OpenProcess(windows.PROCESS_TERMINATE|windows.SYNCHRONIZE, false, uint32(pid))
+	if errors.Is(err, windows.ERROR_INVALID_PARAMETER) {
 		log.Debug().Int("pid", pid).Msg("process already exited")
 		return nil
 	}
-	defer func() { _ = p.Release() }()
-
-	if err := p.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-		// TerminateProcess fails with access denied for a process that exited in the meantime.
-		if alive, _ := ps.FindProcess(pid); alive != nil {
-			return fmt.Errorf("failed to force kill process %d: %w", pid, err)
-		}
-		return nil
+	if err != nil {
+		return fmt.Errorf("failed to open process %d: %w", pid, err)
 	}
-	_, _ = p.Wait()
+	defer func() { _ = windows.CloseHandle(h) }()
+
+	terminateErr := windows.TerminateProcess(h, 1)
+	exited, _ := windows.WaitForSingleObject(h, uint32(terminateWaitTimeout.Milliseconds()))
+	// TerminateProcess fails with access denied for a process that is already exiting, e.g. the parent of a
+	// process stopped just before that exits on its own.
+	if terminateErr != nil && exited != windows.WAIT_OBJECT_0 {
+		return fmt.Errorf("failed to force kill process %d: %w", pid, terminateErr)
+	}
 	return nil
 }
 

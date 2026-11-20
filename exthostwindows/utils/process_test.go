@@ -8,8 +8,11 @@ import (
 
 	"github.com/mitchellh/go-ps"
 	"github.com/stretchr/testify/require"
+	"os"
 	"os/exec"
+	"runtime"
 	"testing"
+	"time"
 )
 
 func TestStopProcesses(t *testing.T) {
@@ -67,4 +70,55 @@ func TestIsProcessNotFound(t *testing.T) {
 
 	err = exec.Command("cmd", "/c", "exit 1").Run()
 	require.False(t, isProcessNotFound(err))
+}
+
+func TestMain(m *testing.M) {
+	switch os.Getenv("STOP_PROCESSES_HELPER") {
+	case "parent":
+		// like `caddy start`: wait for the child and exit with it. Freeing the touched memory keeps the parent exiting
+		// long enough to be terminated in the meantime.
+		memory := make([]byte, 512<<20)
+		for i := 0; i < len(memory); i += 4096 {
+			memory[i] = 1
+		}
+		_ = helperCommand("child").Run()
+		runtime.KeepAlive(memory)
+		os.Exit(0)
+	case "child":
+		time.Sleep(time.Minute)
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
+// helperCommand runs this test binary as the given TestMain helper process.
+func helperCommand(role string) *exec.Cmd {
+	self, _ := os.Executable()
+	cmd := exec.Command(self, "-test.run=^$")
+	cmd.Env = append(os.Environ(), "STOP_PROCESSES_HELPER="+role)
+	return cmd
+}
+
+func TestStopProcesses_ParentExitingAfterChild(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		parent := helperCommand("parent")
+		require.NoError(t, parent.Start())
+		t.Cleanup(func() { _ = parent.Process.Kill(); _, _ = parent.Process.Wait() })
+
+		var child int
+		require.Eventually(t, func() bool {
+			processes, err := ps.Processes()
+			require.NoError(t, err)
+			for _, p := range processes {
+				if p.PPid() == parent.Process.Pid {
+					child = p.Pid()
+					return true
+				}
+			}
+			return false
+		}, 5*time.Second, 10*time.Millisecond)
+
+		// the parent starts exiting as soon as the child is killed, terminating it then fails with access denied
+		require.NoError(t, StopProcesses([]int{child, parent.Process.Pid}, true))
+	}
 }
