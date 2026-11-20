@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.3
+
+- fix: update WinDivert to v0.0.17 so delay, drop and corrupt attacks no longer stop all traffic
+
 ## v0.5.2
 
 - fix: let a fatal error during a service stop wait for the action rollback
