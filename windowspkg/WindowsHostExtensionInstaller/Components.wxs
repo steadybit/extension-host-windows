@@ -3,12 +3,11 @@
     <ComponentGroup Id="WDNA" Directory="WDNAFOLDER">
       <Component Guid="ffed4d39-be0d-443a-9e18-b5c541fe7cf1">
         <File Source="./Artifacts/wdna.exe" />
-        <File Source="./Artifacts/wdna_shutdown.exe" />
         <File Source="./Artifacts/WinDivert.dll" />
         <File Source="./Artifacts/WinDivert64.sys" />
 				<Environment Id="WdnaPath" Name="PATH" Value="[WDNAFOLDER]" Part="last" Permanent="no" Action="set" System="yes"/>
       </Component>
-			<!-- wdna.exe and wdna_shutdown.exe need the Visual C++ runtime, which Windows does not include. -->
+			<!-- wdna.exe needs the Visual C++ runtime, which Windows does not include. -->
 			<Component Guid="9d268aed-53a9-46fa-9611-c7caf25eeffa">
 				<File Id="WdnaVcRuntime" Source="./Artifacts/vcruntime140.dll" />
 			</Component>

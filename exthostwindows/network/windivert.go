@@ -360,18 +360,63 @@ func (o *WinDivertOpts) args(filterFile string) []string {
 
 // stopWinDivert ends wdna and stops the driver service. WinDivert marks the service for deletion right after starting
 // it, so stopping it also unloads and removes the driver; a missing service therefore counts as stopped.
-func stopWinDivert(ctx context.Context) error {
-	if out, err := exec.CommandContext(ctx, "wdna_shutdown.exe").CombinedOutput(); err != nil { //NOSONAR no user input
-		// Expected when wdna already exited because its duration elapsed.
-		log.Info().Err(err).Str("output", strings.TrimSpace(string(out))).Msg("wdna_shutdown failed")
-	}
+func stopWinDivert() error {
+	wdnaErr := stopWdna(wdnaStopTimeout)
 	removeWinDivertFilterFile()
 
 	err := utils.StopService(winDivertServiceName, winDivertServiceTimeout)
 	if errors.Is(err, windows.ERROR_SERVICE_DOES_NOT_EXIST) {
-		return nil
+		err = nil
 	}
-	return err
+	return errors.Join(wdnaErr, err)
+}
+
+const (
+	wdnaProcessName = "wdna"
+	// The mailslot wdna reads its shutdown request from, see examples/wdna/wdna.c in steadybit/WinDivert.
+	wdnaMailslot     = `\\.\mailslot\steadybit\wdna`
+	wdnaPollInterval = 100 * time.Millisecond
+	// wdna checks its mailslot once a second and then sends the packets it still holds; under heavy traffic it may
+	// not get there in time. Killing it restores the traffic but drops the packets it holds.
+	wdnaStopTimeout = 10 * time.Second
+)
+
+// stopWdna asks wdna to stop through its mailslot, so it sends the packets it holds, and kills it when it has not
+// exited in time: the traffic wdna diverts only flows normally again once it exits. It finds wdna by name, so it
+// also stops a wdna started before the extension restarted.
+func stopWdna(timeout time.Duration) error {
+	if err := signalWdnaShutdown(); err != nil {
+		// Expected when wdna already exited, e.g. because its duration elapsed.
+		log.Debug().Err(err).Msg("failed to signal wdna.exe to shut down")
+	}
+
+	deadline := time.Now().Add(timeout)
+	for {
+		running, err := utils.IsProcessRunning(wdnaProcessName)
+		if err != nil || !running {
+			return err
+		}
+		if time.Now().After(deadline) {
+			log.Warn().Dur("timeout", timeout).Msg("wdna.exe did not shut down in time, killing it")
+			return utils.StopProcess(wdnaProcessName)
+		}
+		time.Sleep(wdnaPollInterval)
+	}
+}
+
+// signalWdnaShutdown writes to the mailslot wdna reads its shutdown request from; any message ends wdna.
+func signalWdnaShutdown() error {
+	name, err := windows.UTF16PtrFromString(wdnaMailslot)
+	if err != nil {
+		return err
+	}
+	slot, err := windows.CreateFile(name, windows.GENERIC_WRITE, windows.FILE_SHARE_READ, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = windows.CloseHandle(slot) }()
+	var written uint32
+	return windows.WriteFile(slot, []byte("shutdown\x00"), &written, nil)
 }
 
 // activeFilterFile is the filter file of the running WinDivert attack. The attack state does not carry the file name
