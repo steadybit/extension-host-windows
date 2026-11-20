@@ -2,6 +2,9 @@ package utils
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,7 +20,10 @@ func Test_PSPowershellCommand(t *testing.T) {
 }
 
 func Test_PSIsProcessRunning_ProcessExists(t *testing.T) {
-	isRunning, err := IsProcessRunning("explorer")
+	// The test binary itself: explorer.exe does not run on a server without an interactive session.
+	self, err := os.Executable()
+	require.NoError(t, err)
+	isRunning, err := IsProcessRunning(strings.TrimSuffix(filepath.Base(self), ".exe"))
 	require.NoError(t, err)
 	require.True(t, isRunning)
 }
