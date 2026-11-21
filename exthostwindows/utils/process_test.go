@@ -5,12 +5,16 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/mitchellh/go-ps"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/windows"
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -87,6 +91,17 @@ func TestMain(m *testing.M) {
 	case "child":
 		time.Sleep(time.Minute)
 		os.Exit(0)
+	case "job-parent":
+		// like the extension: join the job, start an attack process and exit without stopping it.
+		if err := KillChildProcessesOnExit(); err != nil {
+			panic(err)
+		}
+		child := helperCommand("child")
+		if err := child.Start(); err != nil {
+			panic(err)
+		}
+		fmt.Println(child.Process.Pid)
+		os.Exit(0)
 	}
 	os.Exit(m.Run())
 }
@@ -121,4 +136,22 @@ func TestStopProcesses_ParentExitingAfterChild(t *testing.T) {
 		// the parent starts exiting as soon as the child is killed, terminating it then fails with access denied
 		require.NoError(t, StopProcesses([]int{child, parent.Process.Pid}, true))
 	}
+}
+
+func TestKillChildProcessesOnExit(t *testing.T) {
+	out, err := helperCommand("job-parent").Output()
+	require.NoError(t, err)
+	child, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	require.NoError(t, err)
+
+	// Waited for through a handle: polling the pid could see another process that reused it.
+	h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(child))
+	if errors.Is(err, windows.ERROR_INVALID_PARAMETER) {
+		return
+	}
+	require.NoError(t, err)
+	defer func() { _ = windows.CloseHandle(h) }()
+	event, err := windows.WaitForSingleObject(h, 10_000)
+	require.NoError(t, err)
+	require.Equal(t, uint32(windows.WAIT_OBJECT_0), event, "the child must end with the process that started it")
 }
