@@ -10,7 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestActionFillDisk_Prepare(t *testing.T) {
@@ -241,7 +243,7 @@ func TestActionFillDisk_Prepare(t *testing.T) {
 	}
 }
 
-func TestPipeDevzeroIntoDd(t *testing.T) {
+func TestStartDevzeroIntoDd(t *testing.T) {
 	// ping stands in for devzero: it writes output for about 100 s unless it is killed.
 	longRunning := func() *exec.Cmd { return exec.Command("ping", "-n", "100", "127.0.0.1") }
 
@@ -249,28 +251,33 @@ func TestPipeDevzeroIntoDd(t *testing.T) {
 		name    string
 		devzero *exec.Cmd
 		dd      *exec.Cmd
+		wantErr bool
 	}{
-		{name: "devzero does not start", devzero: exec.Command("no-such-devzero"), dd: exec.Command("cmd.exe", "/c", "exit 0")},
-		{name: "dd does not start", devzero: longRunning(), dd: exec.Command("no-such-dd")},
+		{name: "devzero does not start", devzero: exec.Command("no-such-devzero"), dd: exec.Command("cmd.exe", "/c", "exit 0"), wantErr: true},
+		{name: "dd does not start", devzero: longRunning(), dd: exec.Command("no-such-dd"), wantErr: true},
 		{name: "dd ends without reading", devzero: longRunning(), dd: exec.Command("cmd.exe", "/c", "exit 0")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			done := make(chan struct{})
-			go func() {
-				pipeDevzeroIntoDd(tt.devzero, tt.dd)
-				close(done)
-			}()
-			select {
-			case <-done:
-			case <-time.After(30 * time.Second):
-				t.Fatal("pipeDevzeroIntoDd did not return")
+			executionId := uuid.New()
+			t.Cleanup(func() { _ = utils.StopAttackProcesses(executionId) })
+
+			err := startDevzeroIntoDd(executionId, tt.devzero, tt.dd)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.devzero.Process != nil {
+					assert.NotNil(t, tt.devzero.ProcessState, "devzero is still running")
+				} else {
+					assert.Nil(t, tt.dd.Process, "dd started without devzero")
+				}
+				return
 			}
-			if tt.devzero.Process != nil {
-				assert.NotNil(t, tt.devzero.ProcessState, "devzero is still running")
-			} else {
-				assert.Nil(t, tt.dd.Process, "dd started without devzero")
-			}
+			require.NoError(t, err)
+			assert.Eventually(t, func() bool {
+				running, err := utils.AttackProcessesRunning(executionId)
+				return err == nil && !running
+			}, 30*time.Second, 50*time.Millisecond, "devzero must end with dd")
 		})
 	}
 }

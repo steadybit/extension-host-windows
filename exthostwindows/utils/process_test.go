@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/mitchellh/go-ps"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows"
@@ -154,4 +155,30 @@ func TestKillChildProcessesOnExit(t *testing.T) {
 	event, err := windows.WaitForSingleObject(h, 10_000)
 	require.NoError(t, err)
 	require.Equal(t, uint32(windows.WAIT_OBJECT_0), event, "the child must end with the process that started it")
+}
+
+func TestStopAttackProcesses(t *testing.T) {
+	a, b := uuid.New(), uuid.New()
+	t.Cleanup(func() { _ = StopAttackProcesses(a); _ = StopAttackProcesses(b) })
+	// cmd starts ping as a grandchild, which the stop has to end too.
+	attackA := exec.Command("cmd.exe", "/c", "ping -n 30 127.0.0.1 > nul")
+	require.NoError(t, StartAttackProcess(a, attackA))
+	attackB := exec.Command("ping", "-n", "30", "127.0.0.1")
+	require.NoError(t, StartAttackProcess(b, attackB))
+	require.Eventually(t, func() bool { return len(FindProcessIds("PING")) == 2 }, 10*time.Second, 50*time.Millisecond)
+
+	require.NoError(t, StopAttackProcesses(a))
+	_ = attackA.Wait()
+
+	running, err := AttackProcessesRunning(a)
+	require.NoError(t, err)
+	require.False(t, running)
+	running, err = AttackProcessesRunning(b)
+	require.NoError(t, err)
+	require.True(t, running, "a process of another attack with the same name must keep running")
+	require.Equal(t, []int{attackB.Process.Pid}, FindProcessIds("PING"), "the grandchild must end with the attack")
+
+	require.NoError(t, StopAttackProcesses(b))
+	_ = attackB.Wait()
+	require.Empty(t, FindProcessIds("PING"))
 }

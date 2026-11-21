@@ -4,9 +4,17 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"os/exec"
+	"path/filepath"
+	"sync"
+	"syscall"
+	"time"
 	"unsafe"
 
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/windows"
 )
 
@@ -30,4 +38,220 @@ func KillChildProcessesOnExit() error {
 	}
 	// The handle stays open for the lifetime of the extension: closing it would kill the extension itself.
 	return nil
+}
+
+// AttackJob is a job object for the processes of one attack, nested in the job of KillChildProcessesOnExit. Stopping
+// it ends exactly those processes, including the ones they start themselves, and no other process with the same name.
+type AttackJob struct {
+	handle windows.Handle
+}
+
+func NewAttackJob() (*AttackJob, error) {
+	job, err := windows.CreateJobObject(nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create the job object of the attack: %w", err)
+	}
+	return &AttackJob{handle: job}, nil
+}
+
+// Start starts cmd in the job. A process that cannot be added to the job is killed: nothing could stop it.
+func (j *AttackJob) Start(cmd *exec.Cmd) error {
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	// Suspended until it is in the job: running, it could start processes outside the job or exit before it is added.
+	cmd.SysProcAttr.CreationFlags |= windows.CREATE_SUSPENDED
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	err := j.assign(cmd.Process.Pid)
+	if err == nil {
+		err = resumeProcess(cmd.Process.Pid)
+	}
+	if err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return fmt.Errorf("failed to start %s in the job object of the attack: %w", filepath.Base(cmd.Path), err)
+	}
+	return nil
+}
+
+func (j *AttackJob) assign(pid int) error {
+	h, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE, false, uint32(pid))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = windows.CloseHandle(h) }()
+	return windows.AssignProcessToJobObject(j.handle, h)
+}
+
+// resumeProcess resumes the threads of a process created suspended; os/exec does not keep the handle of its thread.
+func resumeProcess(pid int) error {
+	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPTHREAD, 0)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = windows.CloseHandle(snapshot) }()
+	entry := windows.ThreadEntry32{Size: uint32(unsafe.Sizeof(windows.ThreadEntry32{}))}
+	for err = windows.Thread32First(snapshot, &entry); err == nil; err = windows.Thread32Next(snapshot, &entry) {
+		if entry.OwnerProcessID != uint32(pid) {
+			continue
+		}
+		thread, err := windows.OpenThread(windows.THREAD_SUSPEND_RESUME, false, entry.ThreadID)
+		if err != nil {
+			return err
+		}
+		_, err = windows.ResumeThread(thread)
+		_ = windows.CloseHandle(thread)
+		if err != nil {
+			return err
+		}
+	}
+	if errors.Is(err, windows.ERROR_NO_MORE_FILES) {
+		return nil
+	}
+	return err
+}
+
+// ProcessIds returns the pids of the processes in the job that are still running.
+func (j *AttackJob) ProcessIds() ([]int, error) {
+	var list struct {
+		assigned uint32
+		listed   uint32
+		pids     [256]uintptr
+	}
+	if err := windows.QueryInformationJobObject(j.handle, windows.JobObjectBasicProcessIdList, uintptr(unsafe.Pointer(&list)), uint32(unsafe.Sizeof(list)), nil); err != nil {
+		return nil, fmt.Errorf("failed to list the processes of the attack: %w", err)
+	}
+	pids := make([]int, list.listed)
+	for i, pid := range list.pids[:list.listed] {
+		pids[i] = int(pid)
+	}
+	return pids, nil
+}
+
+// Stop terminates the processes in the job and waits until they have exited, so files they write can be removed
+// afterward. A grace period gives them time to exit on their own first, after the caller asked them to. The job stays
+// usable when Stop fails, so the stop can be retried.
+func (j *AttackJob) Stop(grace time.Duration) error {
+	// The job counts a process as gone while it is still exiting, e.g. dd with writes in flight that keep its file open;
+	// only the process itself tells when it has exited.
+	processes, openErr := j.openProcesses()
+	defer func() {
+		for _, h := range processes {
+			_ = windows.CloseHandle(h)
+		}
+	}()
+	if grace > 0 {
+		if openErr == nil && awaitExit(processes, time.Now().Add(grace)) {
+			return nil
+		}
+		log.Warn().Dur("grace", grace).Msg("processes of the attack did not exit in time, terminating them")
+	}
+	if err := windows.TerminateJobObject(j.handle, 1); err != nil {
+		return fmt.Errorf("failed to terminate the processes of the attack: %w", err)
+	}
+	if !awaitExit(processes, time.Now().Add(terminateWaitTimeout)) {
+		return errors.New("the processes of the attack did not exit after they were terminated")
+	}
+	return openErr
+}
+
+// Close releases the job; processes still in it keep running.
+func (j *AttackJob) Close() {
+	_ = windows.CloseHandle(j.handle)
+}
+
+func (j *AttackJob) openProcesses() ([]windows.Handle, error) {
+	pids, err := j.ProcessIds()
+	if err != nil {
+		return nil, err
+	}
+	var processes []windows.Handle
+	for _, pid := range pids {
+		h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(pid))
+		if errors.Is(err, windows.ERROR_INVALID_PARAMETER) {
+			continue
+		}
+		if err != nil {
+			return processes, fmt.Errorf("failed to open process %d of the attack: %w", pid, err)
+		}
+		processes = append(processes, h)
+	}
+	return processes, nil
+}
+
+func awaitExit(processes []windows.Handle, deadline time.Time) bool {
+	for _, h := range processes {
+		wait := max(time.Until(deadline), 0)
+		if event, _ := windows.WaitForSingleObject(h, uint32(wait.Milliseconds())); event != windows.WAIT_OBJECT_0 {
+			return false
+		}
+	}
+	return true
+}
+
+// attackJobs holds the job of each attack by its execution id: the action state cannot carry a handle. After a restart
+// there is nothing left to stop, the job of KillChildProcessesOnExit ended it all.
+var attackJobs = struct {
+	sync.Mutex
+	byExecution map[uuid.UUID]*AttackJob
+}{byExecution: map[uuid.UUID]*AttackJob{}}
+
+// StartAttackProcess starts cmd in the job of the attack, see AttackJob.
+func StartAttackProcess(executionId uuid.UUID, cmd *exec.Cmd) error {
+	attackJobs.Lock()
+	job, ok := attackJobs.byExecution[executionId]
+	if !ok {
+		var err error
+		if job, err = NewAttackJob(); err != nil {
+			attackJobs.Unlock()
+			return err
+		}
+		attackJobs.byExecution[executionId] = job
+	}
+	attackJobs.Unlock()
+
+	err := job.Start(cmd)
+	if err != nil && !ok {
+		// Whether the platform stops an attack whose start failed is not guaranteed.
+		forgetAttackJob(executionId)
+	}
+	return err
+}
+
+// AttackProcessesRunning reports whether a process the attack started is still running.
+func AttackProcessesRunning(executionId uuid.UUID) (bool, error) {
+	attackJobs.Lock()
+	defer attackJobs.Unlock()
+	job, ok := attackJobs.byExecution[executionId]
+	if !ok {
+		return false, nil
+	}
+	pids, err := job.ProcessIds()
+	return len(pids) > 0, err
+}
+
+// StopAttackProcesses stops the processes the attack started, see AttackJob.Stop.
+func StopAttackProcesses(executionId uuid.UUID) error {
+	attackJobs.Lock()
+	job, ok := attackJobs.byExecution[executionId]
+	attackJobs.Unlock()
+	if !ok {
+		return nil
+	}
+	if err := job.Stop(0); err != nil {
+		return err
+	}
+	forgetAttackJob(executionId)
+	return nil
+}
+
+func forgetAttackJob(executionId uuid.UUID) {
+	attackJobs.Lock()
+	defer attackJobs.Unlock()
+	if job, ok := attackJobs.byExecution[executionId]; ok {
+		delete(attackJobs.byExecution, executionId)
+		job.Close()
+	}
 }
