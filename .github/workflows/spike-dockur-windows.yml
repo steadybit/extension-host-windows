@@ -41,7 +41,8 @@ jobs:
           GOOS=windows GOARCH=amd64 go build -o "$payload/extension-host-windows.exe" .
           GOOS=windows GOARCH=amd64 go build -o "$payload/probe.exe" ./spike/dockur/probe
           gh release download "$STEADYBIT_WINDIVERT_VERSION" --repo steadybit/WinDivert --pattern 'windows-build-x64-Release.zip' --dir "$RUNNER_TEMP"
-          unzip -j -o "$RUNNER_TEMP/windows-build-x64-Release.zip" wdna.exe WinDivert.dll WinDivert64.sys -d "$payload"
+          # The extension on main stops wdna with wdna_shutdown.exe.
+          unzip -j -o "$RUNNER_TEMP/windows-build-x64-Release.zip" wdna.exe wdna_shutdown.exe WinDivert.dll WinDivert64.sys -d "$payload"
           curl -fsSL -o "$payload/vc_redist.x64.exe" https://aka.ms/vs/17/release/vc_redist.x64.exe
           ls -l "$payload"
 
@@ -73,7 +74,13 @@ jobs:
       - name: Run network attacks in the guest
         run: go test -tags spike -v -count=1 -run TestNetworkAttacks ./spike/dockur
 
+      # Read before the shutdown, which stops the probe that serves it.
+      - name: Fetch the extension log
+        if: ${{ !cancelled() && env.SPIKE_HOSTNAME != '' }}
+        run: curl -s --max-time 5 http://127.0.0.1:8080/log > "$RUNNER_TEMP/extension.log" || true
+
       - name: Shut the guest down through the extension
+        if: ${{ !cancelled() && env.SPIKE_HOSTNAME != '' }}
         run: |
           go test -tags spike -v -count=1 -run TestShutdown ./spike/dockur
           for i in $(seq 1 36); do
@@ -87,7 +94,7 @@ jobs:
       - name: Collect logs
         if: always()
         run: |
-          curl -s --max-time 5 http://127.0.0.1:8080/log > "$RUNNER_TEMP/shared/extension.log" || true
+          cp "$RUNNER_TEMP/extension.log" "$RUNNER_TEMP/shared/" 2>/dev/null || true
           docker logs windows > "$RUNNER_TEMP/shared/container.log" 2>&1 || true
           tail -50 "$RUNNER_TEMP/shared/container.log" || true
           cat "$RUNNER_TEMP/shared/setup.log" || true
