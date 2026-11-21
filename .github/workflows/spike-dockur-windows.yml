@@ -1,0 +1,100 @@
+# Spike: run the extension in Windows Server VMs that dockur/windows starts on a GitHub-hosted Linux runner, to find out
+# whether this can test what the Windows runners cannot: older Windows Server versions and shutting the host down.
+name: Spike dockur Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - spike/dockur-windows
+
+permissions:
+  contents: read
+
+jobs:
+  windows-vm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["2016", "2019"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check KVM
+        run: ls -l /dev/kvm && nproc && free -g && df -h /
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Prepare the payload for the guest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source <(grep STEADYBIT_WINDIVERT_VERSION versions.txt)
+          payload="$RUNNER_TEMP/shared/payload"
+          mkdir -p "$payload"
+          GOOS=windows GOARCH=amd64 go build -o "$payload/extension-host-windows.exe" .
+          GOOS=windows GOARCH=amd64 go build -o "$payload/probe.exe" ./spike/dockur/probe
+          gh release download "$STEADYBIT_WINDIVERT_VERSION" --repo steadybit/WinDivert --pattern 'windows-build-x64-Release.zip' --dir "$RUNNER_TEMP"
+          unzip -j -o "$RUNNER_TEMP/windows-build-x64-Release.zip" wdna.exe WinDivert.dll WinDivert64.sys -d "$payload"
+          curl -fsSL -o "$payload/vc_redist.x64.exe" https://aka.ms/vs/17/release/vc_redist.x64.exe
+          ls -l "$payload"
+
+      - name: Start Windows Server ${{ matrix.version }}
+        run: |
+          echo "started=$(date +%s)" >> "$GITHUB_ENV"
+          docker run -d --name windows \
+            --device /dev/kvm --device /dev/net/tun --cap-add NET_ADMIN --stop-timeout 120 \
+            -e VERSION=${{ matrix.version }} -e RAM_SIZE=8G -e CPU_CORES=4 -e DISK_SIZE=40G \
+            -p 8080:8080 -p 8085:8085 \
+            -v "$GITHUB_WORKSPACE/spike/dockur/oem:/oem" -v "$RUNNER_TEMP/shared:/shared" \
+            dockurr/windows:6.06
+
+      - name: Wait until the extension runs in the guest
+        run: |
+          for i in $(seq 1 360); do
+            if [ -f "$RUNNER_TEMP/shared/ready" ]; then
+              echo "ready after $(( $(date +%s) - started ))s: $(cat "$RUNNER_TEMP/shared/ready")"
+              echo "SPIKE_HOSTNAME=$(cut -d' ' -f1 "$RUNNER_TEMP/shared/ready" | tr -d '\r')" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' windows)" != "true" ]; then
+              echo "::error::the container stopped"; exit 1
+            fi
+            sleep 10
+          done
+          echo "::error::the guest did not get ready in 60 minutes"; exit 1
+
+      - name: Run network attacks in the guest
+        run: go test -tags spike -v -count=1 -run TestNetworkAttacks ./spike/dockur
+
+      - name: Shut the guest down through the extension
+        run: |
+          go test -tags spike -v -count=1 -run TestShutdown ./spike/dockur
+          for i in $(seq 1 36); do
+            if [ "$(docker inspect -f '{{.State.Running}}' windows)" != "true" ]; then
+              echo "the VM and the container stopped $(( i * 5 ))s after the shutdown"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::the VM did not stop within 3 minutes after the shutdown"; exit 1
+
+      - name: Collect logs
+        if: always()
+        run: |
+          curl -s --max-time 5 http://127.0.0.1:8080/log > "$RUNNER_TEMP/shared/extension.log" || true
+          docker logs windows > "$RUNNER_TEMP/shared/container.log" 2>&1 || true
+          tail -50 "$RUNNER_TEMP/shared/container.log" || true
+          cat "$RUNNER_TEMP/shared/setup.log" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-windows-${{ matrix.version }}
+          path: |
+            ${{ runner.temp }}/shared/*.log
+            ${{ runner.temp }}/shared/ready
