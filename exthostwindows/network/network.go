@@ -79,7 +79,7 @@ func generateAndRunCommands(ctx context.Context, opts WinOpts, mode Mode) error 
 		if mode == ModeAdd {
 			wdErr = startWinDivert(ctx, attack)
 		} else {
-			wdErr = stopWinDivert(ctx)
+			wdErr = stopWinDivert()
 		}
 		err = errors.Join(err, wdErr)
 	}
@@ -104,7 +104,7 @@ func revertFailedStart(ctx context.Context, opts WinOpts, qosPolicies []QosPolic
 		err = applyQosPolicies(ctx, qosPolicies, ModeDelete)
 	}
 	if opts.WinDivert() != nil {
-		err = errors.Join(err, stopWinDivert(ctx))
+		err = errors.Join(err, stopWinDivert())
 	}
 	if err != nil {
 		return fmt.Errorf("failed to revert the failed start: %w", err)
