@@ -31,7 +31,8 @@ jobs:
 
       - name: Prepare the payload for the guest
         env:
-          GH_TOKEN: ${{ github.token }}
+          # WinDivert is a private repository.
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           set -euo pipefail
           source <(grep STEADYBIT_WINDIVERT_VERSION versions.txt)
