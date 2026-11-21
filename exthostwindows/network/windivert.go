@@ -311,7 +311,12 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if err := cmd.Start(); err != nil {
+	if wdnaJob == nil {
+		if wdnaJob, err = utils.NewAttackJob(); err != nil {
+			return err
+		}
+	}
+	if err := wdnaJob.Start(cmd); err != nil {
 		return fmt.Errorf("failed to start wdna.exe: %w", err)
 	}
 	awaitCtx, cancel := context.WithCancelCause(ctx)
@@ -324,7 +329,7 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 
 	if err := utils.AwaitServiceRunning(awaitCtx, winDivertServiceName, winDivertServiceTimeout); err != nil {
 		// Otherwise wdna could still apply the attack once the service runs, with nobody left to stop it.
-		_ = cmd.Process.Kill()
+		_ = wdnaJob.Stop(0)
 		return err
 	}
 	return nil
@@ -360,18 +365,61 @@ func (o *WinDivertOpts) args(filterFile string) []string {
 
 // stopWinDivert ends wdna and stops the driver service. WinDivert marks the service for deletion right after starting
 // it, so stopping it also unloads and removes the driver; a missing service therefore counts as stopped.
-func stopWinDivert(ctx context.Context) error {
-	if out, err := exec.CommandContext(ctx, "wdna_shutdown.exe").CombinedOutput(); err != nil { //NOSONAR no user input
-		// Expected when wdna already exited because its duration elapsed.
-		log.Info().Err(err).Str("output", strings.TrimSpace(string(out))).Msg("wdna_shutdown failed")
-	}
+func stopWinDivert() error {
+	wdnaErr := stopWdna(wdnaStopTimeout)
 	removeWinDivertFilterFile()
 
 	err := utils.StopService(winDivertServiceName, winDivertServiceTimeout)
 	if errors.Is(err, windows.ERROR_SERVICE_DOES_NOT_EXIST) {
+		err = nil
+	}
+	return errors.Join(wdnaErr, err)
+}
+
+// wdnaJob holds wdna. Only one WinDivert attack runs at a time, see activeFilterFile; identical attacks share wdna.
+var wdnaJob *utils.AttackJob
+
+const (
+	// wdna creates this event with its own process id and ends once it is set, see examples/wdna/wdna.c in
+	// steadybit/WinDivert.
+	wdnaStopEventFormat = `Global\steadybit-wdna-stop-%d`
+	// wdna sends the packets it still holds right away when it stops, which takes well under a second. Killing it also
+	// restores the traffic, but drops those packets.
+	wdnaStopTimeout = 10 * time.Second
+)
+
+// stopWdna sets the stop event of wdna, so it sends the packets it still holds, and terminates it when it has not
+// exited in time: the traffic wdna diverts only flows normally again once it exits.
+func stopWdna(timeout time.Duration) error {
+	if wdnaJob == nil {
 		return nil
 	}
+	pids, err := wdnaJob.ProcessIds()
+	for _, pid := range pids {
+		if setErr := setWdnaStopEvent(pid); setErr != nil {
+			// Expected when wdna is just exiting because its duration elapsed; otherwise it is terminated below.
+			log.Debug().Err(setErr).Int("pid", pid).Msg("failed to set the stop event of wdna.exe")
+		}
+	}
+	if stopErr := wdnaJob.Stop(timeout); stopErr != nil {
+		return errors.Join(err, stopErr)
+	}
+	wdnaJob.Close()
+	wdnaJob = nil
 	return err
+}
+
+func setWdnaStopEvent(pid int) error {
+	name, err := windows.UTF16PtrFromString(fmt.Sprintf(wdnaStopEventFormat, pid))
+	if err != nil {
+		return err
+	}
+	event, err := windows.OpenEvent(windows.EVENT_MODIFY_STATE, false, name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = windows.CloseHandle(event) }()
+	return windows.SetEvent(event)
 }
 
 // activeFilterFile is the filter file of the running WinDivert attack. The attack state does not carry the file name

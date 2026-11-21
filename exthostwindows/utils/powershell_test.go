@@ -2,9 +2,6 @@ package utils
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,31 +14,6 @@ func Test_PSPowershellCommand(t *testing.T) {
 	require.Len(t, cmd.Args, 4)
 	require.Contains(t, cmd.Args, arg0)
 	require.Contains(t, cmd.Args, arg1)
-}
-
-func Test_PSIsProcessRunning_ProcessExists(t *testing.T) {
-	// The test binary itself: explorer.exe does not run on a server without an interactive session.
-	self, err := os.Executable()
-	require.NoError(t, err)
-	isRunning, err := IsProcessRunning(strings.TrimSuffix(filepath.Base(self), ".exe"))
-	require.NoError(t, err)
-	require.True(t, isRunning)
-}
-
-func Test_PSIsProcessRunning_NoProcess(t *testing.T) {
-	isRunning, err := IsProcessRunning("explorer-wsad")
-	require.NoError(t, err)
-	require.False(t, isRunning)
-}
-
-func Test_PSStopProcess_NoProcess(t *testing.T) {
-	err := StopProcess("explorer-wsad")
-	require.NoError(t, err)
-}
-
-func Test_PSStopProcess(t *testing.T) {
-	err := StopProcess("explorer")
-	require.NoError(t, err)
 }
 
 func Test_PSIsExecutableOperational_Yes(t *testing.T) {

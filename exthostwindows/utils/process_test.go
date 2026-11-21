@@ -5,12 +5,17 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/mitchellh/go-ps"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/windows"
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -87,6 +92,17 @@ func TestMain(m *testing.M) {
 	case "child":
 		time.Sleep(time.Minute)
 		os.Exit(0)
+	case "job-parent":
+		// like the extension: join the job, start an attack process and exit without stopping it.
+		if err := KillChildProcessesOnExit(); err != nil {
+			panic(err)
+		}
+		child := helperCommand("child")
+		if err := child.Start(); err != nil {
+			panic(err)
+		}
+		fmt.Println(child.Process.Pid)
+		os.Exit(0)
 	}
 	os.Exit(m.Run())
 }
@@ -121,4 +137,48 @@ func TestStopProcesses_ParentExitingAfterChild(t *testing.T) {
 		// the parent starts exiting as soon as the child is killed, terminating it then fails with access denied
 		require.NoError(t, StopProcesses([]int{child, parent.Process.Pid}, true))
 	}
+}
+
+func TestKillChildProcessesOnExit(t *testing.T) {
+	out, err := helperCommand("job-parent").Output()
+	require.NoError(t, err)
+	child, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	require.NoError(t, err)
+
+	// Waited for through a handle: polling the pid could see another process that reused it.
+	h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(child))
+	if errors.Is(err, windows.ERROR_INVALID_PARAMETER) {
+		return
+	}
+	require.NoError(t, err)
+	defer func() { _ = windows.CloseHandle(h) }()
+	event, err := windows.WaitForSingleObject(h, 10_000)
+	require.NoError(t, err)
+	require.Equal(t, uint32(windows.WAIT_OBJECT_0), event, "the child must end with the process that started it")
+}
+
+func TestStopAttackProcesses(t *testing.T) {
+	a, b := uuid.New(), uuid.New()
+	t.Cleanup(func() { _ = StopAttackProcesses(a); _ = StopAttackProcesses(b) })
+	// cmd starts ping as a grandchild, which the stop has to end too.
+	attackA := exec.Command("cmd.exe", "/c", "ping -n 30 127.0.0.1 > nul")
+	require.NoError(t, StartAttackProcess(a, attackA))
+	attackB := exec.Command("ping", "-n", "30", "127.0.0.1")
+	require.NoError(t, StartAttackProcess(b, attackB))
+	require.Eventually(t, func() bool { return len(FindProcessIds("PING")) == 2 }, 10*time.Second, 50*time.Millisecond)
+
+	require.NoError(t, StopAttackProcesses(a))
+	_ = attackA.Wait()
+
+	running, err := AttackProcessesRunning(a)
+	require.NoError(t, err)
+	require.False(t, running)
+	running, err = AttackProcessesRunning(b)
+	require.NoError(t, err)
+	require.True(t, running, "a process of another attack with the same name must keep running")
+	require.Equal(t, []int{attackB.Process.Pid}, FindProcessIds("PING"), "the grandchild must end with the attack")
+
+	require.NoError(t, StopAttackProcesses(b))
+	_ = attackB.Wait()
+	require.Empty(t, FindProcessIds("PING"))
 }

@@ -380,17 +380,10 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 		if err != nil {
 			return nil, err
 		}
-		command := exec.CommandContext(context.Background(), "fsutil", state.StressOpts.Args()...)
-		go func() {
-			log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
-			output, err := command.CombinedOutput()
-
-			if err != nil {
-				log.Error().Msgf("Failed to start disk fill attack: %s.", err)
-			}
-
-			log.Info().Msgf("%s", output)
-		}()
+		command := exec.Command("fsutil", state.StressOpts.Args()...)
+		if err := runAttackProcess(state.ExecutionId, command); err != nil {
+			return nil, fmt.Errorf("failed to start the disk fill attack: %w", err)
+		}
 	} else {
 		executable := resolveExecutable("coreutils", "STEADYBIT_COREUTILS")
 
@@ -406,13 +399,16 @@ func (a *fillDiskAction) Start(ctx context.Context, state *FillDiskActionState) 
 			return nil, err
 		}
 
-		bgCtx := context.Background()
-		devzeroCmd := exec.CommandContext(bgCtx, "devzero")
-		ddCmd := exec.CommandContext(bgCtx, executable, state.StressOpts.Args()...)
+		devzeroCmd := exec.Command("devzero")
+		ddCmd := exec.Command(executable, state.StressOpts.Args()...)
 
 		log.Info().Msgf("Running command: %s, %s.", ddCmd.Path, ddCmd.Args)
 
-		go pipeDevzeroIntoDd(devzeroCmd, ddCmd)
+		// Started before Start returns: a stop that comes right after would otherwise find nothing to stop.
+		if err := startDevzeroIntoDd(state.ExecutionId, devzeroCmd, ddCmd); err != nil {
+			_ = utils.StopAttackProcesses(state.ExecutionId)
+			return nil, fmt.Errorf("failed to start the disk fill attack: %w", err)
+		}
 	}
 
 	return &action_kit_api.StartResult{
@@ -429,11 +425,7 @@ func (a *fillDiskAction) Stop(_ context.Context, state *FillDiskActionState) (*a
 	messages := make([]action_kit_api.Message, 0)
 
 	// dd has to end before its file is removed. The file is missing when the start failed.
-	if err := utils.StopProcess("coreutils"); err != nil {
-		return nil, err
-	}
-
-	if err := utils.StopProcess("devzero"); err != nil {
+	if err := utils.StopAttackProcesses(state.ExecutionId); err != nil {
 		return nil, err
 	}
 
@@ -451,36 +443,39 @@ func (a *fillDiskAction) Stop(_ context.Context, state *FillDiskActionState) (*a
 	}, nil
 }
 
-// pipeDevzeroIntoDd runs dd with the output of devzero as input until dd ends. If one of them does not start, the
-// other one is not left running.
-func pipeDevzeroIntoDd(devzeroCmd, ddCmd *exec.Cmd) {
+// startDevzeroIntoDd starts dd with the output of devzero as input, both in the job of the attack, and stops devzero
+// once dd ended. If one of them does not start, the other one is not left running.
+func startDevzeroIntoDd(executionId uuid.UUID, devzeroCmd, ddCmd *exec.Cmd) error {
 	pipeReader, pipeWriter := io.Pipe()
-	defer pipeReader.Close()
-	defer pipeWriter.Close()
-
 	devzeroCmd.Stdout = pipeWriter
 	ddCmd.Stdin = pipeReader
 	ddCmd.Stdout = os.Stdout
 	ddCmd.Stderr = os.Stderr
 
-	if err := devzeroCmd.Start(); err != nil {
-		log.Err(err).Msg("failed to start devzero")
-		return
+	if err := utils.StartAttackProcess(executionId, devzeroCmd); err != nil {
+		_ = pipeReader.Close()
+		_ = pipeWriter.Close()
+		return fmt.Errorf("failed to start devzero: %w", err)
 	}
-	defer func() {
-		if err := devzeroCmd.Process.Kill(); err != nil {
+	stopDevzero := func() {
+		if err := devzeroCmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 			log.Err(err).Msg("failed to stop devzero")
 		}
 		// Unblocks the copy of devzero's output into the pipe, which nobody reads once dd ended.
 		_ = pipeReader.Close()
 		_ = devzeroCmd.Wait()
-	}()
+		_ = pipeWriter.Close()
+	}
 
-	if err := ddCmd.Start(); err != nil {
-		log.Err(err).Msg("failed to start dd")
-		return
+	if err := utils.StartAttackProcess(executionId, ddCmd); err != nil {
+		stopDevzero()
+		return fmt.Errorf("failed to start dd: %w", err)
 	}
-	if err := ddCmd.Wait(); err != nil {
-		log.Err(err).Msg("dd failed executing: might have been stopped forcefully")
-	}
+	go func() {
+		if err := ddCmd.Wait(); err != nil {
+			log.Err(err).Msg("dd failed executing: might have been stopped forcefully")
+		}
+		stopDevzero()
+	}()
+	return nil
 }
