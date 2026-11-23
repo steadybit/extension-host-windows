@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.4
+
+- fix: don't fail the stop process attack on a process that is already exiting
+
 ## v0.5.3
 
 - fix: update WinDivert to v0.0.17 so delay, drop and corrupt attacks no longer stop all traffic
