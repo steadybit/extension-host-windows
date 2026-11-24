@@ -20,10 +20,10 @@ func testFilter(t *testing.T) Filter {
 	exclude, err := akn.ParseCIDR("1.1.1.1/32")
 	require.NoError(t, err)
 	return Filter{
-		Direction:        DirectionOutgoing,
-		Include:          []akn.NetWithPortRange{{Net: *include, PortRange: akn.PortRangeAny}},
-		Exclude:          []akn.NetWithPortRange{{Net: *exclude, PortRange: akn.PortRangeAny}},
-		InterfaceIndexes: []int{7},
+		Direction:  DirectionOutgoing,
+		Include:    []akn.NetWithPortRange{{Net: *include, PortRange: akn.PortRangeAny}},
+		Exclude:    []akn.NetWithPortRange{{Net: *exclude, PortRange: akn.PortRangeAny}},
+		Interfaces: []Interface{{Index: 7, Name: "Ethernet 2"}},
 	}
 }
 
@@ -34,7 +34,7 @@ func TestCorruptPackagesOpts(t *testing.T) {
 
 	assert.Equal(t, &WinDivertOpts{Filter: opts.Filter, Mode: WinDivertModeCorrupt, Duration: 30 * time.Second, Percentage: 15}, opts.WinDivert())
 
-	assert.Equal(t, "corrupting packages of 15%\ndirection: Outgoing\nto/from:\n 1.1.1.0/24\nbut not from/to:\n 1.1.1.1/32\non interfaces:\n 7\n", opts.String())
+	assert.Equal(t, "corrupting packages of 15%\ndirection: Outgoing\nto/from:\n 1.1.1.0/24\nbut not from/to:\n 1.1.1.1/32\non interfaces:\n Ethernet 2 (index 7)\n", opts.String())
 }
 
 func TestPackageLossOpts(t *testing.T) {
@@ -44,7 +44,7 @@ func TestPackageLossOpts(t *testing.T) {
 
 	assert.Equal(t, &WinDivertOpts{Filter: opts.Filter, Mode: WinDivertModeDrop, Duration: 90 * time.Second, Percentage: 70}, opts.WinDivert())
 
-	assert.Equal(t, "loosing packages of 70%\ndirection: Outgoing\nto/from:\n 1.1.1.0/24\nbut not from/to:\n 1.1.1.1/32\non interfaces:\n 7\n", opts.String())
+	assert.Equal(t, "loosing packages of 70%\ndirection: Outgoing\nto/from:\n 1.1.1.0/24\nbut not from/to:\n 1.1.1.1/32\non interfaces:\n Ethernet 2 (index 7)\n", opts.String())
 }
 
 func TestWinDivertFilterFile(t *testing.T) {
