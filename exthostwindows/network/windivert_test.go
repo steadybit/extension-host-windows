@@ -4,6 +4,7 @@
 package network
 
 import (
+	"errors"
 	"testing"
 
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
@@ -419,4 +420,17 @@ func TestWinDivertBuildFilterIncludesLoopbackByDefault(t *testing.T) {
 	filter, err := buildWinDivertFilter(Filter{Direction: DirectionAll})
 	assert.NoError(t, err)
 	assert.Equal(t, "true", filter)
+}
+
+func TestLastLine(t *testing.T) {
+	assert.Equal(t, "", lastLine(""))
+	assert.Equal(t, "error: filter syntax error", lastLine("Mode: 'delay'\r\nerror: filter syntax error\r\n\r\n"))
+	assert.Equal(t, "Delay time must not be empty in delay mode.", lastLine("Mode: 'delay'\nDelay time must not be empty in delay mode."))
+}
+
+func TestWdnaExitError(t *testing.T) {
+	err := errors.New("exit status 1")
+	assert.EqualError(t, wdnaExitError(err, "Mode: 'delay'\n", "error: filter syntax error\n"), "wdna.exe exited before the WinDivert service started: error: filter syntax error: exit status 1")
+	assert.EqualError(t, wdnaExitError(err, "Delay time must not be empty in delay mode.", ""), "wdna.exe exited before the WinDivert service started: Delay time must not be empty in delay mode.: exit status 1")
+	assert.EqualError(t, wdnaExitError(nil, "", ""), "wdna.exe exited before the WinDivert service started")
 }

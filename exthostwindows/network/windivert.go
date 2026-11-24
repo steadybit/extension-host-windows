@@ -4,6 +4,8 @@
 package network
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -308,8 +310,10 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 
 	// Not bound to ctx: wdna has to outlive the request that started the attack.
 	cmd := exec.Command("wdna.exe", opts.args(filterFile)...) //NOSONAR arguments are passed without a shell
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// The extension runs as a service without a console, so the output of wdna is only kept by capturing it.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start wdna.exe: %w", err)
@@ -318,8 +322,8 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 	defer cancel(nil)
 	go func() {
 		err := cmd.Wait()
-		log.Debug().Err(err).Msg("wdna.exe exited")
-		cancel(wdnaExitError(err))
+		log.Info().Err(err).Str("stdout", strings.TrimSpace(stdout.String())).Str("stderr", strings.TrimSpace(stderr.String())).Msg("wdna.exe exited")
+		cancel(wdnaExitError(err, stdout.String(), stderr.String()))
 	}()
 
 	if err := utils.AwaitServiceRunning(awaitCtx, winDivertServiceName, winDivertServiceTimeout); err != nil {
@@ -333,15 +337,25 @@ func startWinDivert(ctx context.Context, opts *WinDivertOpts) error {
 // statusDllNotFound is the exit code of a process that Windows could not start because a DLL is missing.
 const statusDllNotFound = 0xC0000135
 
-func wdnaExitError(err error) error {
+func wdnaExitError(err error, stdout, stderr string) error {
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) && uint32(exitErr.ExitCode()) == statusDllNotFound {
 		return errors.New("wdna.exe could not start because a DLL is missing, e.g. VCRUNTIME140.dll of the Microsoft Visual C++ Redistributable")
 	}
-	if err == nil {
-		return errors.New("wdna.exe exited before the WinDivert service started")
+	msg := "wdna.exe exited before the WinDivert service started"
+	// wdna reports a failed start on stderr, but invalid arguments on stdout.
+	if reason := cmp.Or(lastLine(stderr), lastLine(stdout)); reason != "" {
+		msg += ": " + reason
 	}
-	return fmt.Errorf("wdna.exe exited before the WinDivert service started: %w", err)
+	if err == nil {
+		return errors.New(msg)
+	}
+	return fmt.Errorf("%s: %w", msg, err)
+}
+
+func lastLine(output string) string {
+	output = strings.TrimSpace(output)
+	return strings.TrimSpace(output[strings.LastIndexByte(output, '\n')+1:])
 }
 
 func (o *WinDivertOpts) args(filterFile string) []string {
