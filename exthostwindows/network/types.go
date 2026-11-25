@@ -99,7 +99,7 @@ func (filter *Filter) writeStringForFilters(sb *strings.Builder) {
 	if len(filter.Interfaces) > 0 {
 		sb.WriteString("on interfaces:\n")
 		for _, iface := range filter.Interfaces {
-			fmt.Fprintf(sb, " %s (index %d)\n", iface.Name, iface.Index)
+			fmt.Fprintf(sb, " %-5d%s\n", iface.Index, iface.Name)
 		}
 	}
 }
