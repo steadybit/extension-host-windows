@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
+	"github.com/steadybit/extension-host-windows/exthostwindows/network"
 	"github.com/stretchr/testify/require"
 )
 
@@ -76,15 +77,15 @@ func Test_mapToNetworkFilter_networkInterface(t *testing.T) {
 
 	filter, _, err := mapToNetworkFilter(context.Background(), map[string]any{"networkInterface": []any{ifaces[0].Name}}, nil)
 	require.NoError(t, err)
-	require.Equal(t, []int{ifaces[0].Index}, filter.InterfaceIndexes)
+	require.Equal(t, []network.Interface{{Index: ifaces[0].Index, Name: ifaces[0].Name}}, filter.Interfaces)
 
 	filter, _, err = mapToNetworkFilter(context.Background(), map[string]any{}, nil)
 	require.NoError(t, err)
-	require.Empty(t, filter.InterfaceIndexes)
+	require.Empty(t, filter.Interfaces)
 
 	filter, _, err = mapToNetworkFilter(context.Background(), map[string]any{"networkInterface": []any{""}}, nil)
 	require.NoError(t, err)
-	require.Empty(t, filter.InterfaceIndexes)
+	require.Empty(t, filter.Interfaces)
 
 	_, _, err = mapToNetworkFilter(context.Background(), map[string]any{"networkInterface": []any{ifaces[0].Name, "no-such-nic"}}, nil)
 	require.ErrorContains(t, err, "network interface no-such-nic not found")

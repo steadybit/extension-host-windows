@@ -4,7 +4,7 @@
 package network
 
 import (
-	"strconv"
+	"fmt"
 	"strings"
 	"time"
 
@@ -60,11 +60,18 @@ var (
 	DirectionAll      Direction = "All"
 )
 
+// Interface is a network interface the attack is restricted to. WinDivert filters on the index, the name is what users
+// configured and recognize.
+type Interface struct {
+	Index int
+	Name  string
+}
+
 type Filter struct {
-	Include          []akn.NetWithPortRange
-	Exclude          []akn.NetWithPortRange
-	InterfaceIndexes []int
-	Direction        Direction
+	Include    []akn.NetWithPortRange
+	Exclude    []akn.NetWithPortRange
+	Interfaces []Interface
+	Direction  Direction
 	// ExcludeLoopback leaves loopback traffic (127.0.0.0/8, ::1) untouched.
 	// WinDivert captures loopback packets, so they are affected unless excluded.
 	ExcludeLoopback bool
@@ -89,12 +96,10 @@ func (filter *Filter) writeStringForFilters(sb *strings.Builder) {
 			sb.WriteString("\n")
 		}
 	}
-	if len(filter.InterfaceIndexes) > 0 {
+	if len(filter.Interfaces) > 0 {
 		sb.WriteString("on interfaces:\n")
-		for _, ifIdx := range filter.InterfaceIndexes {
-			sb.WriteString(" ")
-			sb.WriteString(strconv.Itoa(ifIdx))
-			sb.WriteString("\n")
+		for _, iface := range filter.Interfaces {
+			fmt.Fprintf(sb, " %-5d%s\n", iface.Index, iface.Name)
 		}
 	}
 }

@@ -238,7 +238,7 @@ func TestWinDivertBuildFilterOnlyExclude(t *testing.T) {
 
 func TestWinDivertBuildFilterInterfaces(t *testing.T) {
 	filter, err := buildWinDivertFilter(Filter{
-		InterfaceIndexes: []int{1, 2, 3},
+		Interfaces: []Interface{{Index: 1}, {Index: 2}, {Index: 3}},
 	})
 	assert.NoError(t, err)
 
@@ -257,7 +257,7 @@ func TestWinDivertBuildFilterInterfacesAndIncludeOutgoing(t *testing.T) {
 				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
-		InterfaceIndexes: []int{1, 2, 3},
+		Interfaces: []Interface{{Index: 1}, {Index: 2}, {Index: 3}},
 	}
 
 	filter, err := buildWinDivertFilter(f)
@@ -278,7 +278,7 @@ func TestWinDivertBuildFilterInterfacesAndIncludeInbound(t *testing.T) {
 				PortRange: akn.PortRange{From: 8000, To: 8002},
 			},
 		},
-		InterfaceIndexes: []int{1, 2, 3},
+		Interfaces: []Interface{{Index: 1}, {Index: 2}, {Index: 3}},
 	}
 
 	filter, err := buildWinDivertFilter(f)

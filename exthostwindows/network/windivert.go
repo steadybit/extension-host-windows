@@ -109,8 +109,8 @@ func buildWinDivertFilter(f Filter) (string, error) {
 		writeDirectionFilter(&sb, f.Direction)
 	}
 
-	if len(f.InterfaceIndexes) > 0 {
-		writeInterfaceFilter(&sb, f.InterfaceIndexes)
+	if len(f.Interfaces) > 0 {
+		writeInterfaceFilter(&sb, f.Interfaces)
 	}
 
 	if len(f.Include) > 0 {
@@ -139,11 +139,11 @@ func writeDirectionFilter(sb *strings.Builder, direction Direction) {
 	}
 }
 
-func writeInterfaceFilter(sb *strings.Builder, ifIdxs []int) {
+func writeInterfaceFilter(sb *strings.Builder, ifaces []Interface) {
 	sb.WriteString(openGroup)
-	ifIdxStatements := make([]string, len(ifIdxs))
-	for i, ifIdx := range ifIdxs {
-		ifIdxStatements[i] = fmt.Sprintf("ifIdx == %d", ifIdx)
+	ifIdxStatements := make([]string, len(ifaces))
+	for i, iface := range ifaces {
+		ifIdxStatements[i] = fmt.Sprintf("ifIdx == %d", iface.Index)
 	}
 	sb.WriteString(strings.Join(ifIdxStatements, " or "))
 	sb.WriteString(closeGroup)
