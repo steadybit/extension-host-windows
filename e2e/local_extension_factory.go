@@ -27,14 +27,7 @@ type LocalExtensionFactory struct {
 func (f *LocalExtensionFactory) Create(ctx context.Context, e Environment) error {
 	start := time.Now()
 	out, err := e.ExecuteProcess(ctx, "make", "artifact")
-
-	lines := strings.SplitSeq(out, "\n")
-	for line := range lines {
-		if line != "" {
-			fmt.Println("🏠", line)
-		}
-	}
-
+	printOutput(out)
 	if err != nil {
 		return err
 	}
@@ -67,7 +60,22 @@ func (f *LocalExtensionFactory) Create(ctx context.Context, e Environment) error
 		Msg("extension executable found")
 	f.Executable = artifactExecutable
 
+	// The stress and fill attacks run these tools, which the installer ships next to the extension.
+	out, err = e.ExecuteProcess(ctx, "powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts/build-attack-tools.ps1", "-OutDir", artifactDir)
+	printOutput(out)
+	if err != nil {
+		return fmt.Errorf("failed to build the attack tools: %w", err)
+	}
+
 	return nil
+}
+
+func printOutput(out string) {
+	for line := range strings.SplitSeq(out, "\n") {
+		if line != "" {
+			fmt.Println("🏠", line)
+		}
+	}
 }
 
 func (f *LocalExtensionFactory) Start(ctx context.Context, _ Environment) (Extension, error) {

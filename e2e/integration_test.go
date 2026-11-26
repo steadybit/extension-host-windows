@@ -23,17 +23,17 @@ import (
 )
 
 var (
-	defaultExecutionContext = &action_kit_api.ExecutionContext{
-		RestrictedEndpoints: new([]action_kit_api.RestrictedEndpoint{
-			{
-				Name:    "extension",
-				Url:     "localhost",
-				Cidr:    "1.1.1.1/32",
-				PortMin: 8084,
-				PortMax: 8084,
-			},
-		}),
+	extensionEndpoint = action_kit_api.RestrictedEndpoint{
+		Name:    "extension",
+		Url:     "localhost",
+		Cidr:    "1.1.1.1/32",
+		PortMin: 8084,
+		PortMax: 8084,
 	}
+	defaultExecutionContext = withCiRunner(extensionEndpoint)
+	// Without the exclude of withCiRunner: limit bandwidth rejects a target that overlaps a restricted endpoint, and a
+	// bandwidth limit does not cut the runner off.
+	bandwidthExecutionContext = &action_kit_api.ExecutionContext{RestrictedEndpoints: &[]action_kit_api.RestrictedEndpoint{extensionEndpoint}}
 	// remoteHost is the external host the network attack tests reach and block.
 	// example.com is reserved for this kind of use and serves scripted requests
 	// reliably; requests to steadybit.com from the CI runner started failing
@@ -68,6 +68,18 @@ func TestWithLocalhost(t *testing.T) {
 			Name: "stop process",
 			Test: testStopProcess,
 		}, {
+			Name: "stress cpu",
+			Test: testStressCpu,
+		}, {
+			Name: "stress io",
+			Test: testStressIo,
+		}, {
+			Name: "fill memory",
+			Test: testFillMem,
+		}, {
+			Name: "fill disk",
+			Test: testFillDisk,
+		}, {
 			Name: "network delay",
 			Test: testNetworkDelay,
 		}, {
@@ -82,6 +94,12 @@ func TestWithLocalhost(t *testing.T) {
 		}, {
 			Name: "network limit bandwidth",
 			Test: testNetworkLimitBandwidth,
+		}, {
+			Name: "network delay under load",
+			Test: testNetworkDelayUnderLoad,
+		}, {
+			Name: "network delay released on stop",
+			Test: testNetworkDelayReleasedOnStop,
 		}, {
 			Name: "network package loss",
 			Test: testNetworkPackageLoss,
@@ -141,13 +159,7 @@ func testStopProcess(t *testing.T, l Environment, e Extension) {
 	action, err := e.RunAction(exthostwindows.BaseActionID+".stop-process", l.BuildTarget(ctx), config, nil)
 	require.NoError(t, err)
 
-	timeout := time.Now().Add(1 * time.Second)
-	for time.Now().Before(timeout) {
-		pids := l.FindProcessIds(ctx, "PING.EXE")
-		if len(pids) == 0 {
-			break
-		}
-	}
+	assert.Eventually(t, func() bool { return len(l.FindProcessIds(ctx, "PING.EXE")) == 0 }, 10*time.Second, 100*time.Millisecond, "ping must be stopped")
 	require.NoError(t, action.Cancel())
 }
 
@@ -238,8 +250,7 @@ func testNetworkDelay(t *testing.T, l Environment, e Extension) {
 			NetInterface: tt.interfaces,
 		}
 
-		restrictedEndpoints := tt.restrictedEndpoints
-		executionContext := &action_kit_api.ExecutionContext{RestrictedEndpoints: &restrictedEndpoints}
+		executionContext := withCiRunner(tt.restrictedEndpoints...)
 
 		unaffectedLatency, err := netperf.MeasureLatency()
 		require.NoError(t, err)
@@ -292,12 +303,10 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 	require.NoError(t, err)
 	defer func() { _ = netperf.Delete() }()
 
-	executionContext := &action_kit_api.ExecutionContext{
-		RestrictedEndpoints: new([]action_kit_api.RestrictedEndpoint{
-			{Name: "extension", Cidr: "127.0.0.0/8", PortMin: 8084, PortMax: 8084},
-			{Name: "extension", Cidr: "::1/128", PortMin: 8084, PortMax: 8084},
-		}),
-	}
+	executionContext := withCiRunner(
+		action_kit_api.RestrictedEndpoint{Name: "extension", Cidr: "127.0.0.0/8", PortMin: 8084, PortMax: 8084},
+		action_kit_api.RestrictedEndpoint{Name: "extension", Cidr: "::1/128", PortMin: 8084, PortMax: 8084},
+	)
 
 	tests := []struct {
 		name            string
@@ -336,8 +345,8 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 			wantedReachable: false,
 		},
 		{
-			// no restricted endpoints: only the extension's own loopback excludes
-			// keep it reachable, so the attack can still be cancelled
+			// no restricted endpoint of the extension: only its own loopback
+			// excludes keep it reachable, so the attack can still be cancelled
 			name:            "should keep the extension reachable when blocking all localhost traffic",
 			blockLocalhost:  new(true),
 			allPorts:        true,
@@ -362,7 +371,7 @@ func testNetworkBlackholeLocalhost(t *testing.T, l Environment, e Extension) {
 		eCtx := executionContext
 		if tt.allPorts {
 			config.Port = nil
-			eCtx = &action_kit_api.ExecutionContext{}
+			eCtx = withCiRunner()
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -451,21 +460,20 @@ func testNetworkBlackhole(t *testing.T, l Environment, e Extension) {
 	// proxy functionality to check remote endpoints.
 	// If local communication isn't ignored the blackhole starts before
 	// the start response could be returned and the test fails.
-	executionContext := &action_kit_api.ExecutionContext{
-		RestrictedEndpoints: new([]action_kit_api.RestrictedEndpoint{
-			{
-				Name:    "extension",
-				Cidr:    "127.0.0.0/8",
-				PortMin: 1,
-				PortMax: 65534,
-			}, {
-				Name:    "extension",
-				Cidr:    "::1/128",
-				PortMin: 1,
-				PortMax: 65534,
-			},
-		}),
-	}
+	executionContext := withCiRunner(
+		action_kit_api.RestrictedEndpoint{
+			Name:    "extension",
+			Cidr:    "127.0.0.0/8",
+			PortMin: 1,
+			PortMax: 65534,
+		},
+		action_kit_api.RestrictedEndpoint{
+			Name:    "extension",
+			Cidr:    "::1/128",
+			PortMin: 1,
+			PortMax: 65534,
+		},
+	)
 
 	for _, tt := range tests {
 		config := struct {
@@ -658,7 +666,7 @@ func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
 		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			action, err := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), config, defaultExecutionContext)
+			action, err := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), config, bandwidthExecutionContext)
 			defer func() { _ = action.Cancel() }()
 			require.NoError(t, err)
 
@@ -673,217 +681,42 @@ func testNetworkLimitBandwidth(t *testing.T, l Environment, e Extension) {
 	}
 }
 
-func testNetworkPackageLoss(t *testing.T, l Environment, e Extension) {
-	t.Skip("Loos tests seem to be super flaky, deactivate for now.")
-
-	port, err := FindAvailablePort(5002, 5100)
-	require.NoError(t, err)
-	iperf := NewIperf("127.0.0.1", port)
-	err = iperf.Deploy(t.Context(), l)
-	require.NoError(t, err)
-	defer func() { _ = iperf.Delete() }()
-
-	tests := []struct {
-		name       string
-		ip         []string
-		port       []string
-		interfaces []string
-		wantedLoss bool
-	}{
-		{
-			name:       "should loose packages on all traffic",
-			wantedLoss: true,
-		},
-		{
-			name:       "should loose packages only on server port traffic",
-			port:       []string{strconv.Itoa(iperf.Port)},
-			wantedLoss: true,
-		},
-		{
-			name:       "should loose packages only on port 80 traffic",
-			port:       []string{"80"},
-			wantedLoss: false,
-		},
-		{
-			name:       "should loose packages only on server ip",
-			ip:         []string{iperf.Ip},
-			wantedLoss: true,
-		},
-		{
-			name:       "should loose packages only on other ip",
-			ip:         []string{"1.1.1.1"},
-			wantedLoss: false,
-		},
-		{
-			name:       "should loose packages on all interfaces",
-			interfaces: network.GetOwnNetworkInterfaces(),
-			wantedLoss: true,
-		},
-		{
-			name:       "should loose packages on none loopback interfaces",
-			interfaces: network.GetNonLoopbackNetworkInterfaces(),
-			wantedLoss: false,
-		},
-	}
-
-	for _, tt := range tests {
-		config := struct {
-			Duration     int      `json:"duration"`
-			Percentage   int      `json:"percentage"`
-			Ip           []string `json:"ip"`
-			Port         []string `json:"port"`
-			NetInterface []string `json:"networkInterface"`
-		}{
-			Duration:     50000,
-			Percentage:   10,
-			Ip:           tt.ip,
-			Port:         tt.port,
-			NetInterface: tt.interfaces,
-		}
-
-		t.Run(tt.name, func(t *testing.T) {
-			action, err := e.RunAction(exthostwindows.BaseActionID+".network_package_loss", l.BuildTarget(t.Context()), config, defaultExecutionContext)
-			defer func() { _ = action.Cancel() }()
-			require.NoError(t, err)
-
-			if tt.wantedLoss {
-				iperf.AssertPackageLoss(t, t.Context(), l, float64(config.Percentage)*0.7, float64(config.Percentage)*1.4)
-			} else {
-				iperf.AssertPackageLoss(t, t.Context(), l, 0, 5)
-			}
-			require.NoError(t, action.Cancel())
-
-			iperf.AssertPackageLoss(t, t.Context(), l, 0, 5)
-		})
-	}
-}
-
-func testNetworkPackageCorruption(t *testing.T, l Environment, e Extension) {
-	t.Skip("Iperf does not seem to track lost/corrupted packages on Windows. Deactivated for now.")
-
-	ctx := t.Context()
-	port, err := FindAvailablePort(5002, 5100)
-	require.NoError(t, err)
-	iperf := NewIperf("127.0.0.1", port)
-	err = iperf.Deploy(ctx, l)
-	require.NoError(t, err)
-	defer func() { _ = iperf.Delete() }()
-
-	tests := []struct {
-		name             string
-		ip               []string
-		hostname         []string
-		port             []string
-		interfaces       []string
-		wantedCorruption bool
-	}{
-		{
-			name:             "should corrupt packages on all traffic",
-			wantedCorruption: true,
-		},
-		{
-			name:             "should corrupt packages on server port traffic",
-			port:             []string{strconv.Itoa(iperf.Port)},
-			wantedCorruption: true,
-		},
-		{
-			name:             "should corrupt packages on port 80 traffic",
-			port:             []string{"80"},
-			wantedCorruption: false,
-		},
-		{
-			name:             "should corrupt packages on server ip",
-			ip:               []string{iperf.Ip},
-			wantedCorruption: true,
-		},
-		{
-			name:             "should corrupt packages on other ip",
-			ip:               []string{"1.1.1.1"},
-			wantedCorruption: false,
-		},
-		{
-			name:             "should corrupt packages on all interfaces",
-			interfaces:       network.GetOwnNetworkInterfaces(),
-			wantedCorruption: true,
-		},
-		{
-			name:             "should corrupt packages on none loopback interfaces",
-			interfaces:       network.GetNonLoopbackNetworkInterfaces(),
-			wantedCorruption: false,
-		},
-	}
-
-	for _, tt := range tests {
-		config := struct {
-			Duration     int      `json:"duration"`
-			Corruption   int      `json:"networkCorruption"`
-			Ip           []string `json:"ip"`
-			Hostname     []string `json:"hostname"`
-			Port         []string `json:"port"`
-			NetInterface []string `json:"networkInterface"`
-		}{
-			Duration:     60000,
-			Corruption:   10,
-			Ip:           tt.ip,
-			Hostname:     tt.hostname,
-			Port:         tt.port,
-			NetInterface: tt.interfaces,
-		}
-
-		t.Run(tt.name, func(t *testing.T) {
-			Retry(t, 3, 1*time.Second, func(r *R) {
-				action, err := e.RunAction(exthostwindows.BaseActionID+".network_package_corruption", l.BuildTarget(t.Context()), config, defaultExecutionContext)
-				defer func() { _ = action.Cancel() }()
-				if err != nil {
-					r.Failed = true
-				}
-
-				if tt.wantedCorruption {
-					packageLossResult := iperf.AssertPackageLossWithRetry(t.Context(), l, float64(config.Corruption)*0.7, float64(config.Corruption)*1.3, 8)
-					if !packageLossResult {
-						r.Failed = true
-					}
-				} else {
-					packageLossResult := iperf.AssertPackageLossWithRetry(t.Context(), l, 0, 5, 8)
-					if !packageLossResult {
-						r.Failed = true
-					}
-				}
-				require.NoError(t, action.Cancel())
-
-				packageLossResult := iperf.AssertPackageLossWithRetry(t.Context(), l, 0, 5, 8)
-				if !packageLossResult {
-					r.Failed = true
-				}
-			})
-		})
-	}
-}
-
+// testTwoNetworkAttacks starts a second network attack while one runs, also an identical one. It is rejected, and
+// neither its start nor the stop that follows may revert the running attack.
 func testTwoNetworkAttacks(t *testing.T, l Environment, e Extension) {
-	configDelay := struct {
-		Duration int `json:"duration"`
-		Delay    int `json:"networkDelay"`
-	}{
-		Duration: 10000,
-		Delay:    200,
-	}
+	port := startUdpEcho(t)
+	configDelay := map[string]any{"duration": 60000, "networkDelay": 100, "port": []string{strconv.Itoa(port)}}
 	actionDelay, err := e.RunAction(exthostwindows.BaseActionID+".network_delay", l.BuildTarget(t.Context()), configDelay, defaultExecutionContext)
 	defer func() { _ = actionDelay.Cancel() }()
 	require.NoError(t, err)
 
-	configLimit := struct {
-		Duration  int      `json:"duration"`
-		Bandwidth string   `json:"bandwidth"`
-		Hostname  []string `json:"hostname"`
+	second := []struct {
+		name             string
+		actionId         string
+		config           map[string]any
+		executionContext *action_kit_api.ExecutionContext
 	}{
-		Duration:  10000,
-		Bandwidth: "200mbit",
-		Hostname:  []string{remoteHost},
+		{name: "identical", actionId: "network_delay", config: configDelay, executionContext: defaultExecutionContext},
+		{name: "network_bandwidth", actionId: "network_bandwidth", config: map[string]any{"duration": 60000, "bandwidth": "200mbit", "hostname": []string{remoteHost}}, executionContext: bandwidthExecutionContext},
+		{name: "network_blackhole", actionId: "network_blackhole", config: map[string]any{"duration": 60000, "port": []string{strconv.Itoa(port + 1)}}, executionContext: defaultExecutionContext},
 	}
-	actionLimit, err2 := e.RunAction(exthostwindows.BaseActionID+".network_bandwidth", l.BuildTarget(t.Context()), configLimit, defaultExecutionContext)
-	defer func() { _ = actionLimit.Cancel() }()
-	require.ErrorContains(t, err2, "running multiple network attacks at the same time is not supported")
+	for _, s := range second {
+		t.Run(s.name, func(t *testing.T) {
+			action, err := e.RunAction(exthostwindows.BaseActionID+"."+s.actionId, l.BuildTarget(t.Context()), s.config, s.executionContext)
+			defer func() { _ = action.Cancel() }()
+			require.ErrorContains(t, err, "running multiple network attacks at the same time is not supported")
+
+			// Delayed twice by 100 ms, see the comment at the top of network_wdna_test.go.
+			x := exchangeUdp(t, port, 20, 20, 2*time.Second, nil)
+			assert.GreaterOrEqual(t, x.intactShare(), 0.99)
+			assert.GreaterOrEqual(t, x.percentile(0.5), 190*time.Millisecond, "the running attack must still delay")
+		})
+	}
+
+	require.NoError(t, actionDelay.Cancel())
+	x := exchangeUdp(t, port, 20, 20, 2*time.Second, nil)
+	assert.GreaterOrEqual(t, x.intactShare(), 0.99)
+	assert.Less(t, x.percentile(0.5), 50*time.Millisecond)
 }
 
 func testUnknownNetworkInterface(t *testing.T, l Environment, e Extension) {
@@ -917,4 +750,14 @@ func generateRestrictedEndpoints(count int) []action_kit_api.RestrictedEndpoint 
 	}
 
 	return result
+}
+
+// withCiRunner keeps outgoing HTTPS out of the attacks besides the given endpoints. It is how a CI runner talks to
+// GitHub: an attack that is not stopped would otherwise cut the runner off, and the job is lost with its log.
+func withCiRunner(endpoints ...action_kit_api.RestrictedEndpoint) *action_kit_api.ExecutionContext {
+	all := append([]action_kit_api.RestrictedEndpoint{
+		{Name: "ci runner", Cidr: "0.0.0.0/0", PortMin: 443, PortMax: 443},
+		{Name: "ci runner", Cidr: "::/0", PortMin: 443, PortMax: 443},
+	}, endpoints...)
+	return &action_kit_api.ExecutionContext{RestrictedEndpoints: &all}
 }
