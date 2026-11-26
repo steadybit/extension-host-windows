@@ -16,41 +16,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// IsProcessRunning reports whether a process with the given name is running. Like Get-Process -Name, the name is
-// matched case-insensitively against the executable name without its ".exe" extension.
-func IsProcessRunning(processName string) (bool, error) {
-	pids, err := findProcessIdsByName(processName)
-	return len(pids) > 0, err
-}
-
-// StopProcess forcefully terminates all processes with the given name, see IsProcessRunning for the matching.
-func StopProcess(processName string) error {
-	pids, err := findProcessIdsByName(processName)
-	if err != nil {
-		return err
-	}
-	return StopProcesses(pids, true)
-}
-
-func findProcessIdsByName(processName string) ([]int, error) {
-	processes, err := ps.Processes()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list processes: %w", err)
-	}
-
-	var pids []int
-	for _, p := range processes {
-		name := p.Executable()
-		if len(name) > 4 && strings.EqualFold(name[len(name)-4:], ".exe") {
-			name = name[:len(name)-4]
-		}
-		if strings.EqualFold(name, processName) {
-			pids = append(pids, p.Pid())
-		}
-	}
-	return pids, nil
-}
-
 func StopProcesses(pids []int, force bool) error {
 	if len(pids) == 0 {
 		return nil
