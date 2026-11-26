@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,8 +58,10 @@ func TestPackageLossOpts_MultipleInterfaces(t *testing.T) {
 
 func TestWinDivertFilterFile(t *testing.T) {
 	filter := testFilter(t)
-	file, err := buildWinDivertFilterFile(filter)
+	executionId := uuid.New()
+	file, err := buildWinDivertFilterFile(executionId, filter)
 	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Remove(file) })
 
 	expected, err := buildWinDivertFilter(filter)
 	require.NoError(t, err)
@@ -66,10 +69,8 @@ func TestWinDivertFilterFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expected, string(content))
 
-	activeFilterFile = file
-	removeWinDivertFilterFile()
+	require.NoError(t, stopWinDivert(executionId))
 	assert.NoFileExists(t, file)
-	assert.Empty(t, activeFilterFile)
 }
 
 func TestWinDivertArgs(t *testing.T) {
