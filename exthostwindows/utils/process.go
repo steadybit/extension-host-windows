@@ -29,10 +29,19 @@ func StopProcesses(pids []int, force bool) error {
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("fail to stop processes : %s", strings.Join(errs, ", "))
+		err := fmt.Errorf("failed to stop processes: %s", strings.Join(errs, ", "))
+		if !force {
+			return fmt.Errorf("%w. %s", err, gracefulStopHint)
+		}
+		return err
 	}
 	return nil
 }
+
+// gracefulStopHint explains a failed graceful stop. taskkill's own reason is localized, so it can't tell apart why the
+// close request was refused; a process without a window is the usual case on servers.
+const gracefulStopHint = "A graceful stop asks a process to close through its window, so it does not work for processes " +
+	"without one, such as Windows services and IIS. Disable 'graceful' to stop them forcibly."
 
 func stopProcessWindows(pid int, force bool) error {
 	if force {
@@ -44,15 +53,26 @@ func stopProcessWindows(pid int, force bool) error {
 	if err != nil {
 		return fmt.Errorf("fail to find taskkill.exe: %w", err)
 	}
-	err = exec.Command(taskkill, "/pid", fmt.Sprintf("%d", pid)).Run()
+	output, err := exec.Command(taskkill, "/pid", fmt.Sprintf("%d", pid)).CombinedOutput()
 	if err != nil {
 		if isProcessNotFound(err) {
 			log.Debug().Int("pid", pid).Msg("Process already exited")
 			return nil
 		}
-		return fmt.Errorf("failed to kill process %d via taskkill: %w", pid, err)
+		reason := strings.TrimRight(strings.Join(strings.Fields(strings.ToValidUTF8(string(output), "?")), " "), ".")
+		if reason == "" {
+			reason = err.Error()
+		}
+		return fmt.Errorf("process %d%s did not close gracefully (taskkill: %s)", pid, processName(pid), reason)
 	}
 	return nil
+}
+
+func processName(pid int) string {
+	if p, err := ps.FindProcess(pid); err == nil && p != nil {
+		return fmt.Sprintf(" (%s)", p.Executable())
+	}
+	return ""
 }
 
 const terminateWaitTimeout = 5 * time.Second
