@@ -52,11 +52,13 @@ func TestStopProcesses_Graceful(t *testing.T) {
 	require.NoError(t, cmd.Start())
 	t.Cleanup(func() { _ = cmd.Process.Kill() })
 
-	// console processes without a window can't be closed gracefully, taskkill reports an error
 	err := StopProcesses([]int{cmd.Process.Pid}, false)
-	if err != nil {
-		require.Contains(t, err.Error(), "failed to kill process")
-	}
+	require.ErrorContains(t, err, fmt.Sprintf("process %d (PING.EXE) did not close gracefully (taskkill: ", cmd.Process.Pid))
+	require.ErrorContains(t, err, "Disable 'graceful' to stop them forcibly.")
+
+	p, err := ps.FindProcess(cmd.Process.Pid)
+	require.NoError(t, err)
+	require.NotNil(t, p, "a failed graceful stop must leave the process running")
 }
 
 func TestFindProcessIds_ByPid(t *testing.T) {

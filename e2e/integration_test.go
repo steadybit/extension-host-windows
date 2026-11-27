@@ -68,6 +68,9 @@ func TestWithLocalhost(t *testing.T) {
 			Name: "stop process",
 			Test: testStopProcess,
 		}, {
+			Name: "stop process gracefully without a window",
+			Test: testStopProcessGracefullyWithoutWindow,
+		}, {
 			Name: "stress cpu",
 			Test: testStressCpu,
 		}, {
@@ -162,6 +165,35 @@ func testStopProcess(t *testing.T, l Environment, e Extension) {
 
 	assert.Eventually(t, func() bool { return len(l.FindProcessIds(ctx, "PING.EXE")) == 0 }, 10*time.Second, 100*time.Millisecond, "ping must be stopped")
 	require.NoError(t, action.Cancel())
+}
+
+// testStopProcessGracefullyWithoutWindow stops a process without a window gracefully, like a service or IIS. The attack
+// fails with an error that says to stop it forcibly, and the process keeps running.
+func testStopProcessGracefullyWithoutWindow(t *testing.T, l Environment, e Extension) {
+	ctx := t.Context()
+	config := struct {
+		Duration int    `json:"duration"`
+		Graceful bool   `json:"graceful"`
+		Process  string `json:"process"`
+		Delay    int    `json:"delay"`
+	}{
+		Duration: 10000,
+		Graceful: true,
+		Process:  "PING.EXE",
+		Delay:    1,
+	}
+
+	cancel, err := l.StartAndAwaitProcess(ctx, "PING.EXE", awaitLog(" 127.0.0.1: "), "-n", "30", "127.0.0.1")
+	require.NoError(t, err)
+	t.Cleanup(cancel)
+
+	action, err := e.RunAction(exthostwindows.BaseActionID+".stop-process", l.BuildTarget(ctx), config, nil)
+	require.NoError(t, err)
+
+	err = action.Wait()
+	require.ErrorContains(t, err, "did not close gracefully")
+	require.ErrorContains(t, err, "Disable 'graceful' to stop them forcibly.")
+	assert.NotEmpty(t, l.FindProcessIds(ctx, "PING.EXE"), "ping must keep running")
 }
 
 func testNetworkDelay(t *testing.T, l Environment, e Extension) {
