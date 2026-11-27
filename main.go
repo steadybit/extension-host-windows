@@ -16,6 +16,7 @@ import (
 	"github.com/steadybit/discovery-kit/go/discovery_kit_sdk"
 	"github.com/steadybit/extension-host-windows/config"
 	"github.com/steadybit/extension-host-windows/exthostwindows"
+	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
 	"github.com/steadybit/extension-kit/extbuild"
 	"github.com/steadybit/extension-kit/exthealth"
 	"github.com/steadybit/extension-kit/exthttp"
@@ -27,6 +28,11 @@ import (
 
 func main() {
 	extlogging.InitZeroLog()
+
+	// Attacks are stopped through their job objects only, so without it their processes would outlive the extension.
+	if err := utils.KillChildProcessesOnExit(); err != nil {
+		log.Fatal().Err(err).Msg("failed to set up the job object for the attack processes")
+	}
 
 	// Export OpenTelemetry traces when an OTLP endpoint is configured, so an
 	// operator debugging a slow or timing-out action can see what happened inside

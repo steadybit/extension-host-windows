@@ -5,11 +5,11 @@ package network
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"net"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	akn "github.com/steadybit/action-kit/go/action_kit_commons/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,9 +25,9 @@ func TestCleanupQosPolicies(t *testing.T) {
 	// Cleanup does not run if experiment is active
 	createTestQosPolicy(t, qosPolicyPrefix+"TEST_POLICY_CLEANUP")
 	qosPoliciesClean.Store(false) // as if a failed revert left the policy behind
+	execution := Execution{Id: uuid.New()}
 	opts := &MockNetworkOpt{}
-	err := generateAndRunCommands(t.Context(), opts, ModeAdd)
-	require.NoError(t, err)
+	require.NoError(t, Apply(t.Context(), execution, opts))
 
 	CleanupQosPolicies()
 
@@ -35,8 +35,7 @@ func TestCleanupQosPolicies(t *testing.T) {
 	assert.NotEmpty(t, policies)
 
 	// Cleanup removes leftover policies after the experiment has finished
-	err = generateAndRunCommands(t.Context(), opts, ModeDelete)
-	require.NoError(t, err)
+	require.NoError(t, Revert(t.Context(), execution, opts))
 
 	CleanupQosPolicies()
 
@@ -61,58 +60,53 @@ func (o *MockNetworkOpt) String() string {
 
 func TestFailedStartLeavesNoActiveAttack(t *testing.T) {
 	t.Setenv("PATH", t.TempDir()) // wdna.exe cannot be found
+	execution := Execution{Id: uuid.New()}
 	opts := &DelayOpts{Filter: Filter{Include: akn.NewNetWithPortRanges(akn.NetAny, akn.PortRangeAny)}, Delay: 100 * time.Millisecond, Duration: 10 * time.Second}
 
-	err := Apply(t.Context(), opts)
+	err := Apply(t.Context(), execution, opts)
 	require.ErrorContains(t, err, "wdna.exe")
-	assert.False(t, activeFw())
+	assert.Nil(t, active)
+	assert.NoFileExists(t, winDivertFilterFile(execution.Id))
 
-	// Not rejected as a second attack running at the same time.
-	err = Apply(t.Context(), opts)
-	require.ErrorContains(t, err, "wdna.exe")
-	assert.NotContains(t, err.Error(), "at the same time")
-
-	require.NoError(t, Revert(t.Context(), opts))
+	require.NoError(t, Revert(t.Context(), execution, opts))
 }
 
 func TestFailedStartRemovesCreatedQosPolicies(t *testing.T) {
-	opts := &qosOpts{policies: []QosPolicy{
-		{Name: qosPolicyPrefix + "TEST_FAILED_START_1", BitsPerSecond: 8_000_000, DstPrefix: "192.0.2.1/32"},
-		{Name: qosPolicyPrefix + "TEST_FAILED_START_2", BitsPerSecond: 8_000_000, DstPrefix: "not-an-address"},
-	}}
+	opts := bandwidthOpts("192.0.2.1/32")
+	opts.IncludeCidrs = append(opts.IncludeCidrs, net.IPNet{}) // not an address, its policy fails
 
-	err := Apply(t.Context(), opts)
-	require.ErrorContains(t, err, "TEST_FAILED_START_2")
+	execution := Execution{Id: uuid.New()}
+	err := Apply(t.Context(), execution, opts)
+	require.ErrorContains(t, err, opts.QoSPolicies()[1].Name)
 	assert.Empty(t, qosPolicyNames(t))
-	assert.False(t, activeFw())
+	assert.Nil(t, active)
 }
 
-type qosOpts struct {
-	policies []QosPolicy
-}
+func TestSecondAttackIsRejected(t *testing.T) {
+	for name, second := range map[string]*LimitBandwidthOpts{
+		"identical": bandwidthOpts("192.0.2.1/32"),
+		"different": bandwidthOpts("192.0.2.2/32"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			running := Execution{Id: uuid.New(), ExperimentKey: "ADM-1", ExperimentExecutionId: 42}
+			require.NoError(t, Apply(t.Context(), running, bandwidthOpts("192.0.2.1/32")))
+			t.Cleanup(func() { _ = Revert(context.Background(), running, bandwidthOpts("192.0.2.1/32")) })
 
-func (o *qosOpts) WinDivert() *WinDivertOpts { return nil }
-func (o *qosOpts) QoSPolicies() []QosPolicy  { return o.policies }
-func (o *qosOpts) String() string {
-	var sb strings.Builder
-	for _, p := range o.policies {
-		sb.WriteString(fmt.Sprintf("%s=%d ", p.Name, p.BitsPerSecond))
+			rejected := Execution{Id: uuid.New()}
+			err := Apply(t.Context(), rejected, second)
+			require.ErrorContains(t, err, "running multiple network attacks at the same time is not supported. Already running attack started by ADM-1 (#42) in targetExecution "+running.Id.String())
+
+			// The platform may stop the rejected attack, which must keep the running one.
+			require.NoError(t, Revert(t.Context(), rejected, second))
+			assert.Equal(t, []string{qosPolicyPrefix + "8MB_0"}, qosPolicyNames(t))
+
+			require.NoError(t, Revert(t.Context(), running, bandwidthOpts("192.0.2.1/32")))
+			assert.Empty(t, qosPolicyNames(t))
+		})
 	}
-	return sb.String()
 }
 
-func TestRevertOfInactiveAttackKeepsOtherAttack(t *testing.T) {
-	other := &qosOpts{policies: []QosPolicy{{Name: qosPolicyPrefix + "TEST_OTHER_ATTACK", BitsPerSecond: 8_000_000, DstPrefix: "192.0.2.1/32"}}}
-	require.NoError(t, Apply(t.Context(), other))
-	t.Cleanup(func() { _ = Revert(context.Background(), other) })
-
-	// e.g. the stop of an attack whose start failed and was reverted, arriving after another attack started
-	inactive := &qosOpts{policies: []QosPolicy{{Name: qosPolicyPrefix + "TEST_OTHER_ATTACK", BitsPerSecond: 16_000_000, DstPrefix: "192.0.2.2/32"}}}
-	require.NoError(t, Revert(t.Context(), inactive))
-
-	assert.Equal(t, []string{qosPolicyPrefix + "TEST_OTHER_ATTACK"}, qosPolicyNames(t))
-	assert.True(t, activeFw())
-
-	require.NoError(t, Revert(t.Context(), other))
-	assert.Empty(t, qosPolicyNames(t))
+func bandwidthOpts(cidr string) *LimitBandwidthOpts {
+	_, ipNet, _ := net.ParseCIDR(cidr)
+	return &LimitBandwidthOpts{Bandwidth: "8MB", BitsPerSecond: 8_000_000, IncludeCidrs: []net.IPNet{*ipNet}}
 }

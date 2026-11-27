@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
@@ -246,19 +245,10 @@ func (a *fillMemAction) Start(ctx context.Context, state *FillMemActionState) (*
 		return nil, err
 	}
 
-	command := exec.CommandContext(context.Background(), "memfill", state.StressOpts.Args()...)
-
-	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
-
-	go func() {
-		output, err := command.CombinedOutput()
-
-		if err != nil {
-			log.Error().Msgf("Failed to start memfill attack: %s.", err)
-		}
-
-		log.Info().Msgf("%s", output)
-	}()
+	command := exec.Command("memfill", state.StressOpts.Args()...) //NOSONAR the installer adds the folder of memfill to PATH
+	if err := runAttackProcess(state.ExecutionId, command); err != nil {
+		return nil, fmt.Errorf("failed to start the memfill attack: %w", err)
+	}
 
 	return &action_kit_api.StartResult{
 		Messages: new([]action_kit_api.Message{
@@ -271,43 +261,9 @@ func (a *fillMemAction) Start(ctx context.Context, state *FillMemActionState) (*
 }
 
 func (a *fillMemAction) Status(_ context.Context, state *FillMemActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := utils.IsProcessRunning("memfill")
-
-	if err != nil {
-		return nil, err
-	}
-
-	if isRunning {
-		return &action_kit_api.StatusResult{Completed: false}, nil
-	}
-
-	return &action_kit_api.StatusResult{
-		Completed: true,
-		Messages: &[]action_kit_api.Message{
-			{
-				Level:   extutil.Ptr(action_kit_api.Info),
-				Message: "Memfill stopped",
-			},
-		},
-	}, nil
-
+	return attackStatus(state.ExecutionId, "Memfill stopped")
 }
 
 func (a *fillMemAction) Stop(_ context.Context, state *FillMemActionState) (*action_kit_api.StopResult, error) {
-	messages := make([]action_kit_api.Message, 0)
-
-	err := utils.StopProcess("memfill")
-
-	if err != nil {
-		return nil, err
-	}
-
-	messages = append(messages, action_kit_api.Message{
-		Level:   extutil.Ptr(action_kit_api.Info),
-		Message: "Canceled memfill",
-	})
-
-	return &action_kit_api.StopResult{
-		Messages: &messages,
-	}, nil
+	return stopAttack(state.ExecutionId, "Canceled memfill")
 }

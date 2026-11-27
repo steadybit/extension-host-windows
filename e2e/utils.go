@@ -28,8 +28,13 @@ func findExtensionArtifact(dir string) (string, error) {
 	return findFileWithExtension(dir, ".zip")
 }
 
+// findExtensionExecutable looks the extension up by name: the artifact also holds wdna and the attack tools.
 func findExtensionExecutable(dir string) (string, error) {
-	return findFileWithExtension(dir, ".exe")
+	path := filepath.Join(dir, "extension-host-windows.exe")
+	if _, err := os.Stat(path); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 func findFileWithExtension(dir string, extension string) (string, error) {
@@ -223,15 +228,6 @@ func IsPortAvailable(port int) bool {
 		_ = listener.Close()
 	}
 	return true
-}
-
-func FindAvailablePort(startPort, endPort int) (int, error) {
-	for port := startPort; port <= endPort; port++ {
-		if IsPortAvailable(port) {
-			return port, nil
-		}
-	}
-	return 0, fmt.Errorf("no available port found in range %d-%d", startPort, endPort)
 }
 
 func FindAvailablePorts(startPort, endPort int, count int) (int, error) {

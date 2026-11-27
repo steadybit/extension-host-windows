@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
@@ -263,17 +262,10 @@ func (a *cpuStressAction) Start(ctx context.Context, state *CPUStressActionState
 		return nil, err
 	}
 
-	command := exec.CommandContext(context.Background(), steadybitStressCpuExecutableName, state.StressOpts.Args()...)
-
-	go func() {
-		output, err := command.CombinedOutput()
-
-		if err != nil {
-			log.Error().Msg("Failed to start cpu stress attack.")
-		}
-
-		log.Info().Msgf("%s", output)
-	}()
+	command := exec.Command(steadybitStressCpuExecutableName, state.StressOpts.Args()...) //NOSONAR the installer adds its folder to PATH
+	if err := runAttackProcess(state.ExecutionId, command); err != nil {
+		return nil, fmt.Errorf("failed to start the cpu stress attack: %w", err)
+	}
 
 	return &action_kit_api.StartResult{
 		Messages: new([]action_kit_api.Message{
@@ -286,43 +278,9 @@ func (a *cpuStressAction) Start(ctx context.Context, state *CPUStressActionState
 }
 
 func (a *cpuStressAction) Status(_ context.Context, state *CPUStressActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := utils.IsProcessRunning(steadybitStressCpuExecutableName)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if isRunning {
-		return &action_kit_api.StatusResult{Completed: false}, nil
-	}
-
-	return &action_kit_api.StatusResult{
-		Completed: true,
-		Messages: &[]action_kit_api.Message{
-			{
-				Level:   extutil.Ptr(action_kit_api.Info),
-				Message: "Stress host stopped",
-			},
-		},
-	}, nil
-
+	return attackStatus(state.ExecutionId, "Stress host stopped")
 }
 
 func (a *cpuStressAction) Stop(_ context.Context, state *CPUStressActionState) (*action_kit_api.StopResult, error) {
-	messages := make([]action_kit_api.Message, 0)
-
-	err := utils.StopProcess(steadybitStressCpuExecutableName)
-
-	if err != nil {
-		return nil, err
-	}
-
-	messages = append(messages, action_kit_api.Message{
-		Level:   extutil.Ptr(action_kit_api.Info),
-		Message: "Canceled stress host",
-	})
-
-	return &action_kit_api.StopResult{
-		Messages: &messages,
-	}, nil
+	return stopAttack(state.ExecutionId, "Canceled stress host")
 }

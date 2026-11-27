@@ -13,7 +13,6 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 	"github.com/steadybit/action-kit/go/action_kit_api/v2"
 	"github.com/steadybit/action-kit/go/action_kit_sdk"
 	"github.com/steadybit/extension-host-windows/exthostwindows/utils"
@@ -282,19 +281,10 @@ func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) 
 		return nil, err
 	}
 
-	command := exec.CommandContext(context.Background(), executable, state.StressOpts.Args()...)
-
-	log.Info().Msgf("Running command: %s, %s.", command.Path, command.Args)
-
-	go func() {
-		output, err := command.CombinedOutput()
-
-		if err != nil {
-			log.Error().Msgf("Failed to start io stress attack: %s.", err)
-		}
-
-		log.Info().Msgf("%s", output)
-	}()
+	command := exec.Command(executable, state.StressOpts.Args()...)
+	if err := runAttackProcess(state.ExecutionId, command); err != nil {
+		return nil, fmt.Errorf("failed to start the io stress attack: %w", err)
+	}
 
 	return &action_kit_api.StartResult{
 		Messages: new([]action_kit_api.Message{
@@ -307,45 +297,11 @@ func (a *ioStressAction) Start(ctx context.Context, state *IoStressActionState) 
 }
 
 func (a *ioStressAction) Status(_ context.Context, state *IoStressActionState) (*action_kit_api.StatusResult, error) {
-	isRunning, err := utils.IsProcessRunning("diskspd")
-
-	if err != nil {
-		return nil, err
-	}
-
-	if isRunning {
-		return &action_kit_api.StatusResult{Completed: false}, nil
-	}
-
-	return &action_kit_api.StatusResult{
-		Completed: true,
-		Messages: &[]action_kit_api.Message{
-			{
-				Level:   extutil.Ptr(action_kit_api.Info),
-				Message: "Stress host stopped",
-			},
-		},
-	}, nil
-
+	return attackStatus(state.ExecutionId, "Stress host stopped")
 }
 
 func (a *ioStressAction) Stop(_ context.Context, state *IoStressActionState) (*action_kit_api.StopResult, error) {
-	messages := make([]action_kit_api.Message, 0)
-
-	err := utils.StopProcess("diskspd")
-
-	if err != nil {
-		return nil, err
-	}
-
-	messages = append(messages, action_kit_api.Message{
-		Level:   extutil.Ptr(action_kit_api.Info),
-		Message: "Canceled stress host",
-	})
-
-	return &action_kit_api.StopResult{
-		Messages: &messages,
-	}, nil
+	return stopAttack(state.ExecutionId, "Canceled stress host")
 }
 
 // isPhysicalDeviceAvailable checks for \\.\PhysicalDriveN, the device diskspd addresses as #N.

@@ -83,7 +83,6 @@ try {
     # Download the zip file to the dedicated temp location
     Write-Host "Downloading $($windowsBuildAsset.name) to $assetZipPath"
     Write-Host "URL: $($windowsBuildAsset.browser_download_url)"
-    Write-Host "Headers: $($headers["Authorization"])"
 
     $assetApiUrl = "https://api.github.com/repos/steadybit/WinDivert/releases/assets/$($windowsBuildAsset.id)"
     $assetHeaders = $headers.Clone()

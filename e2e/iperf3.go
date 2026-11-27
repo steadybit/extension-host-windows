@@ -11,7 +11,6 @@ import (
 	"github.com/yalp/jsonpath"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -24,11 +23,10 @@ type Iperf struct {
 	Ip         string
 	Port       int
 	executable string
-	cancel     func()
 }
 
 func NewIperf(server string, port int) *Iperf {
-	return &Iperf{server, port, "", nil}
+	return &Iperf{Ip: server, Port: port}
 }
 
 func (n *Iperf) Install() error {
@@ -57,85 +55,6 @@ func (n *Iperf) Install() error {
 
 	n.executable = filepath.Join(extractPath, "iperf3.exe")
 	return nil
-}
-
-func (n *Iperf) Deploy(ctx context.Context, env Environment) error {
-	err := n.Install()
-	log.Info().Msgf("Starting Iperf on port %d", n.Port)
-	if err != nil {
-		return err
-	}
-	n.cancel, err = env.StartAndAwaitProcess(ctx, n.executable, nil, "-s", "-p", strconv.Itoa(n.Port))
-	return err
-}
-
-func (n *Iperf) Delete() error {
-	if n.cancel != nil {
-		log.Info().Msgf("Stopping Iperf server")
-		n.cancel()
-	}
-	return nil
-}
-
-func (n *Iperf) MeasurePackageLoss(ctx context.Context, env Environment) (float64, error) {
-	out, err := env.ExecuteProcess(ctx, n.executable, "--client", n.Ip, fmt.Sprintf("--port=%d", n.Port), "--udp", "--time=5", "--json")
-	if err != nil {
-		return 0, err
-	}
-
-	var result any
-	err = json.Unmarshal([]byte(out), &result)
-	if err != nil {
-		return 0, fmt.Errorf("failed reading results: %w", err)
-	}
-
-	lost, err := jsonpath.Read(result, "$.end.sum.lost_percent")
-	if err != nil {
-		return 0, fmt.Errorf("failed reading lost_percent: %w", err)
-	}
-	return lost.(float64), nil
-}
-
-func (n *Iperf) AssertPackageLoss(t *testing.T, ctx context.Context, env Environment, min float64, max float64) {
-	t.Helper()
-
-	measurements := make([]float64, 0, 5)
-	Retry(t, 3, 500*time.Millisecond, func(r *R) {
-		loss, err := n.MeasurePackageLoss(ctx, env)
-		if err != nil {
-			r.Failed = true
-			_, _ = fmt.Fprintf(r.Log, "failed to measure package loss: %s", err)
-		}
-		if loss < min || loss > max {
-			r.Failed = true
-			measurements = append(measurements, loss)
-			_, _ = fmt.Fprintf(r.Log, "package loss %v is not in expected range [%f, %f]", measurements, min, max)
-		}
-	})
-}
-
-func (n *Iperf) AssertPackageLossWithRetry(ctx context.Context, env Environment, min float64, max float64, maxRetries int) bool {
-	measurements := make([]float64, 0, 5)
-	success := false
-	for range maxRetries {
-		loss, err := n.MeasurePackageLoss(ctx, env)
-		if err != nil {
-			success = false
-			log.Err(err).Msg("failed to measure package loss")
-			break
-		}
-		if loss < min || loss > max {
-			success = false
-			measurements = append(measurements, loss)
-		} else {
-			success = true
-			break
-		}
-	}
-	if !success {
-		log.Info().Msgf("package loss %v is not in expected range [%f, %f]", measurements, min, max)
-	}
-	return success
 }
 
 func (n *Iperf) MeasureBandwidth(ctx context.Context, env Environment) (float64, error) {

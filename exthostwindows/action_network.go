@@ -35,6 +35,7 @@ type networkAction struct {
 
 type NetworkActionState struct {
 	NetworkOpts json.RawMessage
+	Execution   network.Execution
 }
 
 // Make sure networkAction implements all required interfaces
@@ -144,6 +145,15 @@ func (a *networkAction) Prepare(ctx context.Context, state *NetworkActionState, 
 	}
 
 	state.NetworkOpts = rawOpts
+	state.Execution = network.Execution{Id: request.ExecutionId}
+	if ec := request.ExecutionContext; ec != nil {
+		if ec.ExperimentKey != nil {
+			state.Execution.ExperimentKey = *ec.ExperimentKey
+		}
+		if ec.ExecutionId != nil {
+			state.Execution.ExperimentExecutionId = *ec.ExecutionId
+		}
+	}
 
 	return &action_kit_api.PrepareResult{Messages: &messages}, nil
 }
@@ -164,7 +174,7 @@ func (a *networkAction) Start(ctx context.Context, state *NetworkActionState) (*
 		},
 	}}
 
-	err = network.Apply(ctx, opts)
+	err = network.Apply(ctx, state.Execution, opts)
 	if err != nil {
 		return &result, extensionKit.ToError("Failed to apply network settings.", err)
 	}
@@ -181,7 +191,7 @@ func (a *networkAction) Stop(ctx context.Context, state *NetworkActionState) (*a
 		return nil, extensionKit.ToError("Failed to deserialize network settings.", err)
 	}
 
-	if err := network.Revert(ctx, opts); err != nil {
+	if err := network.Revert(ctx, state.Execution, opts); err != nil {
 		return nil, extensionKit.ToError("Failed to revert network settings.", err)
 	}
 
