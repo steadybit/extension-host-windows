@@ -115,6 +115,7 @@ func testDiscovery(t *testing.T, _ Environment, e Extension) {
 	require.NoError(t, err)
 	assert.Equal(t, target.TargetType, exthostwindows.BaseActionID+".host")
 	assert.NotContains(t, target.Attributes, "host.nic")
+	assert.NotEmpty(t, target.Attributes["host.bios.uuid"])
 }
 
 func testStopProcess(t *testing.T, l Environment, e Extension) {

@@ -105,6 +105,12 @@ func (d *hostDiscovery) DescribeAttributes() []discovery_kit_api.AttributeDescri
 				Other: "NICs",
 			},
 		}, {
+			Attribute: hostBiosUuidAttribute,
+			Label: discovery_kit_api.PluralLabel{
+				One:   "BIOS UUID",
+				Other: "BIOS UUIDs",
+			},
+		}, {
 			Attribute: hostOsFamilyAttribute,
 			Label: discovery_kit_api.PluralLabel{
 				One:   "OS Family",
@@ -151,6 +157,10 @@ func (d *hostDiscovery) DiscoverTargets(ctx context.Context) ([]discovery_kit_ap
 	}
 	if len(ownIpV6s) > 0 {
 		target.Attributes[hostIpv6Attribute] = ownIpV6s
+	}
+
+	if id := biosUuid.get(ctx); id != "" {
+		target.Attributes[hostBiosUuidAttribute] = []string{id}
 	}
 
 	if host, err := sysinfo.Host(); err == nil {
