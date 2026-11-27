@@ -37,7 +37,12 @@ func (c *cachedBiosUuid) get(ctx context.Context) string {
 		log.Warn().Err(err).Msg("failed to retrieve BIOS UUID")
 		return ""
 	}
-	c.value = normalizeBiosUuid(value)
+	id, err := uuid.Parse(strings.TrimSpace(value))
+	if err != nil {
+		log.Warn().Str("output", value).Msg("unexpected BIOS UUID output")
+		return ""
+	}
+	c.value = withoutPlaceholder(id)
 	c.done = true
 	return c.value
 }
@@ -48,10 +53,9 @@ func queryBiosUuid(ctx context.Context) (string, error) {
 	return utils.ExecutePowershellCommand(ctx, []string{"(Get-CimInstance -ClassName Win32_ComputerSystemProduct).UUID"})
 }
 
-// normalizeBiosUuid drops the placeholders firmware reports when no UUID is set (SMBIOS spec 7.2.1).
-func normalizeBiosUuid(s string) string {
-	id, err := uuid.Parse(strings.TrimSpace(s))
-	if err != nil || id == uuid.Nil || id == uuid.Max {
+// withoutPlaceholder drops the placeholders firmware reports when no UUID is set (SMBIOS spec 7.2.1).
+func withoutPlaceholder(id uuid.UUID) string {
+	if id == uuid.Nil || id == uuid.Max {
 		return ""
 	}
 	return id.String()
